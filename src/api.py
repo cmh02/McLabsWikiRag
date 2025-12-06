@@ -10,17 +10,18 @@ MODULE IMPORTS
 
 # System
 import os
-from datetime import datetime, timedelta
+from contextlib import asynccontextmanager
 
 # Typing
-from typing import Dict, List, Any
+from typing import Dict
 
 # Fast API and Pydantic
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, Response, HTTPException
-from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from fastapi import FastAPI, HTTPException
+from slowapi import Limiter, _rate_limit_exceeded_handler
 
 # Google API
 from google import genai
@@ -30,31 +31,36 @@ from src.rag import MCL_WikiRag
 from src.docfetch import MCL_WikiEmbedder
 
 '''
-FASTAPI APP SETUP
+FASTAPI APP STARTUP / SHUTDOWN
 '''
+@asynccontextmanager
+async def lifespan(app: FastAPI):
 
-# Build rate limiter
-appLimiter = Limiter(key_func=get_remote_address)
+	# Load environment variables from .env file if not in Railway environment
+	if os.getenv("RAILWAY_ENVIRONMENT_ID") is None:
+		from dotenv import load_dotenv
+		load_dotenv()
 
+	# Gemini client
+	app.state.InstanceClient = genai.Client(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
+
+	# Load the index and documents
+	app.state.InstanceWikiEmbedder = MCL_WikiEmbedder(client=app.state.InstanceClient)
+	app.state.InstanceWikiEmbedder.loadIndexAndDocuments()
+
+	# RAG instance
+	app.state.InstanceRag = MCL_WikiRag(client=app.state.InstanceClient, wikiEmbedder=app.state.InstanceWikiEmbedder)
+	yield
+
+'''
+FASTAPI APP STARTUP / SHUTDOWN
+'''
 # Initialize FastAPI app
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
+appLimiter = Limiter(key_func=get_remote_address)
+app.add_middleware(SlowAPIMiddleware)
 app.state.limiter = appLimiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# Load environment variables from .env file if not in Railway environment
-if os.getenv("RAILWAY_ENVIRONMENT_ID") is None:
-    from dotenv import load_dotenv
-    load_dotenv()
-
-# Gemini client
-client = genai.Client(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
-
-# Load the index and documents
-InstanceWikiEmbedder = MCL_WikiEmbedder(client=client)
-InstanceWikiEmbedder.loadIndexAndDocuments()
-
-# RAG instance
-InstanceRag = MCL_WikiRag(client=client, wikiEmbedder=InstanceWikiEmbedder)
 
 '''
 PYDANTIC MODELS
@@ -137,7 +143,7 @@ def query(request: BaseQueryRequest):
 		)
 
 	# Get the response from the RAG pipeline and return
-	result, topChunks = InstanceRag.queryPipeline(question)
+	result, topChunks = app.state.InstanceRag.queryPipeline(question)
      
 	# Print for debugging
 	if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
