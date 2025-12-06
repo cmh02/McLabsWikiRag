@@ -10,26 +10,42 @@ MODULE IMPORTS
 
 # System
 import os
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
-# Flask
-import gunicorn
-from flask import Flask, request, jsonify
+# Typing
+from typing import Dict, List, Any
+
+# Fast API and Pydantic
+from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException
 
 # Google API
 from google import genai
 
 # MCL Packages
-from src.docfetch import MCL_WikiEmbedder
 from src.rag import MCL_WikiRag
+from src.docfetch import MCL_WikiEmbedder
 
 '''
-FLASK APP SETUP
+PYDANTIC MODELS
+'''
+class BaseQueryRequest(BaseModel):
+
+	# API token for authentication
+	api_token: str = Field(description="API token for authentication.")
+
+	# The question to ask
+	question: str = Field(description="A search query, such as a question..")
+
+	# Whether to include context chunks in the response
+	include_context: bool = Field(default=False, description="Whether to include context chunks in the response.")
+
+'''
+FASTAPI APP SETUP
 '''
 
-# Initialize Flask app
-app = Flask(__name__)
+# Initialize FastAPI app
+app = FastAPI()
 
 # Load environment variables from .env file if not in Railway environment
 if os.getenv("RAILWAY_ENVIRONMENT_ID") is None:
@@ -105,11 +121,11 @@ There is a singular endpoint for querying the RAG system. Users can POST to /que
 - "include_context": (optional) Boolean to include context chunks in the response
 '''
 # Querying RAG via API
-@app.route("/query", methods=["POST"])
-def query():
+@app.post("/query")
+def query(request: BaseQueryRequest):
 
 	# Get the request data
-	data = request.get_json()
+	data: Dict = request.model_dump()
 
 	# Print for debugging
 	if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
@@ -124,7 +140,10 @@ def query():
 			print(f"Invalid API token attempt: {data.get('api_token')}")
                   
 		# Return error
-		return jsonify({"error": "Invalid API token!"}), 401
+		raise HTTPException(
+			status_code=401, 
+			detail="Invalid API token"
+		)
 
 	# Get the question from the request
 	question = data.get("question")
@@ -141,7 +160,10 @@ def query():
 			print("No question provided in request")
 
 		# Return error
-		return jsonify({"error": "Missing 'question'"}), 400
+		raise HTTPException(
+			status_code=400, 
+			detail="Missing 'question'"
+		)
 
 	# If question is too long, return error
 	if len(question) > 256:
@@ -150,7 +172,10 @@ def query():
 			print("Question is too long (max 256 characters)!")
 
 		# Return error
-		return jsonify({"errormessage": "Question is too long (max 256 characters)!", "errorcode": 3}), 400
+		raise HTTPException(
+			status_code=400, 
+			detail="Question is too long (max 256 characters)!"
+		)
 
 	# Get the response from the RAG pipeline and return
 	result, topChunks = InstanceRag.queryPipeline(question)
@@ -161,10 +186,5 @@ def query():
 
 	# Return the result
 	if includeContext in [False, "False", "false", 0, "0"]:
-		return jsonify({"answer": result})
-	else:
-		return jsonify({"answer": result, "context": topChunks})
-
-if __name__ == "__main__":
-    # Railway will inject a $PORT env var
-    print(f"Starting application on port {os.environ.get('PORT')}!")
+		return {"answer": result}
+	return {"answer": result, "context": topChunks}
