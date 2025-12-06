@@ -17,7 +17,10 @@ from typing import Dict, List, Any
 
 # Fast API and Pydantic
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Response, HTTPException
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 # Google API
 from google import genai
@@ -27,25 +30,16 @@ from src.rag import MCL_WikiRag
 from src.docfetch import MCL_WikiEmbedder
 
 '''
-PYDANTIC MODELS
-'''
-class BaseQueryRequest(BaseModel):
-
-	# API token for authentication
-	api_token: str = Field(description="API token for authentication.")
-
-	# The question to ask
-	question: str = Field(description="A search query, such as a question..")
-
-	# Whether to include context chunks in the response
-	include_context: bool = Field(default=False, description="Whether to include context chunks in the response.")
-
-'''
 FASTAPI APP SETUP
 '''
 
+# Build rate limiter
+appLimiter = Limiter(key_func=get_remote_address)
+
 # Initialize FastAPI app
 app = FastAPI()
+app.state.limiter = appLimiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Load environment variables from .env file if not in Railway environment
 if os.getenv("RAILWAY_ENVIRONMENT_ID") is None:
@@ -62,55 +56,19 @@ InstanceWikiEmbedder.loadIndexAndDocuments()
 # RAG instance
 InstanceRag = MCL_WikiRag(client=client, wikiEmbedder=InstanceWikiEmbedder)
 
-# API Limits
-MAX_REQUESTS_PER_MINUTE = 2000
-MAX_REQUESTS_PER_DAY = 10000
-
 '''
-API LIMITING
+PYDANTIC MODELS
 '''
+class BaseQueryRequest(BaseModel):
 
-# Track request counts (minutes reset at top of minute, day resets at midnight pacific time)
-requestCounts = {
-    "minute": 0,
-    "day": 0,
-    "minuteReset": datetime.now().replace(second=0, microsecond=0) + timedelta(minutes=1),
-    "dayReset": datetime.now().replace(hour=7, minute=0, second=0, microsecond=0)
-}
+	# API token for authentication
+	api_token: str = Field(description="API token for authentication.")
 
-# Check and update request counts
-def api_checkLimits():
-    
-	# Get needed info
-    global requestCounts
-    now = datetime.now()
+	# The question to ask
+	question: str = Field(description="A search query, such as a question..")
 
-    # Reset per-minute counter at the top of the minute
-    if now >= requestCounts["minuteReset"]:
-        requestCounts["minute"] = 0
-        requestCounts["minuteReset"] = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
-
-    # Reset per-day counter at midnight PT (07:00 UTC)
-    if now >= requestCounts["dayReset"]:
-        requestCounts["day"] = 0
-        requestCounts["dayReset"] = now.replace(hour=7, minute=0, second=0, microsecond=0) + timedelta(days=1)
-
-    # Check if we’re over limits
-    if requestCounts["minute"] >= MAX_REQUESTS_PER_MINUTE:
-        return False, f"Rate limit exceeded: {MAX_REQUESTS_PER_MINUTE} requests per minute", 1
-    if requestCounts["day"] >= MAX_REQUESTS_PER_DAY:
-        return False, f"Rate limit exceeded: {MAX_REQUESTS_PER_DAY} requests per day", 2
-
-    # Count this request and allow
-    requestCounts["minute"] += 1
-    requestCounts["day"] += 1
-    return True, None, 0
-
-@app.before_request
-def api_limitRequests():
-    ok, errorMessage, errorCode = api_checkLimits()
-    if not ok:
-        return jsonify({"errormessage": errorMessage, "errorcode": errorCode}), 429
+	# Whether to include context chunks in the response
+	include_context: bool = Field(default=False, description="Whether to include context chunks in the response.")
 
 '''
 API ENDPOINT
@@ -122,6 +80,7 @@ There is a singular endpoint for querying the RAG system. Users can POST to /que
 '''
 # Querying RAG via API
 @app.post("/query")
+@appLimiter.limit("100/minute")
 def query(request: BaseQueryRequest):
 
 	# Get the request data
