@@ -35,8 +35,9 @@ async def ask(interaction: discord.Interaction, question: str):
 
 	# Make API request to wake up the API, trying a few times if necessary
 	try:
+		wakeupCount = 0
+		isAwake = False
 		wakeup_payload = {"api_token": os.getenv("API_TOKEN")}
-		wakeupCount = 0, isAwake = False
 		while (wakeupCount < 5) and not isAwake:
 			wakeup_response = requests.post(f"https://{os.getenv('RAILWAY_API_DOMAIN')}/wakeup", json=wakeup_payload)
 			wakeup_data = wakeup_response.json()
