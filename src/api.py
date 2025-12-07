@@ -15,12 +15,13 @@ from contextlib import asynccontextmanager
 # Typing
 from typing import Dict
 
-# Fast API and Pydantic
+# API
 from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from fastapi import FastAPI, HTTPException, Request
 from slowapi import Limiter, _rate_limit_exceeded_handler
 
 # Google API
@@ -88,6 +89,16 @@ class BaseQueryRequest(BaseRequest):
 	# Whether to include context chunks in the response
 	include_context: bool = Field(default=False, description="Whether to include context chunks in the response.")
 
+class BaseHelpQuestionRequest(BaseRequest):
+	'''
+	# BaseHelpQuestionRequest
+
+	Model for help question requests to the API. Inherits authentication from BaseRequest.
+	'''
+
+	# The ID of the question
+	question_id: str = Field(description="The ID of the help question.")
+
 '''
 WAKEUP ENDPOINT
 
@@ -119,7 +130,10 @@ def wakeup(request: Request, body: BaseRequest):
 		)
 
 	# Return success message
-	return {"status": "awake"}
+	return JSONResponse(
+		status_code=200,
+		content={"status": "awake"}
+	)
 
 '''
 QUESTION ENDPOINT
@@ -195,5 +209,81 @@ def query(request: Request, body: BaseQueryRequest):
 
 	# Return the result
 	if includeContext in [False, "False", "false", 0, "0"]:
-		return {"answer": result}
-	return {"answer": result, "context": topChunks}
+		return JSONResponse(
+			status_code=200,
+			content={"answer": result}
+		)
+	return JSONResponse(
+		status_code=200,
+		content={"answer": result, "context": topChunks}
+	)
+
+'''
+ADD HELP QUESTION ENDPOINT
+
+This endpoint will allow for adding help questions via question ID.
+- "api_token": Your API token for authentication
+- "question_id": The ID of the help question to add
+- "question_player": The player who asked the help question
+- "question_content": The content of the help question to add
+- "question_time": The time the help question was asked
+'''
+@app.post("/help/add")
+@appLimiter.limit("100/minute")
+def add_help_question(request: Request, body: BaseHelpQuestionRequest):
+	pass
+
+'''
+REMOVE HELP QUESTION ENDPOINT
+
+This endpoint will allow for removing help questions via question ID. This endpoint is specifically
+for removing help questions from the queue, not to answer them.
+- "api_token": Your API token for authentication
+- "question_id": The ID of the help question to remove
+'''
+@app.post("/help/remove")
+@appLimiter.limit("100/minute")
+def remove_help_question(request: Request, body: BaseHelpQuestionRequest):
+	pass
+
+'''
+ANSWER HELP QUESTION ENDPOINT
+
+This endpoint will allow for answering help questions via question ID. This should be used to provide an
+answer that will be later retrieved by the in-game help system.
+- "api_token": Your API token for authentication
+- "question_id": The ID of the help question to answer
+- "answer": The answer to the help question
+- "answered_by": The name of the staff member answering the question
+'''
+@app.post("/help/answer")
+@appLimiter.limit("100/minute")
+def answer_help_question(request: Request, body: BaseHelpQuestionRequest):
+	pass
+
+'''
+CLAIM HELP QUESTION ENDPOINT
+
+This endpoint will allow for claiming help questions via question ID. This should be used to mark a help
+question as being worked on by a staff member.
+- "api_token": Your API token for authentication
+- "question_id": The ID of the help question to claim
+- "claimed_by": The name of the staff member claiming the question
+'''
+@app.post("/help/claim")
+@appLimiter.limit("100/minute")
+def claim_help_question(request: Request, body: BaseHelpQuestionRequest):
+	pass
+
+'''
+UNCLAIM HELP QUESTION ENDPOINT
+
+This endpoint will allow for unclaiming help questions via question ID. This should be used to mark a help
+question as no longer being worked on by a staff member in the case they are unable to complete it.
+- "api_token": Your API token for authentication
+- "question_id": The ID of the help question to unclaim
+'''
+@app.post("/help/unclaim")
+@appLimiter.limit("100/minute")
+def unclaim_help_question(request: Request, body: BaseHelpQuestionRequest):
+	pass
