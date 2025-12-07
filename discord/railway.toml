@@ -1,0 +1,6 @@
+[build]
+buildCommand = "pip install -r ../requirements.txt"
+
+[deploy]
+root = "."
+startCommand = "python bot.py"
