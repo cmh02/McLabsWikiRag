@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from slowapi import Limiter, _rate_limit_exceeded_handler
 
 # Google API
@@ -87,10 +87,10 @@ There is a singular endpoint for querying the RAG system. Users can POST to /que
 # Querying RAG via API
 @app.post("/query")
 @appLimiter.limit("100/minute")
-def query(request: BaseQueryRequest):
+def query(request: Request, body: BaseQueryRequest):
 
 	# Get the request data
-	data: Dict = request.model_dump()
+	data: Dict = body.model_dump()
 
 	# Print for debugging
 	if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
