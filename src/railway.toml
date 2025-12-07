@@ -3,4 +3,4 @@ buildCommand = "pip install -r requirements.txt"
 
 [deploy]
 root = "."
-startCommand = "uvicorn src/api:app --host 0.0.0.0 --port 5000"
+startCommand = "uvicorn src.api:app --host 0.0.0.0 --port 5000"
