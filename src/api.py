@@ -94,7 +94,7 @@ WAKEUP ENDPOINT
 This endpoint is used solely for waking up the API when asleep on Railway. It still needs authentication.
 '''
 @app.post("/wakeup")
-@appLimiter.limit("10/minute")
+@appLimiter.limit("50/minute")
 def wakeup(request: Request, body: BaseRequest):
 	
 	# Get the request data
