@@ -48,7 +48,7 @@ class MCL_HelpManager():
 		'''
 
 		# Dict for holding help questions
-		self.helpQuestions: Dict[int, str] = {}
+		self.helpQuestions: Dict[int, Dict] = {}
 
 	def addQuestion(self, questionID: int, questionPlayer: str, questionContent: str, questionTime: datetime) -> bool:
 		'''
