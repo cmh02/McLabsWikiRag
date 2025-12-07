@@ -14,7 +14,7 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 
 # Typing
-from typing import Dict
+from typing import cast, Dict
 
 # API
 from pydantic import BaseModel, Field, field_validator
@@ -55,15 +55,16 @@ async def lifespan(app: FastAPI):
 	# RAG instance
 	app.state.InstanceRag = MCL_WikiRag(client=app.state.InstanceClient, wikiEmbedder=app.state.InstanceWikiEmbedder)
 
-	# Help manager instance
-	app.state.InstanceHelpManager = MCL_HelpManager()
+	# Initialize Help Manager
+	MCL_HelpManager().initialize()
 
 	# Yield back for app lifetime
 	yield
 
 '''
-FASTAPI APP STARTUP / SHUTDOWN
+FASTAPI APP DEFINITION
 '''
+
 # Initialize FastAPI app
 app = FastAPI(lifespan=lifespan)
 appLimiter = Limiter(key_func=get_remote_address)
@@ -240,7 +241,28 @@ class AddHelpQuestionSchema(BaseHelpQuestionSchema):
 @app.post("/help/add")
 @appLimiter.limit("100/minute")
 def add_help_question(request: Request, body: AddHelpQuestionSchema):
-	pass
+	
+	# Get request data
+	data: Dict = body.model_dump()
+	
+	# Add the help question
+	success = MCL_HelpManager().addQuestion(
+		questionID=data.get("question_id"),
+		questionPlayer=data.get("question_player"),
+		questionContent=data.get("question_content"),
+		questionTime=data.get("question_time")
+	)
+
+	# Return success message
+	if not success:
+		raise HTTPException(
+			status_code=500,
+			detail=f"Failed to add help question {data.get('question_id')}"
+		)
+	return JSONResponse(
+		status_code=200,
+		content={"status": f"help question {data.get('question_id')} added successfully"}
+	)
 
 '''
 REMOVE HELP QUESTION ENDPOINT
@@ -254,7 +276,25 @@ for removing help questions from the queue, not to answer them.
 @app.post("/help/remove")
 @appLimiter.limit("100/minute")
 def remove_help_question(request: Request, body: BaseHelpQuestionSchema):
-	pass
+	
+	# Get request data
+	data: Dict = body.model_dump()
+	
+	# Remove the help question
+	success = MCL_HelpManager().removeQuestion(
+		questionID=data.get("question_id")
+	)
+
+	# Return success message
+	if not success:
+		raise HTTPException(
+			status_code=500,
+			detail=f"Failed to remove help question {data.get('question_id')}"
+		)
+	return JSONResponse(
+		status_code=200,
+		content={"status": f"help question {data.get('question_id')} removed successfully"}
+	)
 
 '''
 ANSWER HELP QUESTION ENDPOINT
@@ -283,7 +323,27 @@ class AnswerHelpQuestionSchema(BaseHelpQuestionSchema):
 @app.post("/help/answer")
 @appLimiter.limit("100/minute")
 def answer_help_question(request: Request, body: AnswerHelpQuestionSchema):
-	pass
+	
+	# Get request data
+	data: Dict = body.model_dump()
+	
+	# Answer the help question
+	success = MCL_HelpManager().answerQuestion(
+		questionID=data.get("question_id"),
+		answeredBy=data.get("answered_by"),
+		answerContent=data.get("answer")
+	)
+
+	# Return success message
+	if not success:
+		raise HTTPException(
+			status_code=500,
+			detail=f"Failed to answer help question {data.get('question_id')}"
+		)
+	return JSONResponse(
+		status_code=200,
+		content={"status": f"help question {data.get('question_id')} answered successfully"}
+	)
 
 '''
 CLAIM HELP QUESTION ENDPOINT
@@ -308,7 +368,26 @@ class ClaimHelpQuestionSchema(BaseHelpQuestionSchema):
 @app.post("/help/claim")
 @appLimiter.limit("100/minute")
 def claim_help_question(request: Request, body: ClaimHelpQuestionSchema):
-	pass
+	
+	# Get request data
+	data: Dict = body.model_dump()
+	
+	# Claim the help question
+	success = MCL_HelpManager().claimQuestion(
+		questionID=data.get("question_id"),
+		claimedBy=data.get("claimed_by")
+	)
+
+	# Return success message
+	if not success:
+		raise HTTPException(
+			status_code=500,
+			detail=f"Failed to claim help question {data.get('question_id')}"
+		)
+	return JSONResponse(
+		status_code=200,
+		content={"status": f"help question {data.get('question_id')} claimed successfully"}
+	)
 
 '''
 UNCLAIM HELP QUESTION ENDPOINT
@@ -321,4 +400,22 @@ question as no longer being worked on by a staff member in the case they are una
 @app.post("/help/unclaim")
 @appLimiter.limit("100/minute")
 def unclaim_help_question(request: Request, body: BaseHelpQuestionSchema):
-	pass
+	
+	# Get request data
+	data: Dict = body.model_dump()
+	
+	# Unclaim the help question
+	success = MCL_HelpManager().unclaimQuestion(
+		questionID=data.get("question_id")
+	)
+
+	# Return success message
+	if not success:
+		raise HTTPException(
+			status_code=500,
+			detail=f"Failed to unclaim help question {data.get('question_id')}"
+		)
+	return JSONResponse(
+		status_code=200,
+		content={"status": f"help question {data.get('question_id')} unclaimed successfully"}
+	)

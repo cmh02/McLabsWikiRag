@@ -28,15 +28,21 @@ HELP MANAGER
 
 class MCL_HelpManager():
 	'''
-	MCL_HelpManager
+	MCL Help Manager Singleton
 
 	Class to manage the live help system for MCLabs. Serves as the backend correspondent to the in-game
 	help QA system. Primary use is for syncronizing in-game help system to the discord bot.
 	'''
+	_instance = None
 
-	def __init__(self):
+	def __new__(cls):
+		if cls._instance is None:
+			cls._instance = super(MCL_HelpManager, cls).__new__(cls)
+		return cls._instance
+
+	def initialize(self):
 		'''
-		# Class Constructor
+		# Class Initialization
 
 		Initializes the help manager with an empty dictionary for help questions.
 		'''
