@@ -48,7 +48,7 @@ class MCL_HelpManager():
 		'''
 
 		# Dict for holding help questions
-		self.helpQuestions: Dict[str, str] = {}
+		self.helpQuestions: Dict[int, str] = {}
 
 	def addQuestion(self, questionID: int, questionPlayer: str, questionContent: str, questionTime: datetime) -> bool:
 		'''
@@ -216,3 +216,15 @@ class MCL_HelpManager():
 		self.helpQuestions[questionID]["claimedBy"] = None
 		self.helpQuestions[questionID]["claimedTime"] = None
 		return True
+	
+	def getAllQuestions(self) -> Dict[int, str]:
+		'''
+		# Get All Questions
+
+		Returns all help questions in the help questions dictionary.
+
+		### Returns
+		- Dict[int, str]: Dictionary of all help questions.
+		'''
+
+		return self.helpQuestions

@@ -419,3 +419,25 @@ def unclaim_help_question(request: Request, body: BaseHelpQuestionSchema):
 		status_code=200,
 		content={"status": f"help question {data.get('question_id')} unclaimed successfully"}
 	)
+
+'''
+LIST HELP QUESTIONS ENDPOINT
+
+This endpoint will allow for listing all current help questions in the system.
+- "api_token": Your API token for authentication
+'''
+@app.post("/help/list")
+@appLimiter.limit("100/minute")
+def list_help_questions(request: Request, body: BaseRequestSchema):
+	
+	# Get request data
+	data: Dict = body.model_dump()
+	
+	# Get all help questions
+	questions = MCL_HelpManager().getAllQuestions()
+
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={"questions": questions}
+	)
