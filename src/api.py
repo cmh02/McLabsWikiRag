@@ -10,13 +10,14 @@ MODULE IMPORTS
 
 # System
 import os
+from datetime import datetime
 from contextlib import asynccontextmanager
 
 # Typing
 from typing import Dict
 
 # API
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, HTTPException, Request
 from slowapi.util import get_remote_address
@@ -30,6 +31,8 @@ from google import genai
 # MCL Packages
 from src.rag import MCL_WikiRag
 from src.docfetch import MCL_WikiEmbedder
+from src.helpmanager import MCL_HelpManager
+from src.schemas import BaseRequestSchema, BaseHelpQuestionSchema
 
 '''
 FASTAPI APP STARTUP / SHUTDOWN
@@ -51,6 +54,11 @@ async def lifespan(app: FastAPI):
 
 	# RAG instance
 	app.state.InstanceRag = MCL_WikiRag(client=app.state.InstanceClient, wikiEmbedder=app.state.InstanceWikiEmbedder)
+
+	# Help manager instance
+	app.state.InstanceHelpManager = MCL_HelpManager()
+
+	# Yield back for app lifetime
 	yield
 
 '''
@@ -64,49 +72,13 @@ app.state.limiter = appLimiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 '''
-PYDANTIC MODELS
-'''
-class BaseRequest(BaseModel):
-	'''
-	# BaseRequest
-
-	Basic model for all requests to the API. All this provides is authentication via API token.
-	'''
-
-	# API token for authentication
-	api_token: str = Field(description="API token for authentication.")
-
-class BaseQueryRequest(BaseRequest):
-	'''
-	# BaseQueryRequest
-
-	Model for query requests to the API. Inherits authentication from BaseRequest.
-	'''
-
-	# The question to ask
-	question: str = Field(description="A search query, such as a question..")
-
-	# Whether to include context chunks in the response
-	include_context: bool = Field(default=False, description="Whether to include context chunks in the response.")
-
-class BaseHelpQuestionRequest(BaseRequest):
-	'''
-	# BaseHelpQuestionRequest
-
-	Model for help question requests to the API. Inherits authentication from BaseRequest.
-	'''
-
-	# The ID of the question
-	question_id: str = Field(description="The ID of the help question.")
-
-'''
 WAKEUP ENDPOINT
 
 This endpoint is used solely for waking up the API when asleep on Railway. It still needs authentication.
 '''
 @app.post("/wakeup")
 @appLimiter.limit("50/minute")
-def wakeup(request: Request, body: BaseRequest):
+def wakeup(request: Request, body: BaseRequestSchema):
 	
 	# Get the request data
 	data: Dict = body.model_dump()
@@ -143,9 +115,23 @@ There is a singular endpoint for querying the RAG system. Users can POST to /que
 - "question": The question you want to ask (max 256 characters)
 - "include_context": (optional) Boolean to include context chunks in the response
 '''
+
+class RagQuerySchema(BaseRequestSchema):
+	'''
+	# RagQuerySchema
+
+	Model for query requests to the RAG API. Inherits authentication from BaseRequestSchema.
+	'''
+
+	# The question to ask
+	question: str = Field(description="A search query, such as a question..")
+
+	# Whether to include context chunks in the response
+	include_context: bool = Field(default=False, description="Whether to include context chunks in the response.")
+
 @app.post("/query")
 @appLimiter.limit("100/minute")
-def query(request: Request, body: BaseQueryRequest):
+def query(request: Request, body: RagQuerySchema):
 
 	# Get the request data
 	data: Dict = body.model_dump()
@@ -228,9 +214,32 @@ This endpoint will allow for adding help questions via question ID.
 - "question_content": The content of the help question to add
 - "question_time": The time the help question was asked
 '''
+
+class AddHelpQuestionSchema(BaseHelpQuestionSchema):
+	'''
+	# AddHelpQuestionSchema
+
+	Model for adding help question requests to the API. Inherits from BaseHelpQuestionRequestSchema.
+	'''
+
+	# Player who asked the help question
+	question_player: str = Field(description="The player who asked the help question.")
+
+	# Content of the help question
+	question_content: str = Field(description="The content of the help question.")
+
+	# Time the help question was asked as datetime object
+	question_time: datetime = Field(description="The time the help question was asked.")
+	@field_validator("question_time", mode="before")
+	def convertUnixStringToDatetime(cls, unixString):
+		# Accept strings or ints
+		if isinstance(unixString, (int, float, str)) and str(unixString).isdigit():
+			return datetime.fromtimestamp(int(unixString))
+		return unixString
+	
 @app.post("/help/add")
 @appLimiter.limit("100/minute")
-def add_help_question(request: Request, body: BaseHelpQuestionRequest):
+def add_help_question(request: Request, body: AddHelpQuestionSchema):
 	pass
 
 '''
@@ -241,9 +250,10 @@ for removing help questions from the queue, not to answer them.
 - "api_token": Your API token for authentication
 - "question_id": The ID of the help question to remove
 '''
+
 @app.post("/help/remove")
 @appLimiter.limit("100/minute")
-def remove_help_question(request: Request, body: BaseHelpQuestionRequest):
+def remove_help_question(request: Request, body: BaseHelpQuestionSchema):
 	pass
 
 '''
@@ -256,9 +266,23 @@ answer that will be later retrieved by the in-game help system.
 - "answer": The answer to the help question
 - "answered_by": The name of the staff member answering the question
 '''
+
+class AnswerHelpQuestionSchema(BaseHelpQuestionSchema):
+	'''
+	# AnswerHelpQuestionSchema
+
+	Model for answering help question requests to the API. Inherits from BaseHelpQuestionRequestSchema.
+	'''
+
+	# The answer to the help question
+	answer: str = Field(description="The answer to the help question.")
+
+	# The staff member answering the help question
+	answered_by: str = Field(description="The name of the staff member answering the question.")
+
 @app.post("/help/answer")
 @appLimiter.limit("100/minute")
-def answer_help_question(request: Request, body: BaseHelpQuestionRequest):
+def answer_help_question(request: Request, body: AnswerHelpQuestionSchema):
 	pass
 
 '''
@@ -270,9 +294,20 @@ question as being worked on by a staff member.
 - "question_id": The ID of the help question to claim
 - "claimed_by": The name of the staff member claiming the question
 '''
+
+class ClaimHelpQuestionSchema(BaseHelpQuestionSchema):
+	'''
+	# ClaimHelpQuestionSchema
+
+	Model for claiming help question requests to the API. Inherits from BaseHelpQuestionRequestSchema.
+	'''
+
+	# The staff member claiming the help question
+	claimed_by: str = Field(description="The name of the staff member claiming the question.")
+
 @app.post("/help/claim")
 @appLimiter.limit("100/minute")
-def claim_help_question(request: Request, body: BaseHelpQuestionRequest):
+def claim_help_question(request: Request, body: ClaimHelpQuestionSchema):
 	pass
 
 '''
@@ -285,5 +320,5 @@ question as no longer being worked on by a staff member in the case they are una
 '''
 @app.post("/help/unclaim")
 @appLimiter.limit("100/minute")
-def unclaim_help_question(request: Request, body: BaseHelpQuestionRequest):
+def unclaim_help_question(request: Request, body: BaseHelpQuestionSchema):
 	pass
