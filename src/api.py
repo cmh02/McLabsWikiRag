@@ -65,10 +65,22 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 '''
 PYDANTIC MODELS
 '''
-class BaseQueryRequest(BaseModel):
+class BaseRequest(BaseModel):
+	'''
+	# BaseRequest
+
+	Basic model for all requests to the API. All this provides is authentication via API token.
+	'''
 
 	# API token for authentication
 	api_token: str = Field(description="API token for authentication.")
+
+class BaseQueryRequest(BaseRequest):
+	'''
+	# BaseQueryRequest
+
+	Model for query requests to the API. Inherits authentication from BaseRequest.
+	'''
 
 	# The question to ask
 	question: str = Field(description="A search query, such as a question..")
@@ -77,14 +89,46 @@ class BaseQueryRequest(BaseModel):
 	include_context: bool = Field(default=False, description="Whether to include context chunks in the response.")
 
 '''
-API ENDPOINT
+WAKEUP ENDPOINT
+
+This endpoint is used solely for waking up the API when asleep on Railway. It still needs authentication.
+'''
+@app.post("/wakeup")
+@appLimiter.limit("10/minute")
+def wakeup(request: Request, body: BaseRequest):
+	
+	# Get the request data
+	data: Dict = body.model_dump()
+
+	# Print for debugging
+	if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
+		print(f"Received wakeup request: {request}")
+		print(f"Received wakeup request data: {data}")
+
+	# Check API token
+	if data.get("api_token") != os.getenv("API_TOKEN"):
+			
+		# Print for debugging
+		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
+			print(f"Invalid API token attempt: {data.get('api_token')}")
+				  
+		# Return error
+		raise HTTPException(
+			status_code=401, 
+			detail="Invalid API token"
+		)
+
+	# Return success message
+	return {"status": "API is awake!"}
+
+'''
+QUESTION ENDPOINT
 
 There is a singular endpoint for querying the RAG system. Users can POST to /query with a JSON body containing:
 - "api_token": Your API token for authentication
 - "question": The question you want to ask (max 256 characters)
 - "include_context": (optional) Boolean to include context chunks in the response
 '''
-# Querying RAG via API
 @app.post("/query")
 @appLimiter.limit("100/minute")
 def query(request: Request, body: BaseQueryRequest):
