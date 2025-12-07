@@ -245,6 +245,19 @@ def add_help_question(request: Request, body: AddHelpQuestionSchema):
 	# Get request data
 	data: Dict = body.model_dump()
 	
+	# Check API token
+	if data.get("api_token") != os.getenv("API_TOKEN"):
+            
+		# Print for debugging
+		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
+			print(f"Invalid API token attempt: {data.get('api_token')}")
+                  
+		# Return error
+		raise HTTPException(
+			status_code=401, 
+			detail="Invalid API token"
+		)
+
 	# Add the help question
 	success = MCL_HelpManager().addQuestion(
 		questionID=data.get("question_id"),
@@ -280,6 +293,19 @@ def remove_help_question(request: Request, body: BaseHelpQuestionSchema):
 	# Get request data
 	data: Dict = body.model_dump()
 	
+	# Check API token
+	if data.get("api_token") != os.getenv("API_TOKEN"):
+            
+		# Print for debugging
+		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
+			print(f"Invalid API token attempt: {data.get('api_token')}")
+                  
+		# Return error
+		raise HTTPException(
+			status_code=401, 
+			detail="Invalid API token"
+		)
+
 	# Remove the help question
 	success = MCL_HelpManager().removeQuestion(
 		questionID=data.get("question_id")
@@ -327,6 +353,19 @@ def answer_help_question(request: Request, body: AnswerHelpQuestionSchema):
 	# Get request data
 	data: Dict = body.model_dump()
 	
+	# Check API token
+	if data.get("api_token") != os.getenv("API_TOKEN"):
+            
+		# Print for debugging
+		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
+			print(f"Invalid API token attempt: {data.get('api_token')}")
+                  
+		# Return error
+		raise HTTPException(
+			status_code=401, 
+			detail="Invalid API token"
+		)
+
 	# Answer the help question
 	success = MCL_HelpManager().answerQuestion(
 		questionID=data.get("question_id"),
@@ -372,6 +411,19 @@ def claim_help_question(request: Request, body: ClaimHelpQuestionSchema):
 	# Get request data
 	data: Dict = body.model_dump()
 	
+	# Check API token
+	if data.get("api_token") != os.getenv("API_TOKEN"):
+            
+		# Print for debugging
+		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
+			print(f"Invalid API token attempt: {data.get('api_token')}")
+                  
+		# Return error
+		raise HTTPException(
+			status_code=401, 
+			detail="Invalid API token"
+		)
+
 	# Claim the help question
 	success = MCL_HelpManager().claimQuestion(
 		questionID=data.get("question_id"),
@@ -404,6 +456,19 @@ def unclaim_help_question(request: Request, body: BaseHelpQuestionSchema):
 	# Get request data
 	data: Dict = body.model_dump()
 	
+	# Check API token
+	if data.get("api_token") != os.getenv("API_TOKEN"):
+            
+		# Print for debugging
+		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
+			print(f"Invalid API token attempt: {data.get('api_token')}")
+                  
+		# Return error
+		raise HTTPException(
+			status_code=401, 
+			detail="Invalid API token"
+		)
+
 	# Unclaim the help question
 	success = MCL_HelpManager().unclaimQuestion(
 		questionID=data.get("question_id")
@@ -433,6 +498,19 @@ def list_help_questions(request: Request, body: BaseRequestSchema):
 	# Get request data
 	data: Dict = body.model_dump()
 	
+	# Check API token
+	if data.get("api_token") != os.getenv("API_TOKEN"):
+            
+		# Print for debugging
+		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
+			print(f"Invalid API token attempt: {data.get('api_token')}")
+                  
+		# Return error
+		raise HTTPException(
+			status_code=401, 
+			detail="Invalid API token"
+		)
+
 	# Get all help questions
 	questions = MCL_HelpManager().getAllQuestions()
 
