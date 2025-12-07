@@ -119,7 +119,7 @@ def wakeup(request: Request, body: BaseRequest):
 		)
 
 	# Return success message
-	return {"status": "API is awake!"}
+	return {"status": "awake"}
 
 '''
 QUESTION ENDPOINT
