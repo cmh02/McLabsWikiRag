@@ -86,8 +86,8 @@ on load:
 
 			# Give API 5 chances to wake up
 			set {_wakeupCount} to 0
-			set {_isAwake} to false
-			while {_wakeupCount} < 5 and {_isAwake} is false:
+			set {_isAwake} to "trying"
+			while {_isAwake} is "trying":
 
 				# Create URL and open connection for wakeup
 				set {_wakeupApiUrl} to try new URL(mwr_getEnvironmentalVariable("RAILWAY_PUBLIC_DOMAIN_WAKEUP"))
@@ -95,7 +95,7 @@ on load:
 				if the last java exception is set:
 					mwr_messageLogFile("&cError: An error occured when opening HTTP wakeup connection! %nl%Player: %{_player}% %nl%Question: %{_question}% %nl%Error: %the last java exception%", true, "severe")
 					set {_responseString} to "&cError: An error has occured when generating a response. Please contact a developer for further assistance!"
-					exit 3 conditionals
+					exit 2 conditionals
 
 				# Configure wakeup connection for POST request
 				try {_wakeupApiConnection}.setRequestMethod("POST")
@@ -105,7 +105,7 @@ on load:
 				if the last java exception is set:
 					mwr_messageLogFile("&cError: An error occured when configuring HTTP wakeup connection! %nl%Player: %{_player}% %nl%Question: %{_question}% %nl%Error: %the last java exception%", true, "severe")
 					set {_responseString} to "&cError: An error has occured when generating a response. Please contact a developer for further assistance!"
-					exit 3 conditionals
+					exit 2 conditionals
 
 				# Write to the wakeup connection via OutputStream
 				try {_wakeupApiConnection}.setDoOutput(true)
@@ -114,7 +114,7 @@ on load:
 				if the last java exception is set:
 					mwr_messageLogFile("&cError: An error occured when writing to HTTP wakeup connection! %nl%Player: %{_player}% %nl%Question: %{_question}% %nl%Error: %the last java exception%", true, "severe")
 					set {_responseString} to "&cError: An error has occured when generating a response. Please contact a developer for further assistance!"
-					exit 3 conditionals
+					exit 2 conditionals
 
 				# Get the wakeup response code and message
 				set {_wakeupResponseCode} to try {_wakeupApiConnection}.getResponseCode()
@@ -122,22 +122,27 @@ on load:
 				if the last java exception is set:
 					mwr_messageLogFile("&cError: An error occured when getting HTTP wakeup response code/message! %nl%Player: %{_player}% %nl%Question: %{_question}% %nl%Error: %the last java exception%", true, "severe")
 					set {_responseString} to "&cError: An error has occured when generating a response. Please contact a developer for further assistance!"
-					exit 3 conditionals
+					exit 2 conditionals
 
 				# If we have a 200 or 429 response, we are awake
-				if {_wakeupResponseCode} is 200 or {_wakeupResponseCode} is 429:
-					set {_isAwake} to true
+				if any:
+					{_wakeupResponseCode} is 200
+					{_wakeupResponseCode} is 429
+				then:
+					set {_isAwake} to "awake"
+				else if {_wakeupCount} >= 5:
+					set {_isAwake} to "failed"
 				else:
 					add 1 to {_wakeupCount}
-					wait 3 seconds
 
 				# Close wakeup output stream
 				try {_wakeupOutputStream}.close()
 				if the last java exception is set:
 					mwr_messageLogFile("&cError: An error occured when closing wakeup output stream! %nl%Error: %the last java exception%", true, "severe")
+					exit 2 conditionals
 			
 			# Check that we are awake before proceeding
-			if {_isAwake} is false:
+			if {_isAwake} is not "awake":
 				mwr_messageLogFile("&cError: API did not wake up after multiple attempts! %nl%Player: %{_player}% %nl%Question: %{_question}%", true, "severe")
 				set {_responseString} to "&cError: An error has occured when generating a response. Please contact a developer for further assistance!"
 				exit 2 conditionals
