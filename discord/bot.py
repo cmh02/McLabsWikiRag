@@ -40,7 +40,7 @@ async def ask(interaction: discord.Interaction, question: str):
 		wakeup_data = wakeup_response.json()
 
 		# Make sure wakeup was successful
-		if wakeup_response.status_code != 200:
+		if wakeup_response.status_code not in [200, 429, 502]:
 			await interaction.response.send_message(content=f"An error has occured while waking up the API. Please contact a developer for further assistance!", ephemeral=True)
 			print(f"Wakeup Error {wakeup_response.status_code}: {wakeup_data.get('error', 'Unknown error')}")
 			return
@@ -54,6 +54,9 @@ async def ask(interaction: discord.Interaction, question: str):
 		if query_response.status_code == 200:
 			answer = query_data.get("answer", "An error has occured while processing your request. Please contact a developer for further assistance!")
 			await interaction.response.send_message(content=answer, ephemeral=True)
+		elif query_response.status_code == 429:
+			await interaction.response.send_message(content=f"We are experiencing an increased number of requests. Please try again later.", ephemeral=True)
+			print(f"Rate Limit Hit: {query_data}")
 		else:
 			await interaction.response.send_message(content=f"An error has occured while processing your request. Please contact a developer for further assistance!", ephemeral=True)
 			print(f"Query Error {query_response.status_code}: {query_data.get('error', 'Unknown error')}")
