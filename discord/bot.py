@@ -46,23 +46,20 @@ async def ask(interaction: discord.Interaction, question: str):
 			else:
 				wakeupCount += 1
 		if not isAwake:
+			print(f"Wakeup Failed after 5 attempts!")
 			await interaction.response.send_message(content=f"The API is currently unavailable. Please try again later.", ephemeral=True)
-			print(f"Wakeup Failed after 5 attempts.")
 	except Exception as e:
-		await interaction.response.send_message(content=f"An error has occured while waking up the API. Please contact a developer for further assistance!", ephemeral=True)
 		print(f"Wakeup Exception [ERROR CODE 001]: {e}")
-		return
+		await interaction.response.send_message(content=f"An error has occured while waking up the API. Please contact a developer for further assistance!", ephemeral=True)
 
 	# Make sure wakeup was successful
 	try:
 		if wakeup_response.status_code not in [200, 429]:
-			await interaction.response.send_message(content=f"An error has occured while waking up the API. Please contact a developer for further assistance!", ephemeral=True)
 			print(f"Wakeup Error {wakeup_response.status_code}: {wakeup_data.get('error', 'Unknown error')}")
-			return
+			await interaction.response.send_message(content=f"An error has occured while waking up the API. Please contact a developer for further assistance!", ephemeral=True)
 	except Exception as e:
-		await interaction.response.send_message(content=f"An error has occured while waking up the API. Please contact a developer for further assistance!", ephemeral=True)
 		print(f"Wakeup Exception [ERROR CODE 002]: {e}")
-		return
+		await interaction.response.send_message(content=f"An error has occured while waking up the API. Please contact a developer for further assistance!", ephemeral=True)
 
 	# Make API request to the RAG endpoint and get response
 	try:
@@ -70,9 +67,8 @@ async def ask(interaction: discord.Interaction, question: str):
 		query_response = requests.post(f"https://{os.getenv('RAILWAY_API_DOMAIN')}/query", json=query_payload)
 		query_data = query_response.json()
 	except Exception as e:
-		await interaction.response.send_message(content=f"An error has occured while querying the API. Please contact a developer for further assistance!", ephemeral=True)
 		print(f"Query Exception [ERROR CODE 003]: {e}")
-		return
+		await interaction.response.send_message(content=f"An error has occured while querying the API. Please contact a developer for further assistance!", ephemeral=True)
 	
 	# Respond in Discord
 	try:
@@ -80,14 +76,14 @@ async def ask(interaction: discord.Interaction, question: str):
 			answer = query_data.get("answer", "An error has occured while processing your request. Please contact a developer for further assistance!")
 			await interaction.response.send_message(content=answer, ephemeral=True)
 		elif query_response.status_code == 429:
-			await interaction.response.send_message(content=f"We are experiencing an increased number of requests. Please try again later.", ephemeral=True)
 			print(f"Rate Limit Hit: {query_data}")
+			await interaction.response.send_message(content=f"We are experiencing an increased number of requests. Please try again later.", ephemeral=True)
 		else:
-			await interaction.response.send_message(content=f"An error has occured while processing your request. Please contact a developer for further assistance!", ephemeral=True)
 			print(f"Query Error {query_response.status_code}: {query_data.get('error', 'Unknown error')}")
+			await interaction.response.send_message(content=f"An error has occured while processing your request. Please contact a developer for further assistance!", ephemeral=True)
 	except Exception as e:
-		await interaction.response.send_message(content=f"An error has occured while responding to your request. Please contact a developer for further assistance!", ephemeral=True)
 		print(f"Response Exception [ERROR CODE 004]: {e}")
+		await interaction.response.send_message(content=f"An error has occured while responding to your request. Please contact a developer for further assistance!", ephemeral=True)
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
