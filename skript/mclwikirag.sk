@@ -129,6 +129,7 @@ on load:
 					set {_isAwake} to true
 				else:
 					add 1 to {_wakeupCount}
+					wait 3 seconds
 
 				# Close wakeup output stream
 				try {_wakeupOutputStream}.close()

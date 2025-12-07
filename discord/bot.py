@@ -9,6 +9,7 @@ MODULE IMPORTS
 '''
 
 import os
+import time
 import requests
 import discord
 from discord import app_commands
@@ -45,6 +46,7 @@ async def ask(interaction: discord.Interaction, question: str):
 				isAwake = True
 			else:
 				wakeupCount += 1
+				time.sleep(3)
 		if not isAwake:
 			print(f"Wakeup Failed after 5 attempts!")
 			await interaction.response.send_message(content=f"The API is currently unavailable. Please try again later.", ephemeral=True)
