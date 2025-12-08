@@ -16,6 +16,7 @@ from enum import Enum
 from typing import Dict
 from datetime import datetime
 from src.schemas import QuestionSchema
+from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
 
 '''
@@ -300,8 +301,8 @@ class MCL_HelpManager():
 		# Send message to discord bot's api endpoint
 		requests.post(
 			url=f"https://{os.getenv('RAILWAY_DISCORD_DOMAIN')}/update",
-			json={
+			json=jsonable_encoder({
 				 "api_token": os.getenv("API_TOKEN"), 
 				 "questions": [QuestionSchema(id=questionId, **details).model_dump() for questionId, details in questions.items()] 
-			}
+			})
 		)

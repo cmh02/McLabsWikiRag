@@ -20,6 +20,7 @@ from typing import cast, Dict, Optional
 # API
 from pydantic import BaseModel, Field, field_validator
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from fastapi import FastAPI, HTTPException, Request
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -512,5 +513,5 @@ def list_help_questions(request: Request, body: BaseRequestSchema):
 	# Return success message
 	return JSONResponse(
 		status_code=200,
-		content={"questions": [QuestionSchema(id=questionId, **details).model_dump() for questionId, details in questions.items()]}
+		content=jsonable_encoder({"questions": [QuestionSchema(id=questionId, **details).model_dump() for questionId, details in questions.items()]})
 	)
