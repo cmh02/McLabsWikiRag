@@ -220,6 +220,7 @@ def doStaffCheck():
 		
 		# Extract user role names
 		userRoles = [role.name for role in interaction.user.roles]
+		print(f"User {interaction.user.name} roles: {userRoles}")
 
 		# Check if user has any staff roles
 		if STAFF_ROLES.intersection(set(userRoles)):
