@@ -139,7 +139,7 @@ class MCL_ThreadManager():
 			return
 
 		# Make the thread creation async
-		thread = await adminMessage.create_thread(name=threadName, auto_archive_duration=1008)
+		thread = await adminMessage.create_thread(name=threadName)
 
 		# Make an embed, send in channel, and pin it
 		embed = HelpQuestionEmbed(
