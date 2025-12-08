@@ -236,7 +236,7 @@ class AddHelpQuestionSchema(BaseHelpQuestionSchema):
 		# Accept strings or ints
 		if isinstance(unixString, (int, float, str)) and str(unixString).isdigit():
 			return datetime.fromtimestamp(int(unixString))
-		return unixString
+		return 0
 	
 @app.post("/help/add")
 @appLimiter.limit("100/minute")
