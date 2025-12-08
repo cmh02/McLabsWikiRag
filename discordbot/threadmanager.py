@@ -14,11 +14,12 @@ MODULE IMPORTS
 import os
 import re
 import logging
-from typing import List, Dict
+from typing import List, Dict, Any
 from bidict import bidict
 
 # Discord
 from discord.ext.commands import Bot
+from discord import PinnedMessage
 
 # Local
 from discordbot.components import HelpQuestionEmbed
@@ -62,6 +63,20 @@ class MCL_ThreadManager():
 
 		# Print initialization message
 		print(f"MCL ThreadManager instance created (PID {os.getpid()}) for channel ID {channelId}!")
+
+	async def getAdminPanelMessage(self) -> PinnedMessage | Any:
+
+		# Get pinned messages in master channel
+		pinnedMessages = await self.channel.pins()
+
+		# If no pinned messages, error
+		if not pinnedMessages:
+			self.logger.error("No pinned messages found in the help channel. Cannot find admin panel message.")
+			return None
+
+		for message in pinnedMessages:
+			if message.embeds[0].title == "MCL Help System — Admin Panel":
+				return message
 
 	def getAllThreads(self) -> bidict[int, int]:
 		'''
@@ -118,11 +133,14 @@ class MCL_ThreadManager():
 		# Log creation
 		self.logger.debug(f"Creating new help thread '{threadName}' for question ID {questionId} from player {questionPlayer}.")
 
-		# Post a starter message in main channel to create thread from
-		starterMessage = await self.channel.send(f"Creating new thread for help question {questionId}!")
+		# Grab the admin message
+		adminMessage = await self.getAdminPanelMessage()
+		if not adminMessage:
+			self.logger.error("Failed to find admin panel message. Cannot create help thread.")
+			return
 
 		# Make the thread creation async
-		thread = await starterMessage.create_thread(name=threadName)
+		thread = await adminMessage.create_thread(name=threadName, auto_archive_duration=1008)
 
 		# Make an embed, send in channel, and pin it
 		embed = HelpQuestionEmbed(
@@ -132,11 +150,7 @@ class MCL_ThreadManager():
 			questionClaimedBy=questionClaimedBy or "Unclaimed"
 		)
 		embedMessage = await thread.send(content="A new help question has been created!", embed=embed)
-		await thread.edit(auto_archive_duration=10080)
 		await embedMessage.pin()
-
-		# Delete the starter message
-		await starterMessage.delete()
 
 	async def deleteHelpThread(self, threadId: int=None, questionId: int=None):
 		'''
