@@ -54,6 +54,8 @@ class MclBot(commands.Bot):
 		if channel is None:
 			print(f"Admin Panel Channel ID {channelId} not found!")
 			return
+		else:
+			print(f"About to post admin panel in channel: {channel.name} ({channel.id})")
 		pinnedMessages = await channel.pins()
 
 		# Build embed
@@ -72,6 +74,7 @@ class MclBot(commands.Bot):
 		# Otherwise, post a new admin panel
 		message = await channel.send(embed=embed, view=AdminHelpPanel(bot=self))
 		await message.pin()
+		print(f"Admin panel posted and pinned in channel: {channel.name} ({channel.id})")
 
 bot = MclBot(
 	command_prefix="/", 
