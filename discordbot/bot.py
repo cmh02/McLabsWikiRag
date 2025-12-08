@@ -40,13 +40,25 @@ class MclBot(commands.Bot):
 		mainChannelId = int(os.getenv("DISCORD_HELP_CHANNEL_ID"))
 		MCL_ThreadManager().initialize(bot=self, channelId=mainChannelId)
 
-		# Start admin panel
-		await self.post_admin_panel(channelId=mainChannelId)
-
 	async def close(self):
 		await self.session.close()
 		await super().close()
 
+bot = MclBot(
+	command_prefix="/", 
+	intents=intents, 
+	activity=discord.Streaming(
+		name="MCLabs Wiki", 
+		url="https://labs-mc.com/wiki/Main_Page"
+	)
+)
+
+@bot.event
+async def on_ready():
+	print(f"Discord bot is ready!")
+	await bot.tree.sync()
+
+	# Start admin panel
 	async def post_admin_panel(self, channelId: int):
 
 		# Get channel and pins
@@ -75,20 +87,7 @@ class MclBot(commands.Bot):
 		message = await channel.send(embed=embed, view=AdminHelpPanel(bot=self))
 		await message.pin()
 		print(f"Admin panel posted and pinned in channel: {channel.name} ({channel.id})")
-
-bot = MclBot(
-	command_prefix="/", 
-	intents=intents, 
-	activity=discord.Streaming(
-		name="MCLabs Wiki", 
-		url="https://labs-mc.com/wiki/Main_Page"
-	)
-)
-
-@bot.event
-async def on_ready():
-    print(f"Discord bot is ready!")
-    await bot.tree.sync()
+	await post_admin_panel(channelId=int(os.getenv("DISCORD_HELP_CHANNEL_ID")))
 
 @bot.tree.command(name="ask", description="Ask me anything!")
 async def ask(interaction: discord.Interaction, question: str):
