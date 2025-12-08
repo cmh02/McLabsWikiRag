@@ -84,50 +84,22 @@ async def update_help_system(request: Request, body: BaseRequestSchema):
 	# Make sure some questions exist
 	questions = data.get("questions", [])
 	if not questions:
-		return
+		return JSONResponse(
+			status_code=400,
+			content={"error": "No questions provided"}
+		)
 	
-	# Get existing threads mapping
-	threads_ThreadIdToQuestionId = MCL_ThreadManager().getAllThreads()
-	threads_QuestionIdToThreadId = threads_ThreadIdToQuestionId.inverse
+	# Dispatch to bot handler
+	bot.loop.create_task(
+		coro=bot.handleHelpSystemUpdate(questions=questions)
+	)
 
-	# Sync each question to a Discord thread
-	for question in questions:
-		question_id = question.get("id")
-		question_player = question.get("player")
-		question_text = question.get("question")
-		question_status = question.get("status", "Open")
-		question_claimed_by = question.get("claimed_by", "Unclaimed")
-
-		# Check if a thread for this question already exists
-		if question_id in threads_QuestionIdToThreadId:
-
-			# If this question already exists, then update the thread with new info
-			thread_id = threads_QuestionIdToThreadId[question_id]
-			await MCL_ThreadManager().updateHelpThread(
-				threadId=thread_id,
-				questionId=question_id,
-				questionPlayer=question_player,
-				questionStatus=question_status,
-				questionContent=question_text,
-				questionClaimedBy=question_claimed_by
-			)
-
-		else:
-
-			# Otherwise, create a new thread for this question
-			await MCL_ThreadManager().createHelpThread(
-				questionId=question_id,
-				questionPlayer=question_player,
-				questionStatus=question_status,
-				questionContent=question_text,
-				questionClaimedBy=question_claimed_by
-			)
-
-	# Delete any threads for questions that no longer exist
-	for thread_id, question_id in threads_ThreadIdToQuestionId.items():
-		if not any(q.get("id") == question_id for q in questions):
-			await MCL_ThreadManager().deleteHelpThread(threadId=thread_id)
-
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={"status": "Update Received!"}
+	)
+	
 '''
 BOT DEFINITION
 '''
@@ -140,13 +112,63 @@ intents.messages = True
 class MclBot(commands.Bot):
 
 	async def setup_hook(self):
-
-		# Initialize aiohttp session
 		self.session = aiohttp.ClientSession()
 
 	async def close(self):
 		await self.session.close()
 		await super().close()
+
+	async def handleHelpSystemUpdate(self, questions: list):
+		'''
+		## Handle Help System Update
+
+		Handles updating the help system threads in Discord based on the provided questions.
+
+		### Parameters
+		- questions (list): List of help question dictionaries.
+		'''
+
+		# Get existing threads mapping
+		threads_ThreadIdToQuestionId = MCL_ThreadManager().getAllThreads()
+		threads_QuestionIdToThreadId = threads_ThreadIdToQuestionId.inverse
+
+		# Sync each question to a Discord thread
+		for question in questions:
+			question_id = question.get("id")
+			question_player = question.get("player")
+			question_text = question.get("question")
+			question_status = question.get("status", "Open")
+			question_claimed_by = question.get("claimed_by", "Unclaimed")
+
+			# Check if a thread for this question already exists
+			if question_id in threads_QuestionIdToThreadId:
+
+				# If this question already exists, then update the thread with new info
+				thread_id = threads_QuestionIdToThreadId[question_id]
+				await MCL_ThreadManager().updateHelpThread(
+					threadId=thread_id,
+					questionId=question_id,
+					questionPlayer=question_player,
+					questionStatus=question_status,
+					questionContent=question_text,
+					questionClaimedBy=question_claimed_by
+				)
+
+			else:
+
+				# Otherwise, create a new thread for this question
+				await MCL_ThreadManager().createHelpThread(
+					questionId=question_id,
+					questionPlayer=question_player,
+					questionStatus=question_status,
+					questionContent=question_text,
+					questionClaimedBy=question_claimed_by
+				)
+
+		# Delete any threads for questions that no longer exist
+		for thread_id, question_id in threads_ThreadIdToQuestionId.items():
+			if not any(q.get("id") == question_id for q in questions):
+				await MCL_ThreadManager().deleteHelpThread(threadId=thread_id)
 
 bot = MclBot(
 	command_prefix="/", 
