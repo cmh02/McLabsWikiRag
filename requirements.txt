@@ -6,6 +6,7 @@ annotated-types==0.7.0
 anyio==4.10.0
 attrs==25.3.0
 beautifulsoup4==4.13.5
+bidict==0.23.1
 blinker==1.9.0
 cachetools==5.5.2
 certifi==2025.8.3
