@@ -299,7 +299,7 @@ class MCL_HelpManager():
 
 		# Send message to discord bot's api endpoint
 		requests.post(
-			url=f"{os.getenv('RAILWAY_DISCORD_DOMAIN')}/update",
+			url=f"https://{os.getenv('RAILWAY_DISCORD_DOMAIN')}/update",
 			json={
 				 "api_token": os.getenv("API_TOKEN"), 
 				 "questions": [QuestionSchema(id=questionId, **details).model_dump() for questionId, details in questions.items()] 
