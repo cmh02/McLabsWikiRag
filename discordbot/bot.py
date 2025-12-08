@@ -194,7 +194,7 @@ async def on_ready():
 	await post_admin_panel(channelId=int(os.getenv("DISCORD_HELP_CHANNEL_ID")))
 
 	# Start API server for webhooks
-	async def start_api_server(self):
+	async def start_api_server():
 		config = uvicorn.Config(
 			app,
 			host="0.0.0.0",
