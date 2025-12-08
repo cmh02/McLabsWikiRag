@@ -138,6 +138,10 @@ class MclBot(commands.Bot):
 		threads_ThreadIdToQuestionId = MCL_ThreadManager().getAllThreads()
 		threads_QuestionIdToThreadId = threads_ThreadIdToQuestionId.inverse
 
+		# Debug threada and questions
+		app.state.logger.debug(f"Current Threads: {threads_QuestionIdToThreadId}")
+		app.state.logger.debug(f"Questions to Sync: {questions}")
+
 		# Sync each question to a Discord thread
 		for question in questions:
 			question_id = question.get("id")
