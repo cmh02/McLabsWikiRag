@@ -15,11 +15,116 @@ import asyncio
 import discord
 import requests
 import datetime
+import uvicorn
 from discord import app_commands
 from discord.ext import commands, tasks
+from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, HTTPException
+from typing import Dict
 
+from src.schemas import BaseRequestSchema
 from discordbot.components import AdminHelpPanel
 from discordbot.threadmanager import MCL_ThreadManager
+
+'''
+BOT BACKEND SETUP
+'''
+
+# Initialize app
+app = FastAPI()
+
+@app.post("/wakeup")
+def wakeup(request: Request, body: BaseRequestSchema):
+	'''
+	# WAKEUP ENDPOINT
+
+	This endpoint is used solely for waking up the API when asleep on Railway. It still needs authentication.
+	'''
+	
+	# Get the request data
+	data: Dict = body.model_dump()
+
+	# Print for debugging
+	if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
+		print(f"Received wakeup request: {request}")
+		print(f"Received wakeup request data: {data}")
+
+	# Check API token
+	if data.get("api_token") != os.getenv("API_TOKEN"):
+			
+		# Print for debugging
+		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
+			print(f"Invalid API token attempt: {data.get('api_token')}")
+				  
+		# Return error
+		raise HTTPException(
+			status_code=401, 
+			detail="Invalid API token"
+		)
+
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={"status": "awake"}
+	)
+
+@app.post("/update")
+async def update_help_system(request: Request, body: BaseRequestSchema):
+	'''
+	# Sync Help Questions Task
+
+	Periodically syncs help questions from the API to Discord threads.
+	'''
+
+	# Get the request data
+	data: Dict = body.model_dump()
+
+	# Make sure some questions exist
+	questions = data.get("questions", [])
+	if not questions:
+		return
+	
+	# Get existing threads mapping
+	threads_ThreadIdToQuestionId = MCL_ThreadManager().getAllThreads()
+	threads_QuestionIdToThreadId = threads_ThreadIdToQuestionId.inverse
+
+	# Sync each question to a Discord thread
+	for question in questions:
+		question_id = question.get("id")
+		question_player = question.get("player")
+		question_text = question.get("question")
+		question_status = question.get("status", "Open")
+		question_claimed_by = question.get("claimed_by", "Unclaimed")
+
+		# Check if a thread for this question already exists
+		if question_id in threads_QuestionIdToThreadId:
+
+			# If this question already exists, then update the thread with new info
+			thread_id = threads_QuestionIdToThreadId[question_id]
+			await MCL_ThreadManager().updateHelpThread(
+				threadId=thread_id,
+				questionId=question_id,
+				questionPlayer=question_player,
+				questionStatus=question_status,
+				questionContent=question_text,
+				questionClaimedBy=question_claimed_by
+			)
+
+		else:
+
+			# Otherwise, create a new thread for this question
+			await MCL_ThreadManager().createHelpThread(
+				questionId=question_id,
+				questionPlayer=question_player,
+				questionStatus=question_status,
+				questionContent=question_text,
+				questionClaimedBy=question_claimed_by
+			)
+
+	# Delete any threads for questions that no longer exist
+	for thread_id, question_id in threads_ThreadIdToQuestionId.items():
+		if not any(q.get("id") == question_id for q in questions):
+			await MCL_ThreadManager().deleteHelpThread(threadId=thread_id)
 
 '''
 BOT DEFINITION
@@ -87,6 +192,19 @@ async def on_ready():
 		await message.pin()
 		print(f"Admin panel posted and pinned in channel: {channel.name} ({channel.id})")
 	await post_admin_panel(channelId=int(os.getenv("DISCORD_HELP_CHANNEL_ID")))
+
+	# Start API server for webhooks
+	async def start_api_server(self):
+		config = uvicorn.Config(
+			app,
+			host="0.0.0.0",
+			port=8000,
+			log_level="info"
+		)
+		server = uvicorn.Server(config)
+		print("Starting webhook API server!")
+		await server.serve()
+	asyncio.create_task(start_api_server())
 
 	# Sync application commands
 	await bot.tree.sync()
@@ -192,80 +310,6 @@ async def ask(interaction: discord.Interaction, question: str):
 			ephemeral=True
 		)
 		return
-
-'''
-HELP SYSTEM - SYNCHRONIZATION
-'''
-# @tasks.loop(seconds=15)
-# async def sync_help_questions():
-# 	'''
-# 	## Sync Help Questions Task
-
-# 	Periodically syncs help questions from the API to Discord threads.
-# 	'''
-
-# 	# Fetch questions from the API
-# 	questions_data = None
-# 	try:
-# 		async with bot.session.post(
-# 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/list", 
-# 			json={"api_token": os.getenv("API_TOKEN")}
-# 		) as response:
-# 			if response.status == 200:
-# 				questions_data = await response.json()
-# 			else:
-# 				print(f"Help Questions Fetch Error {response.status}")
-# 				return
-# 	except Exception as e:
-# 		print(f"Help Questions Fetch Exception [ERROR CODE 005]: {e}")
-# 		return
-
-# 	# Make sure some questions exist
-# 	questions = questions_data.get("questions", [])
-# 	if not questions:
-# 		return
-	
-# 	# Get existing threads mapping
-# 	threads_ThreadIdToQuestionId = MCL_ThreadManager().getAllThreads()
-# 	threads_QuestionIdToThreadId = threads_ThreadIdToQuestionId.inverse
-
-# 	# Sync each question to a Discord thread
-# 	for question in questions:
-# 		question_id = question.get("id")
-# 		question_player = question.get("player")
-# 		question_text = question.get("question")
-# 		question_status = question.get("status", "Open")
-# 		question_claimed_by = question.get("claimed_by", "Unclaimed")
-
-# 		# Check if a thread for this question already exists
-# 		if question_id in threads_QuestionIdToThreadId:
-
-# 			# If this question already exists, then update the thread with new info
-# 			thread_id = threads_QuestionIdToThreadId[question_id]
-# 			await MCL_ThreadManager().updateHelpThread(
-# 				threadId=thread_id,
-# 				questionId=question_id,
-# 				questionPlayer=question_player,
-# 				questionStatus=question_status,
-# 				questionContent=question_text,
-# 				questionClaimedBy=question_claimed_by
-# 			)
-
-# 		else:
-
-# 			# Otherwise, create a new thread for this question
-# 			await MCL_ThreadManager().createHelpThread(
-# 				questionId=question_id,
-# 				questionPlayer=question_player,
-# 				questionStatus=question_status,
-# 				questionContent=question_text,
-# 				questionClaimedBy=question_claimed_by
-# 			)
-
-# 	# Delete any threads for questions that no longer exist
-# 	for thread_id, question_id in threads_ThreadIdToQuestionId.items():
-# 		if not any(q.get("id") == question_id for q in questions):
-# 			await MCL_ThreadManager().deleteHelpThread(threadId=thread_id)
 
 '''
 HELP SYSTEM - COMMAND INTERACTIONS
