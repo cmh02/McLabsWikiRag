@@ -268,7 +268,7 @@ HELP SYSTEM - COMMAND INTERACTIONS
 
 @app_commands.command(name="add", description="Add a help question to the help system.")
 @app_commands.describe(id="Question ID", question="The help question to add.")
-async def add_help_question(interaction: discord.Interaction, questionId: str, question: str):
+async def add_help_question(interaction: discord.Interaction, id: str, question: str):
 	'''
 	## Add Help Question Command
 	'''
