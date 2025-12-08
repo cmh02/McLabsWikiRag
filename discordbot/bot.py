@@ -531,6 +531,54 @@ async def unclaim_help_question(interaction: discord.Interaction, id: str):
 		)
 		return
 
+@bot.tree.command(name="list", description="List all help questions.")
+@doStaffCheck()
+async def list_help_questions(interaction: discord.Interaction):
+	'''
+	## List Help Questions Command
+	'''
+	try:
+		# Acknowledge the command
+		await interaction.response.defer(ephemeral=True)
+
+		async with bot.session.post(
+			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/list", 
+			json={
+				"api_token": os.getenv("API_TOKEN")
+			}
+		) as response:
+			if response.status == 200:
+				data = await response.json()
+				questions = data.get("questions", {})
+				if not questions:
+					await interaction.followup.send(
+						content=f"There are currently no help questions.", 
+						ephemeral=True
+					)
+					return
+				else:
+					message_content = "Current Help Questions:\n"
+					for qid, qdata in questions.items():
+						message_content += f"#{qid} - {qdata.get('status', 'Open')} - Asked by {qdata.get('player', 'Unknown')}\n"
+					await interaction.followup.send(
+						content=message_content, 
+						ephemeral=True
+					)
+					return
+			else:
+				await interaction.followup.send(
+					content=f"Failed to retrieve help questions. Please try again later.", 
+					ephemeral=True
+				)
+				return
+	except Exception as e:
+		print(f"List Help Questions Exception [ERROR CODE 011]: {e}")
+		await interaction.followup.send(
+			content=f"An error has occured while listing the help questions. Please contact a developer for further assistance!", 
+			ephemeral=True
+		)
+		return
+
 '''
 BOT RUN
 '''
