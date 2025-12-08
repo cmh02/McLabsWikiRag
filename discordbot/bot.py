@@ -210,6 +210,29 @@ async def on_ready():
 	await bot.tree.sync()
 	print(f"Discord bot is ready!")
 
+'''
+BOT UTILITIES
+'''
+
+STAFF_ROLES = set(["Helper", "Mod", "Admin", "Owner"])
+def doStaffCheck():
+	async def predicate(interaction: discord.Interaction) -> bool:
+		
+		# Extract user role names
+		userRoles = [role.name for role in interaction.user.roles]
+
+		# Check if user has any staff roles
+		if STAFF_ROLES.intersection(set(userRoles)):
+			return True
+		return False
+
+	return app_commands.check(predicate)
+
+
+'''
+BOT COMMANDS
+'''
+
 @bot.tree.command(name="ask", description="Ask me anything!")
 async def ask(interaction: discord.Interaction, question: str):
 
@@ -316,6 +339,7 @@ HELP SYSTEM - COMMAND INTERACTIONS
 '''
 
 @bot.tree.command(name="add", description="Add a help question to the help system.")
+@doStaffCheck()
 async def add_help_question(interaction: discord.Interaction, id: str, question: str):
 	'''
 	## Add Help Question Command
@@ -352,6 +376,7 @@ async def add_help_question(interaction: discord.Interaction, id: str, question:
 		return
 
 @bot.tree.command(name="remove", description="Remove a help question from the help system.")
+@doStaffCheck()
 async def remove_help_question(interaction: discord.Interaction, id: str):
 	'''
 	## Remove Help Question Command
@@ -385,6 +410,7 @@ async def remove_help_question(interaction: discord.Interaction, id: str):
 		return
 
 @bot.tree.command(name="answer", description="Answer a help question in the help system.")
+@doStaffCheck()
 async def answer_help_question(interaction: discord.Interaction, id: str, answer: str):
 	'''
 	## Answer Help Question Command
@@ -420,6 +446,7 @@ async def answer_help_question(interaction: discord.Interaction, id: str, answer
 		return
 
 @bot.tree.command(name="claim", description="Claim a help question to work on.")
+@doStaffCheck()
 async def claim_help_question(interaction: discord.Interaction, id: str):
 	'''
 	## Claim Help Question Command
@@ -454,6 +481,7 @@ async def claim_help_question(interaction: discord.Interaction, id: str):
 		return
 
 @bot.tree.command(name="unclaim", description="Unclaim a help question.")
+@doStaffCheck()
 async def unclaim_help_question(interaction: discord.Interaction, id: str):
 	'''
 	## Unclaim Help Question Command
@@ -485,8 +513,6 @@ async def unclaim_help_question(interaction: discord.Interaction, id: str):
 			ephemeral=True
 		)
 		return
-
-
 
 '''
 BOT RUN
