@@ -114,6 +114,9 @@ class MCL_ThreadManager():
 
 		# Build thread name
 		threadName = f"Help Question {questionId}"
+		
+		# Log creation
+		self.logger.debug(f"Creating new help thread '{threadName}' for question ID {questionId} from player {questionPlayer}.")
 
 		# Post a starter message in main channel to create thread from
 		starterMessage = await self.channel.send(f"Creating new thread for help question {questionId}!")
@@ -165,6 +168,9 @@ class MCL_ThreadManager():
 		if threadId not in allThreads:
 			raise ValueError(f"No thread found with thread ID {threadId}.")
 		
+		# Log deletion
+		self.logger.debug(f"Deleting help thread ID {threadId} for question ID {allThreads[threadId]}.")
+		
 		# Delete the thread
 		thread = self.bot.get_channel(threadId)
 		await thread.delete()
@@ -212,6 +218,10 @@ class MCL_ThreadManager():
 		if not pinnedMessages:
 			raise ValueError(f"No pinned messages found in thread ID {threadId} to update.")
 		
+		# Log update
+		self.logger.debug(f"Updating help thread ID {threadId} for question ID {allThreads[threadId]}.")
+
+		# Update the embed
 		pinnedEmbedMessage = pinnedMessages[0]
 		newEmbed = HelpQuestionEmbed(
 			questionId=questionId,
