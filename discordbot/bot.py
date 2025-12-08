@@ -59,10 +59,10 @@ async def on_ready():
 	await bot.tree.sync()
 
 	# Start admin panel
-	async def post_admin_panel(self, channelId: int):
+	async def post_admin_panel(channelId: int):
 
 		# Get channel and pins
-		channel = self.get_channel(channelId)
+		channel = bot.get_channel(channelId)
 		if channel is None:
 			print(f"Admin Panel Channel ID {channelId} not found!")
 			return
@@ -80,11 +80,11 @@ async def on_ready():
 		if pinnedMessages:
 			for message in pinnedMessages:
 				if message.embeds[0].title == "MCL Help System — Admin Panel":
-					await message.edit(embed=embed, view=AdminHelpPanel(bot=self))
+					await message.edit(embed=embed, view=AdminHelpPanel(bot=bot))
 					return
 
 		# Otherwise, post a new admin panel
-		message = await channel.send(embed=embed, view=AdminHelpPanel(bot=self))
+		message = await channel.send(embed=embed, view=AdminHelpPanel(bot=bot))
 		await message.pin()
 		print(f"Admin panel posted and pinned in channel: {channel.name} ({channel.id})")
 	await post_admin_panel(channelId=int(os.getenv("DISCORD_HELP_CHANNEL_ID")))
