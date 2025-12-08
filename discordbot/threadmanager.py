@@ -19,7 +19,7 @@ from bidict import bidict
 
 # Discord
 from discord.ext.commands import Bot
-from discord import PinnedMessage
+from discord.abc import PinnedMessage
 
 # Local
 from discordbot.components import HelpQuestionEmbed
