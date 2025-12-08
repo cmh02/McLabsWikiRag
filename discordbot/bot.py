@@ -73,7 +73,7 @@ class UpdateHelpSystemRequest(BaseRequestSchema):
 	questions: list
 
 @app.post("/update")
-async def update_help_system(request: Request, body: BaseRequestSchema):
+async def update_help_system(request: Request, body: UpdateHelpSystemRequest):
 	'''
 	# Sync Help Questions Task
 
