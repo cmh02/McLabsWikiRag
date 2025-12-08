@@ -37,11 +37,41 @@ class MclBot(commands.Bot):
 		self.session = aiohttp.ClientSession()
 
 		# Initialize thread manager
-		MCL_ThreadManager().initialize(bot=self, channelId=int(os.getenv("DISCORD_HELP_CHANNEL_ID")))
+		mainChannelId = int(os.getenv("DISCORD_HELP_CHANNEL_ID"))
+		MCL_ThreadManager().initialize(bot=self, channelId=mainChannelId)
+
+		# Start admin panel
+		await self.post_admin_panel(channelId=mainChannelId)
 
 	async def close(self):
 		await self.session.close()
 		await super().close()
+
+	async def post_admin_panel(self, channelId: int):
+
+		# Get channel and pins
+		channel = self.get_channel(channelId)
+		if channel is None:
+			print(f"Admin Panel Channel ID {channelId} not found!")
+			return
+		pinnedMessages = await channel.pins()
+
+		# Build embed
+		embed = discord.Embed(
+			title="MCL Help System — Admin Panel",
+			description="This panel shows all current help questions.\nUse the buttons below to manage them."
+		)
+
+		# If the admin panel is already posted, then update it
+		if pinnedMessages:
+			for message in pinnedMessages:
+				if message.embeds[0].title == "MCL Help System — Admin Panel":
+					await message.edit(embed=embed, view=AdminHelpPanel(bot=self))
+					return
+
+		# Otherwise, post a new admin panel
+		message = await channel.send(embed=embed, view=AdminHelpPanel(bot=self))
+		await message.pin()
 
 bot = MclBot(
 	command_prefix="/", 
@@ -232,25 +262,6 @@ async def sync_help_questions():
 		if not any(q.get("id") == question_id for q in questions):
 			await MCL_ThreadManager().deleteHelpThread(threadId=thread_id)
 
-
-
-
-
-
-'''
-HELP SYSTEM - ADMIN PANEL
-'''
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def initpanel(ctx):
-    embed = discord.Embed(
-        title="MCL Help System — Admin Panel",
-        description="This panel shows all current help questions.\nUse the buttons below to manage them."
-    )
-
-    await ctx.send(embed=embed, view=AdminHelpPanel())
-
 '''
 HELP SYSTEM - COMMAND INTERACTIONS
 '''
@@ -261,9 +272,7 @@ async def add_help_question(interaction: discord.Interaction, questionId: str, q
 	'''
 	## Add Help Question Command
 	'''
-
-
-	pass
+	return
 
 @app_commands.command(name="remove", description="Remove a help question from the help system.")
 @app_commands.describe(id="Question ID")
@@ -271,7 +280,7 @@ async def remove_help_question(interaction: discord.Interaction, id: str):
 	'''
 	## Remove Help Question Command
 	'''
-	pass
+	return
 
 @app_commands.command(name="answer", description="Answer a help question in the help system.")
 @app_commands.describe(id="Question ID", answer="The answer to the help question.")
@@ -279,7 +288,7 @@ async def answer_help_question(interaction: discord.Interaction, id: str, answer
 	'''
 	## Answer Help Question Command
 	'''
-	pass
+	return
 
 @app_commands.command(name="claim", description="Claim a help question to work on.")
 @app_commands.describe(id="Question ID")
@@ -287,7 +296,7 @@ async def claim_help_question(interaction: discord.Interaction, id: str):
 	'''
 	## Claim Help Question Command
 	'''
-	pass
+	return
 
 @app_commands.command(name="unclaim", description="Unclaim a help question.")
 @app_commands.describe(id="Question ID")
@@ -295,7 +304,7 @@ async def unclaim_help_question(interaction: discord.Interaction, id: str):
 	'''
 	## Unclaim Help Question Command
 	'''
-	pass
+	return
 
 
 
