@@ -67,6 +67,11 @@ def wakeup(request: Request, body: BaseRequestSchema):
 		content={"status": "awake"}
 	)
 
+class UpdateHelpSystemRequest(BaseRequestSchema):
+
+	# List for questions
+	questions: list
+
 @app.post("/update")
 async def update_help_system(request: Request, body: BaseRequestSchema):
 	'''
