@@ -132,14 +132,11 @@ class MCL_ThreadManager():
 		# Log creation
 		self.logger.debug(f"Creating new help thread '{threadName}' for question ID {questionId} from player {questionPlayer}.")
 
-		# Grab the admin message
-		adminMessage = await self.getAdminPanelMessage()
-		if not adminMessage:
-			self.logger.error("Failed to find admin panel message. Cannot create help thread.")
-			return
+		# Make a starter message to make thread
+		starterMessage = await self.channel.send(f"Creating help thread for question ID {questionId} from player {questionPlayer}...")
 
 		# Make the thread creation async
-		thread = await adminMessage.create_thread(name=threadName)
+		thread = await starterMessage.create_thread(name=threadName)
 
 		# Make an embed, send in channel, and pin it
 		embed = HelpQuestionEmbed(
@@ -150,6 +147,9 @@ class MCL_ThreadManager():
 		)
 		embedMessage = await thread.send(content="A new help question has been created!", embed=embed)
 		await embedMessage.pin()
+
+		# Delete the starter message
+		await starterMessage.delete()
 
 	async def deleteHelpThread(self, threadId: int=None, questionId: int=None):
 		'''
