@@ -19,6 +19,7 @@ from typing import List, Dict, Any
 from bidict import bidict
 
 # Discord
+from discord import guild
 from discord.ext.commands import Bot
 
 # Local
@@ -57,6 +58,17 @@ class MCL_ThreadManager():
 		# Store channel ID and reference for help threads
 		self.channelId: int = channelId
 		self.channel = self.bot.get_channel(channelId)
+
+		# Set staff role ID's
+		self.STAFF_ROLE_IDS: List[str] = [
+			"1447520265113174066", # DEV ADMIN
+			"384788021876359179", # SERVER OWNER
+			"384804758407479296", # SERVER ADMIN
+			"939667997402992670", # SERVER TRIAL ADMIN
+			"384804852921925634", # SERVER MOD
+			"385057609599942656", # SERVER TRIAL MOD
+			"384804997302321152" # SERVER HELPER
+		]
 
 		# Build regex patttern for thread names
 		self.THREAD_REGEX: re.Pattern = re.compile(r"^Help\s+Question\s+(\d+)$", re.IGNORECASE)
@@ -146,7 +158,10 @@ class MCL_ThreadManager():
 			questionStatus=questionStatus,
 			questionClaimedBy=questionClaimedBy or "Unclaimed"
 		)
-		embedMessage = await thread.send(content="A new help question has been created!", embed=embed)
+		mentions = " ".join([f"<@&{role_id}>" for role_id in self.STAFF_ROLE_IDS if thread.guild.get_role(int(role_id)) is not None])
+		embedMessage = await thread.send(
+			content=f"A new help question has been created {mentions}!", 
+			embed=embed)
 		await embedMessage.pin()
 
 		# # Delete the starter message
