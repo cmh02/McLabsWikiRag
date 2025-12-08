@@ -196,76 +196,76 @@ async def ask(interaction: discord.Interaction, question: str):
 '''
 HELP SYSTEM - SYNCHRONIZATION
 '''
-@tasks.loop(seconds=15)
-async def sync_help_questions():
-	'''
-	## Sync Help Questions Task
+# @tasks.loop(seconds=15)
+# async def sync_help_questions():
+# 	'''
+# 	## Sync Help Questions Task
 
-	Periodically syncs help questions from the API to Discord threads.
-	'''
+# 	Periodically syncs help questions from the API to Discord threads.
+# 	'''
 
-	# Fetch questions from the API
-	questions_data = None
-	try:
-		async with bot.session.post(
-			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/list", 
-			json={"api_token": os.getenv("API_TOKEN")}
-		) as response:
-			if response.status == 200:
-				questions_data = await response.json()
-			else:
-				print(f"Help Questions Fetch Error {response.status}")
-				return
-	except Exception as e:
-		print(f"Help Questions Fetch Exception [ERROR CODE 005]: {e}")
-		return
+# 	# Fetch questions from the API
+# 	questions_data = None
+# 	try:
+# 		async with bot.session.post(
+# 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/list", 
+# 			json={"api_token": os.getenv("API_TOKEN")}
+# 		) as response:
+# 			if response.status == 200:
+# 				questions_data = await response.json()
+# 			else:
+# 				print(f"Help Questions Fetch Error {response.status}")
+# 				return
+# 	except Exception as e:
+# 		print(f"Help Questions Fetch Exception [ERROR CODE 005]: {e}")
+# 		return
 
-	# Make sure some questions exist
-	questions = questions_data.get("questions", [])
-	if not questions:
-		return
+# 	# Make sure some questions exist
+# 	questions = questions_data.get("questions", [])
+# 	if not questions:
+# 		return
 	
-	# Get existing threads mapping
-	threads_ThreadIdToQuestionId = MCL_ThreadManager().getAllThreads()
-	threads_QuestionIdToThreadId = threads_ThreadIdToQuestionId.inverse
+# 	# Get existing threads mapping
+# 	threads_ThreadIdToQuestionId = MCL_ThreadManager().getAllThreads()
+# 	threads_QuestionIdToThreadId = threads_ThreadIdToQuestionId.inverse
 
-	# Sync each question to a Discord thread
-	for question in questions:
-		question_id = question.get("id")
-		question_player = question.get("player")
-		question_text = question.get("question")
-		question_status = question.get("status", "Open")
-		question_claimed_by = question.get("claimed_by", "Unclaimed")
+# 	# Sync each question to a Discord thread
+# 	for question in questions:
+# 		question_id = question.get("id")
+# 		question_player = question.get("player")
+# 		question_text = question.get("question")
+# 		question_status = question.get("status", "Open")
+# 		question_claimed_by = question.get("claimed_by", "Unclaimed")
 
-		# Check if a thread for this question already exists
-		if question_id in threads_QuestionIdToThreadId:
+# 		# Check if a thread for this question already exists
+# 		if question_id in threads_QuestionIdToThreadId:
 
-			# If this question already exists, then update the thread with new info
-			thread_id = threads_QuestionIdToThreadId[question_id]
-			await MCL_ThreadManager().updateHelpThread(
-				threadId=thread_id,
-				questionId=question_id,
-				questionPlayer=question_player,
-				questionStatus=question_status,
-				questionContent=question_text,
-				questionClaimedBy=question_claimed_by
-			)
+# 			# If this question already exists, then update the thread with new info
+# 			thread_id = threads_QuestionIdToThreadId[question_id]
+# 			await MCL_ThreadManager().updateHelpThread(
+# 				threadId=thread_id,
+# 				questionId=question_id,
+# 				questionPlayer=question_player,
+# 				questionStatus=question_status,
+# 				questionContent=question_text,
+# 				questionClaimedBy=question_claimed_by
+# 			)
 
-		else:
+# 		else:
 
-			# Otherwise, create a new thread for this question
-			await MCL_ThreadManager().createHelpThread(
-				questionId=question_id,
-				questionPlayer=question_player,
-				questionStatus=question_status,
-				questionContent=question_text,
-				questionClaimedBy=question_claimed_by
-			)
+# 			# Otherwise, create a new thread for this question
+# 			await MCL_ThreadManager().createHelpThread(
+# 				questionId=question_id,
+# 				questionPlayer=question_player,
+# 				questionStatus=question_status,
+# 				questionContent=question_text,
+# 				questionClaimedBy=question_claimed_by
+# 			)
 
-	# Delete any threads for questions that no longer exist
-	for thread_id, question_id in threads_ThreadIdToQuestionId.items():
-		if not any(q.get("id") == question_id for q in questions):
-			await MCL_ThreadManager().deleteHelpThread(threadId=thread_id)
+# 	# Delete any threads for questions that no longer exist
+# 	for thread_id, question_id in threads_ThreadIdToQuestionId.items():
+# 		if not any(q.get("id") == question_id for q in questions):
+# 			await MCL_ThreadManager().deleteHelpThread(threadId=thread_id)
 
 '''
 HELP SYSTEM - COMMAND INTERACTIONS
