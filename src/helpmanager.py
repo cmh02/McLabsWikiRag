@@ -9,9 +9,13 @@ MODULE IMPORTS
 '''
 
 # System
+import os
+import requests
 from enum import Enum
 from typing import Dict
 from datetime import datetime
+from src.schemas import QuestionSchema
+from concurrent.futures import ThreadPoolExecutor
 
 '''
 QUESTION STATUS ENUM
@@ -49,6 +53,9 @@ class MCL_HelpManager():
 
 		# Dict for holding help questions
 		self.helpQuestions: Dict[int, Dict] = {}
+
+		# Create executor for threading
+		self.executor = ThreadPoolExecutor(max_workers=5)
 
 	def addQuestion(self, questionID: int, questionPlayer: str, questionContent: str, questionTime: datetime) -> bool:
 		'''
@@ -93,6 +100,11 @@ class MCL_HelpManager():
 			"answeredTime": None,
 			"answer": None
 		}
+
+		# Make call to update Discord in new thread
+		self.executor.submit(self.updateDiscord)
+
+		# Return success
 		return True
 
 	def removeQuestion(self, questionID: int) -> bool:
@@ -118,6 +130,11 @@ class MCL_HelpManager():
 
 		# Remove the question from the dictionary
 		del self.helpQuestions[questionID]
+
+		# Make call to update Discord in new thread
+		self.executor.submit(self.updateDiscord)
+
+		# Return success
 		return True
 	
 	def answerQuestion(self, questionID: int, answeredBy: str, answerContent: str) -> bool:
@@ -154,6 +171,11 @@ class MCL_HelpManager():
 		self.helpQuestions[questionID]["answeredBy"] = answeredBy
 		self.helpQuestions[questionID]["answeredTime"] = datetime.now()
 		self.helpQuestions[questionID]["answer"] = answerContent
+
+		# Make call to update Discord in new thread
+		self.executor.submit(self.updateDiscord)
+
+		# Return success
 		return True
 	
 	def claimQuestion(self, questionID: int, claimedBy: str) -> bool:
@@ -188,6 +210,11 @@ class MCL_HelpManager():
 		self.helpQuestions[questionID]["status"] = QuestionStatus.CLAIMED
 		self.helpQuestions[questionID]["claimedBy"] = claimedBy
 		self.helpQuestions[questionID]["claimedTime"] = datetime.now()
+
+		# Make call to update Discord in new thread
+		self.executor.submit(self.updateDiscord)
+
+		# Return success
 		return True
 
 	def unclaimQuestion(self, questionID: int) -> bool:
@@ -215,6 +242,11 @@ class MCL_HelpManager():
 		self.helpQuestions[questionID]["status"] = QuestionStatus.OPEN
 		self.helpQuestions[questionID]["claimedBy"] = None
 		self.helpQuestions[questionID]["claimedTime"] = None
+
+		# Make call to update Discord in new thread
+		self.executor.submit(self.updateDiscord)
+
+		# Return success
 		return True
 	
 	def getAllQuestions(self) -> Dict[int, str]:
@@ -226,5 +258,26 @@ class MCL_HelpManager():
 		### Returns
 		- Dict[int, str]: Dictionary of all help questions.
 		'''
-
 		return self.helpQuestions
+	
+	def updateDiscord(self):
+		'''
+		# Update Discord
+
+		Updates the Discord bot with the current help questions.
+
+		### Returns
+		- bool: True if the Discord bot was updated successfully. Exception will occur otherwise.
+		'''
+
+		# Get all help questions
+		questions = self.getAllQuestions()
+
+		# Send message to discord bot's api endpoint
+		requests.post(
+			url=f"{os.getenv('RAILWAY_DISCORD_DOMAIN')}/update",
+			json={
+				 "api_token": os.getenv("API_TOKEN"), 
+				 "questions": [QuestionSchema(id=questionId, **details).model_dump() for questionId, details in questions.items()] 
+			}
+		)

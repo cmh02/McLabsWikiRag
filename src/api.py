@@ -32,7 +32,7 @@ from google import genai
 from src.rag import MCL_WikiRag
 from src.docfetch import MCL_WikiEmbedder
 from src.helpmanager import MCL_HelpManager
-from src.schemas import BaseRequestSchema, BaseHelpQuestionSchema
+from src.schemas import BaseRequestSchema, BaseHelpQuestionSchema, QuestionSchema
 
 '''
 FASTAPI APP STARTUP / SHUTDOWN
@@ -491,24 +491,6 @@ LIST HELP QUESTIONS ENDPOINT
 This endpoint will allow for listing all current help questions in the system.
 - "api_token": Your API token for authentication
 '''
-
-class QuestionSchema(BaseModel):
-	'''
-	# QuestionSchema
-
-	Model for help question listing response.
-	'''
-	id: int = Field(description="The ID of the help question.")
-	player: str = Field(description="The player who asked the help question.")
-	content: str = Field(description="The content of the help question.")
-	time: datetime = Field(description="The time the help question was asked.")
-	status: str = Field(description="The status of the help question.")
-	claimedBy: Optional[str] = Field(default=None, description="The staff member who claimed the help question, if any.")
-	claimedTime: Optional[int] = Field(default=None, description="The time the help question was claimed, if any.")
-	answeredBy: Optional[str] = Field(default=None, description="The staff member who answered the help question, if any.")
-	answeredTime: Optional[int] = Field(default=None, description="The time the help question was answered, if any.")
-	answer: Optional[str] = Field(default=None, description="The answer to the help question, if any.")
-
 @app.post("/help/list")
 @appLimiter.limit("100/minute")
 def list_help_questions(request: Request, body: BaseRequestSchema):
