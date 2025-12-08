@@ -36,10 +36,6 @@ class MclBot(commands.Bot):
 		# Initialize aiohttp session
 		self.session = aiohttp.ClientSession()
 
-		# Initialize thread manager
-		mainChannelId = int(os.getenv("DISCORD_HELP_CHANNEL_ID"))
-		MCL_ThreadManager().initialize(bot=self, channelId=mainChannelId)
-
 	async def close(self):
 		await self.session.close()
 		await super().close()
@@ -55,8 +51,10 @@ bot = MclBot(
 
 @bot.event
 async def on_ready():
-	print(f"Discord bot is ready!")
-	await bot.tree.sync()
+	
+	# Initialize thread manager
+	mainChannelId = int(os.getenv("DISCORD_HELP_CHANNEL_ID"))
+	MCL_ThreadManager().initialize(bot=bot, channelId=mainChannelId)
 
 	# Start admin panel
 	async def post_admin_panel(channelId: int):
@@ -88,6 +86,10 @@ async def on_ready():
 		await message.pin()
 		print(f"Admin panel posted and pinned in channel: {channel.name} ({channel.id})")
 	await post_admin_panel(channelId=int(os.getenv("DISCORD_HELP_CHANNEL_ID")))
+
+	# Sync application commands
+	await bot.tree.sync()
+	print(f"Discord bot is ready!")
 
 @bot.tree.command(name="ask", description="Ask me anything!")
 async def ask(interaction: discord.Interaction, question: str):

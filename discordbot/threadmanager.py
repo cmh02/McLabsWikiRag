@@ -11,6 +11,7 @@ MODULE IMPORTS
 '''
 
 # System
+import os
 import re
 from typing import List, Dict
 from bidict import bidict
@@ -54,6 +55,9 @@ class MCL_ThreadManager():
 
 		# Build regex patttern for thread names
 		self.THREAD_REGEX: re.Pattern = re.compile(r"^Help\s+Question\s+(\d+)$", re.IGNORECASE)
+
+		# Print initialization message
+		print(f"MCL ThreadManager instance created (PID {os.getpid()}) for channel ID {channelId}!")
 
 	def getAllThreads(self) -> bidict[int, int]:
 		'''
