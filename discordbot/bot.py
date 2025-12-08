@@ -563,8 +563,8 @@ async def list_help_questions(interaction: discord.Interaction):
 					return
 				else:
 					message_content = "Current Help Questions:\n"
-					for qid, qdata in questions.items():
-						message_content += f"#{qid} - {qdata.get('status', 'Open')} - Asked by {qdata.get('player', 'Unknown')}\n"
+					for questionData in questions:
+						message_content += f"#{questionData.get('id', 'Unknown')} (Asked By {questionData.get('player', 'Unknown')}) - {questionData.get('status', 'Open')}\n"
 					await interaction.followup.send(
 						content=message_content, 
 						ephemeral=True
