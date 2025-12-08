@@ -19,7 +19,6 @@ from bidict import bidict
 
 # Discord
 from discord.ext.commands import Bot
-from discord.abc import PinnedMessage
 
 # Local
 from discordbot.components import HelpQuestionEmbed
@@ -64,7 +63,7 @@ class MCL_ThreadManager():
 		# Print initialization message
 		print(f"MCL ThreadManager instance created (PID {os.getpid()}) for channel ID {channelId}!")
 
-	async def getAdminPanelMessage(self) -> PinnedMessage | Any:
+	async def getAdminPanelMessage(self):
 
 		# Get pinned messages in master channel
 		pinnedMessages = await self.channel.pins()
