@@ -3,4 +3,4 @@ buildCommand = "pip install -r requirements.txt"
 
 [deploy]
 root = "."
-startCommand = "python discord/bot.py"
+startCommand = "python discordbot/bot.py"
