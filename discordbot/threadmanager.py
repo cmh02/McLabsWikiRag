@@ -13,6 +13,7 @@ MODULE IMPORTS
 # System
 import os
 import re
+import logging
 from typing import List, Dict
 from bidict import bidict
 
@@ -45,6 +46,9 @@ class MCL_ThreadManager():
 
 		Initializes the thread manager with a reference to the Discord bot.
 		'''
+
+		# Initialize logger
+		self.logger = logging.getLogger("MCL_DISCORD_Logger")
 
 		# Initialize with bot reference
 		self.bot: Bot = bot

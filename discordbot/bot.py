@@ -10,12 +10,13 @@ MODULE IMPORTS
 
 import os
 import time
+import logging
+import uvicorn
 import aiohttp
 import asyncio
 import discord
 import requests
 import datetime
-import uvicorn
 from discord import app_commands
 from discord.ext import commands, tasks
 from fastapi.responses import JSONResponse
@@ -23,6 +24,7 @@ from fastapi import FastAPI, Request, HTTPException
 from typing import Dict
 
 from src.schemas import BaseRequestSchema
+from discordbot.logger import MCL_Logger
 from discordbot.components import AdminHelpPanel
 from discordbot.threadmanager import MCL_ThreadManager
 
@@ -44,17 +46,14 @@ def wakeup(request: Request, body: BaseRequestSchema):
 	# Get the request data
 	data: Dict = body.model_dump()
 
-	# Print for debugging
-	if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-		print(f"Received wakeup request: {request}")
-		print(f"Received wakeup request data: {data}")
-
+	# Log wakeup attempt
+	app.state.logger.debug(f"Discord bot wakeup request received!")
+	
 	# Check API token
 	if data.get("api_token") != os.getenv("API_TOKEN"):
 			
-		# Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print(f"Invalid API token attempt: {data.get('api_token')}")
+		# Log invalid attempt
+		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
 				  
 		# Return error
 		raise HTTPException(
@@ -78,6 +77,9 @@ async def update_help_system(request: Request, body: BaseRequestSchema):
 
 	# Get the request data
 	data: Dict = body.model_dump()
+
+	# Log update request
+	app.state.logger.debug(f"Discord bot help questions update request received!")
 
 	# Make sure some questions exist
 	questions = data.get("questions", [])
@@ -157,6 +159,9 @@ bot = MclBot(
 
 @bot.event
 async def on_ready():
+
+	# Initialize logger
+	app.state.logger = MCL_Logger.setup_logger()
 	
 	# Initialize thread manager
 	mainChannelId = int(os.getenv("DISCORD_HELP_CHANNEL_ID"))
@@ -168,10 +173,10 @@ async def on_ready():
 		# Get channel and pins
 		channel = bot.get_channel(channelId)
 		if channel is None:
-			print(f"Admin Panel Channel ID {channelId} not found!")
+			app.state.logger.error(f"Admin Panel Channel ID {channelId} not found!")
 			return
 		else:
-			print(f"About to post admin panel in channel: {channel.name} ({channel.id})")
+			app.state.logger.info(f"About to post admin panel in channel: {channel.name} ({channel.id})")
 		pinnedMessages = await channel.pins()
 
 		# Build embed
@@ -190,7 +195,7 @@ async def on_ready():
 		# Otherwise, post a new admin panel
 		message = await channel.send(embed=embed, view=AdminHelpPanel(bot=bot))
 		await message.pin()
-		print(f"Admin panel posted and pinned in channel: {channel.name} ({channel.id})")
+		app.state.logger.info(f"Admin panel posted and pinned in channel: {channel.name} ({channel.id})")
 	await post_admin_panel(channelId=int(os.getenv("DISCORD_HELP_CHANNEL_ID")))
 
 	# Start API server for webhooks
@@ -202,13 +207,13 @@ async def on_ready():
 			log_level="info"
 		)
 		server = uvicorn.Server(config)
-		print("Starting webhook API server!")
+		app.state.logger.info("Starting webhook API server!")
 		await server.serve()
 	asyncio.create_task(start_api_server())
 
 	# Sync application commands
 	await bot.tree.sync()
-	print(f"Discord bot is ready!")
+	app.state.logger.info("Discord bot is ready!")
 
 '''
 BOT UTILITIES
@@ -220,7 +225,7 @@ def doStaffCheck():
 		
 		# Extract user role names
 		userRoles = [role.name for role in interaction.user.roles]
-		print(f"User {interaction.user.name} roles: {userRoles}")
+		app.state.logger.debug(f"User {interaction.user.name} roles: {userRoles}")
 
 		# Check if user has any staff roles
 		if STAFF_ROLES.intersection(set(userRoles)):
@@ -294,7 +299,7 @@ async def ask(interaction: discord.Interaction, question: str):
 			query_response = response
 			query_data = await query_response.json()
 	except Exception as e:
-		print(f"Query Exception [ERROR CODE 003]: {e}")
+		app.state.logger.error(f"Query Exception [ERROR CODE 003]: {e}")
 		await interaction.response.send_message(
 			content=f"An error has occured while querying the API. Please contact a developer for further assistance!", 
 			ephemeral=True
@@ -316,19 +321,19 @@ async def ask(interaction: discord.Interaction, question: str):
 				ephemeral=True
 			)
 		elif query_response.status == 429:
-			print(f"Rate Limit Hit: {query_data}")
+			app.state.logger.warning(f"Rate Limit Hit: {query_data}")
 			await interaction.response.send_message(
 				content=f"We are experiencing an increased number of requests. Please try again later.", 
 				ephemeral=True
 			)
 		else:
-			print(f"Query Error {query_response.status}: {query_data.get('error', 'Unknown error')}")
+			app.state.logger.error(f"Query Error {query_response.status}: {query_data.get('error', 'Unknown error')}")
 			await interaction.response.send_message(
 				content=f"An error has occured while processing your request. Please contact a developer for further assistance!", 
 				ephemeral=True
 			)
 	except Exception as e:
-		print(f"Response Exception [ERROR CODE 004]: {e}")
+		app.state.logger.error(f"Response Exception [ERROR CODE 004]: {e}")
 		await interaction.response.send_message(
 			content=f"An error has occured while responding to your request. Please contact a developer for further assistance!", 
 			ephemeral=True
@@ -373,7 +378,7 @@ async def add_help_question(interaction: discord.Interaction, id: str, question:
 				)
 				return
 	except Exception as e:
-		print(f"Add Help Question Exception [ERROR CODE 006]: {e}")
+		app.state.logger.error(f"Add Help Question Exception [ERROR CODE 006]: {e}")
 		await interaction.followup.send(
 			content=f"An error has occured while adding the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
@@ -410,7 +415,7 @@ async def remove_help_question(interaction: discord.Interaction, id: str):
 				)
 				return
 	except Exception as e:
-		print(f"Remove Help Question Exception [ERROR CODE 007]: {e}")
+		app.state.logger.error(f"Remove Help Question Exception [ERROR CODE 007]: {e}")
 		await interaction.followup.send(
 			content=f"An error has occured while removing the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
@@ -449,7 +454,7 @@ async def answer_help_question(interaction: discord.Interaction, id: str, answer
 				)
 				return
 	except Exception as e:
-		print(f"Answer Help Question Exception [ERROR CODE 008]: {e}")
+		app.state.logger.error(f"Answer Help Question Exception [ERROR CODE 008]: {e}")
 		await interaction.followup.send(
 			content=f"An error has occured while answering the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
@@ -487,7 +492,7 @@ async def claim_help_question(interaction: discord.Interaction, id: str):
 				)
 				return
 	except Exception as e:
-		print(f"Claim Help Question Exception [ERROR CODE 009]: {e}")
+		app.state.logger.error(f"Claim Help Question Exception [ERROR CODE 009]: {e}")
 		await interaction.followup.send(
 			content=f"An error has occured while claiming the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
@@ -524,7 +529,7 @@ async def unclaim_help_question(interaction: discord.Interaction, id: str):
 				)
 				return
 	except Exception as e:
-		print(f"Unclaim Help Question Exception [ERROR CODE 010]: {e}")
+		app.state.logger.error(f"Unclaim Help Question Exception [ERROR CODE 010]: {e}")
 		await interaction.followup.send(
 			content=f"An error has occured while unclaiming the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
@@ -572,7 +577,7 @@ async def list_help_questions(interaction: discord.Interaction):
 				)
 				return
 	except Exception as e:
-		print(f"List Help Questions Exception [ERROR CODE 011]: {e}")
+		app.state.logger.error(f"List Help Questions Exception [ERROR CODE 011]: {e}")
 		await interaction.followup.send(
 			content=f"An error has occured while listing the help questions. Please contact a developer for further assistance!", 
 			ephemeral=True
