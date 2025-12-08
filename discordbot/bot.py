@@ -80,6 +80,7 @@ async def update_help_system(request: Request, body: BaseRequestSchema):
 
 	# Log update request
 	app.state.logger.debug(f"Discord bot help questions update request received!")
+	app.state.logger.debug(f"Request Data: {data}")
 
 	# Make sure some questions exist
 	questions = data.get("questions", [])

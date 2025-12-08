@@ -296,7 +296,8 @@ class MCL_HelpManager():
 		questions = self.getAllQuestions()
 
 		# Log the update to Discord
-		self.logger.debug("Sending API call to Discord Bot to update help questions.")
+		self.logger.debug("Sending API call to Discord Bot to update help questions!")
+		self.logger.debug(f"Questions: {questions}")
 
 		# Send message to discord bot's api endpoint
 		requests.post(
