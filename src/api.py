@@ -10,6 +10,7 @@ MODULE IMPORTS
 
 # System
 import os
+import logging
 from datetime import datetime
 from contextlib import asynccontextmanager
 
@@ -30,6 +31,7 @@ from google import genai
 
 # MCL Packages
 from src.rag import MCL_WikiRag
+from src.logger import MCL_Logger
 from src.docfetch import MCL_WikiEmbedder
 from src.helpmanager import MCL_HelpManager
 from src.schemas import BaseRequestSchema, BaseHelpQuestionSchema, QuestionSchema
@@ -45,6 +47,9 @@ async def lifespan(app: FastAPI):
 		from dotenv import load_dotenv
 		load_dotenv()
 
+	# Setup logging
+	app.state.logger = MCL_Logger.setup_logger()
+
 	# Gemini client
 	app.state.InstanceClient = genai.Client(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
 
@@ -57,6 +62,9 @@ async def lifespan(app: FastAPI):
 
 	# Initialize Help Manager
 	MCL_HelpManager().initialize()
+
+	# Log startup
+	app.state.logger.info(f"MCL RAG API started with PID {os.getpid()}!")
 
 	# Yield back for app lifetime
 	yield
@@ -84,17 +92,15 @@ def wakeup(request: Request, body: BaseRequestSchema):
 	# Get the request data
 	data: Dict = body.model_dump()
 
-	# Print for debugging
-	if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-		print(f"Received wakeup request: {request}")
-		print(f"Received wakeup request data: {data}")
+	# Log for debugging
+	app.state.logger.debug(f"Received wakeup request! \nRequest: {request}")
 
 	# Check API token
 	if data.get("api_token") != os.getenv("API_TOKEN"):
 			
 		# Print for debugging
 		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print(f"Invalid API token attempt: {data.get('api_token')}")
+			app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
 				  
 		# Return error
 		raise HTTPException(
@@ -138,16 +144,13 @@ def query(request: Request, body: RagQuerySchema):
 	data: Dict = body.model_dump()
 
 	# Print for debugging
-	if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-		print(f"Received request: {request}")
-		print(f"Received request data: {data}")
+	app.state.logger.debug(f"Received query request! \nRequest: {request}")
 
 	# Check API token
 	if data.get("api_token") != os.getenv("API_TOKEN"):
             
-		# Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print(f"Invalid API token attempt: {data.get('api_token')}")
+		# Log invalid attempt
+		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
                   
 		# Return error
 		raise HTTPException(
@@ -159,15 +162,14 @@ def query(request: Request, body: RagQuerySchema):
 	question = data.get("question")
 	includeContext = data.get("include_context", "False")
 
-	# Print for debugging
-	if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-		print(f"Received question: {question}")
+	# Log question for debugging``
+	app.state.logger.debug(f"Received question: {question}")
 
 	# If no question provided, return error
 	if not question:
-        # Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print("No question provided in request")
+		
+        # Log missing question
+		app.state.logger.debug("No question provided in request")
 
 		# Return error
 		raise HTTPException(
@@ -177,9 +179,9 @@ def query(request: Request, body: RagQuerySchema):
 
 	# If question is too long, return error
 	if len(question) > 256:
-		# Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print("Question is too long (max 256 characters)!")
+
+		# Log too long question
+		app.state.logger.debug("Question is too long (max 256 characters)!")
 
 		# Return error
 		raise HTTPException(
@@ -190,9 +192,8 @@ def query(request: Request, body: RagQuerySchema):
 	# Get the response from the RAG pipeline and return
 	result, topChunks = app.state.InstanceRag.queryPipeline(question)
      
-	# Print for debugging
-	if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-		print(f"Answer to question {question}: {result}")	
+	# Log answer for debugging
+	app.state.logger.debug(f"Answer to question {question}: {result}")	
 
 	# Return the result
 	if includeContext in [False, "False", "false", 0, "0"]:
@@ -248,9 +249,8 @@ def add_help_question(request: Request, body: AddHelpQuestionSchema):
 	# Check API token
 	if data.get("api_token") != os.getenv("API_TOKEN"):
             
-		# Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print(f"Invalid API token attempt: {data.get('api_token')}")
+		# Log invalid attempt
+		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
                   
 		# Return error
 		raise HTTPException(
@@ -296,9 +296,8 @@ def remove_help_question(request: Request, body: BaseHelpQuestionSchema):
 	# Check API token
 	if data.get("api_token") != os.getenv("API_TOKEN"):
             
-		# Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print(f"Invalid API token attempt: {data.get('api_token')}")
+		# Log invalid attempt
+		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
                   
 		# Return error
 		raise HTTPException(
@@ -356,9 +355,8 @@ def answer_help_question(request: Request, body: AnswerHelpQuestionSchema):
 	# Check API token
 	if data.get("api_token") != os.getenv("API_TOKEN"):
             
-		# Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print(f"Invalid API token attempt: {data.get('api_token')}")
+		# Log invalid attempt
+		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
                   
 		# Return error
 		raise HTTPException(
@@ -414,9 +412,8 @@ def claim_help_question(request: Request, body: ClaimHelpQuestionSchema):
 	# Check API token
 	if data.get("api_token") != os.getenv("API_TOKEN"):
             
-		# Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print(f"Invalid API token attempt: {data.get('api_token')}")
+		# Log invalid attempt
+		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
                   
 		# Return error
 		raise HTTPException(
@@ -459,9 +456,8 @@ def unclaim_help_question(request: Request, body: BaseHelpQuestionSchema):
 	# Check API token
 	if data.get("api_token") != os.getenv("API_TOKEN"):
             
-		# Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print(f"Invalid API token attempt: {data.get('api_token')}")
+		# Log invalid attempt
+		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
                   
 		# Return error
 		raise HTTPException(
@@ -501,9 +497,8 @@ def list_help_questions(request: Request, body: BaseRequestSchema):
 	# Check API token
 	if data.get("api_token") != os.getenv("API_TOKEN"):
             
-		# Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			print(f"Invalid API token attempt: {data.get('api_token')}")
+		# Log invalid attempt
+		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
                   
 		# Return error
 		raise HTTPException(

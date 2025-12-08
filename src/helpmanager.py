@@ -10,6 +10,7 @@ MODULE IMPORTS
 
 # System
 import os
+import logging
 import requests
 from enum import Enum
 from typing import Dict
@@ -57,6 +58,11 @@ class MCL_HelpManager():
 		# Create executor for threading
 		self.executor = ThreadPoolExecutor(max_workers=5)
 
+		# Log initialization
+		self.logger = logging.getLogger("MCL_API_Logger")
+		self.logger.info(f"Help Manager initialized with PID {os.getpid()}.")
+
+
 	def addQuestion(self, questionID: int, questionPlayer: str, questionContent: str, questionTime: datetime) -> bool:
 		'''
 		## Add New Question
@@ -101,6 +107,9 @@ class MCL_HelpManager():
 			"answer": None
 		}
 
+		# Log the addition
+		self.logger.debug(f"Added help question ID {questionID} from player {questionPlayer}.")
+
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
 
@@ -130,6 +139,9 @@ class MCL_HelpManager():
 
 		# Remove the question from the dictionary
 		del self.helpQuestions[questionID]
+
+		# Log the removal
+		self.logger.debug(f"Removed help question ID {questionID}.")
 
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
@@ -172,6 +184,9 @@ class MCL_HelpManager():
 		self.helpQuestions[questionID]["answeredTime"] = datetime.now()
 		self.helpQuestions[questionID]["answer"] = answerContent
 
+		# Log the answer
+		self.logger.debug(f"Answered help question ID {questionID} by staff {answeredBy}.")
+
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
 
@@ -211,6 +226,9 @@ class MCL_HelpManager():
 		self.helpQuestions[questionID]["claimedBy"] = claimedBy
 		self.helpQuestions[questionID]["claimedTime"] = datetime.now()
 
+		# Log the claim
+		self.logger.debug(f"Claimed help question ID {questionID} by staff {claimedBy}.")
+
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
 
@@ -243,6 +261,9 @@ class MCL_HelpManager():
 		self.helpQuestions[questionID]["claimedBy"] = None
 		self.helpQuestions[questionID]["claimedTime"] = None
 
+		# Log the unclaim
+		self.logger.debug(f"Unclaimed help question ID {questionID}.")
+
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
 
@@ -272,6 +293,9 @@ class MCL_HelpManager():
 
 		# Get all help questions
 		questions = self.getAllQuestions()
+
+		# Log the update to Discord
+		self.logger.debug("Sending API call to Discord Bot to update help questions.")
 
 		# Send message to discord bot's api endpoint
 		requests.post(
