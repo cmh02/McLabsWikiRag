@@ -512,5 +512,5 @@ def list_help_questions(request: Request, body: BaseRequestSchema):
 	# Return success message
 	return JSONResponse(
 		status_code=200,
-		content={"questions": [QuestionSchema(id=questionId, **details) for questionId, details in questions.items()]}
+		content={"questions": [QuestionSchema(id=questionId, **details).model_dump() for questionId, details in questions.items()]}
 	)
