@@ -346,6 +346,10 @@ async def add_help_question(interaction: discord.Interaction, id: str, question:
 	## Add Help Question Command
 	'''
 	try:
+		# Acknowledge the command
+		await interaction.response.defer(ephemeral=True)
+
+		# Make API request to add the help question
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/add", 
 			json={
@@ -357,20 +361,20 @@ async def add_help_question(interaction: discord.Interaction, id: str, question:
 			}
 		) as response:
 			if response.status == 200:
-				await interaction.response.send_message(
+				await interaction.followup.send(
 					content=f"Help question #{id} added successfully!", 
 					ephemeral=True
 				)
 				return
 			else:
-				await interaction.response.send_message(
+				await interaction.followup.send(
 					content=f"Failed to add help question #{id}. Please try again later.", 
 					ephemeral=True
 				)
 				return
 	except Exception as e:
 		print(f"Add Help Question Exception [ERROR CODE 006]: {e}")
-		await interaction.response.send_message(
+		await interaction.followup.send(
 			content=f"An error has occured while adding the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
 		)
@@ -383,6 +387,9 @@ async def remove_help_question(interaction: discord.Interaction, id: str):
 	## Remove Help Question Command
 	'''
 	try:
+		# Acknowledge the command
+		await interaction.response.defer(ephemeral=True)
+
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/remove", 
 			json={
@@ -391,20 +398,20 @@ async def remove_help_question(interaction: discord.Interaction, id: str):
 			}
 		) as response:
 			if response.status == 200:
-				await interaction.response.send_message(
+				await interaction.followup.send(
 					content=f"Help question #{id} removed successfully!", 
 					ephemeral=True
 				)
 				return
 			else:
-				await interaction.response.send_message(
+				await interaction.followup.send(
 					content=f"Failed to remove help question #{id}. Please try again later.", 
 					ephemeral=True
 				)
 				return
 	except Exception as e:
 		print(f"Remove Help Question Exception [ERROR CODE 007]: {e}")
-		await interaction.response.send_message(
+		await interaction.followup.send(
 			content=f"An error has occured while removing the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
 		)
@@ -417,6 +424,9 @@ async def answer_help_question(interaction: discord.Interaction, id: str, answer
 	## Answer Help Question Command
 	'''
 	try:
+		# Acknowledge the command
+		await interaction.response.defer(ephemeral=True)
+
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/answer", 
 			json={
@@ -427,20 +437,20 @@ async def answer_help_question(interaction: discord.Interaction, id: str, answer
 			}
 		) as response:
 			if response.status == 200:
-				await interaction.response.send_message(
+				await interaction.followup.send(
 					content=f"Help question #{id} answered successfully!", 
 					ephemeral=True
 				)
 				return
 			else:
-				await interaction.response.send_message(
+				await interaction.followup.send(
 					content=f"Failed to answer help question #{id}. Please try again later.", 
 					ephemeral=True
 				)
 				return
 	except Exception as e:
 		print(f"Answer Help Question Exception [ERROR CODE 008]: {e}")
-		await interaction.response.send_message(
+		await interaction.followup.send(
 			content=f"An error has occured while answering the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
 		)
@@ -453,6 +463,9 @@ async def claim_help_question(interaction: discord.Interaction, id: str):
 	## Claim Help Question Command
 	'''
 	try:
+		# Acknowledge the command
+		await interaction.response.defer(ephemeral=True)
+
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/claim", 
 			json={
@@ -462,20 +475,20 @@ async def claim_help_question(interaction: discord.Interaction, id: str):
 			}
 		) as response:
 			if response.status == 200:
-				await interaction.response.send_message(
+				await interaction.followup.send(
 					content=f"Help question #{id} claimed successfully!", 
 					ephemeral=True
 				)
 				return
 			else:
-				await interaction.response.send_message(
+				await interaction.followup.send(
 					content=f"Failed to claim help question #{id}. Please try again later.", 
 					ephemeral=True
 				)
 				return
 	except Exception as e:
 		print(f"Claim Help Question Exception [ERROR CODE 009]: {e}")
-		await interaction.response.send_message(
+		await interaction.followup.send(
 			content=f"An error has occured while claiming the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
 		)
@@ -488,6 +501,9 @@ async def unclaim_help_question(interaction: discord.Interaction, id: str):
 	## Unclaim Help Question Command
 	'''
 	try:
+		# Acknowledge the command
+		await interaction.response.defer(ephemeral=True)
+
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/unclaim", 
 			json={
@@ -496,20 +512,20 @@ async def unclaim_help_question(interaction: discord.Interaction, id: str):
 			}
 		) as response:
 			if response.status == 200:
-				await interaction.response.send_message(
+				await interaction.followup.send(
 					content=f"Help question #{id} unclaimed successfully!", 
 					ephemeral=True
 				)
 				return
 			else:
-				await interaction.response.send_message(
+				await interaction.followup.send(
 					content=f"Failed to unclaim help question #{id}. Please try again later.", 
 					ephemeral=True
 				)
 				return
 	except Exception as e:
 		print(f"Unclaim Help Question Exception [ERROR CODE 010]: {e}")
-		await interaction.response.send_message(
+		await interaction.followup.send(
 			content=f"An error has occured while unclaiming the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
 		)
