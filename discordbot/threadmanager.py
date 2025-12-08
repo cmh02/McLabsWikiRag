@@ -13,6 +13,7 @@ MODULE IMPORTS
 # System
 import os
 import re
+import discord
 import logging
 from typing import List, Dict, Any
 from bidict import bidict
@@ -132,11 +133,11 @@ class MCL_ThreadManager():
 		# Log creation
 		self.logger.debug(f"Creating new help thread '{threadName}' for question ID {questionId} from player {questionPlayer}.")
 
-		# Make a starter message to make thread
-		starterMessage = await self.channel.send(f"Creating help thread for question ID {questionId} from player {questionPlayer}...")
+		# # Make a starter message to make thread
+		# starterMessage = await self.channel.send(f"Creating help thread for question ID {questionId} from player {questionPlayer}...")
 
 		# Make the thread creation async
-		thread = await starterMessage.create_thread(name=threadName)
+		thread = await self.channel.create_thread(name=threadName, type=discord.ChannelType.private_thread)
 
 		# Make an embed, send in channel, and pin it
 		embed = HelpQuestionEmbed(
@@ -148,8 +149,8 @@ class MCL_ThreadManager():
 		embedMessage = await thread.send(content="A new help question has been created!", embed=embed)
 		await embedMessage.pin()
 
-		# Delete the starter message
-		await starterMessage.delete()
+		# # Delete the starter message
+		# await starterMessage.delete()
 
 	async def deleteHelpThread(self, threadId: int=None, questionId: int=None):
 		'''
