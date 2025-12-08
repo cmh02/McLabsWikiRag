@@ -124,9 +124,6 @@ class MCL_ThreadManager():
 		# Make the thread creation async
 		thread = await starterMessage.create_thread(name=threadName)
 
-		# Delete the starter message
-		await starterMessage.delete()
-
 		# Make an embed, send in channel, and pin it
 		embed = HelpQuestionEmbed(
 			questionId=questionId,
@@ -134,8 +131,12 @@ class MCL_ThreadManager():
 			questionStatus=questionStatus,
 			questionClaimedBy=questionClaimedBy or "Unclaimed"
 		)
-		await thread.send(content="A new help question has been created!", embed=embed)
-		await thread.pin()
+		embedMessage = await thread.send(content="A new help question has been created!", embed=embed)
+		await thread.edit(auto_archive_duration=10080)
+		await embedMessage.pin()
+
+		# Delete the starter message
+		await starterMessage.delete()
 
 	async def deleteHelpThread(self, threadId: int=None, questionId: int=None):
 		'''
