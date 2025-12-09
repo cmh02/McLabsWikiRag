@@ -191,7 +191,7 @@ class MCL_HelpManager():
 		
 		# Check if the question ID exists
 		if questionID not in self.helpQuestions:
-			raise ValueError(f"No question with ID {questionID} exists.")
+			raise ValueError(f"No question with ID {questionID} exists! All question ID's: {list(self.helpQuestions.keys())}")
 
 		# Remove the question from the dictionary
 		del self.helpQuestions[questionID]
@@ -230,7 +230,7 @@ class MCL_HelpManager():
 		
 		# Check if the question ID exists
 		if questionID not in self.helpQuestions:
-			raise ValueError(f"No question with ID {questionID} exists.")
+			raise ValueError(f"No question with ID {questionID} exists! All question ID's: {list(self.helpQuestions.keys())}")
 
 		# Answer the question in the dictionary
 		self.helpQuestions[questionID]["status"] = QuestionStatus.ANSWERED
@@ -269,7 +269,7 @@ class MCL_HelpManager():
 		
 		# Check if the question ID exists
 		if questionID not in self.helpQuestions:
-			raise ValueError(f"No question with ID {questionID} exists.")
+			raise ValueError(f"No question with ID {questionID} exists! All question ID's: {list(self.helpQuestions.keys())}")
 		
 		# Check if the question is already claimed
 		if self.helpQuestions[questionID]["status"] == QuestionStatus.CLAIMED:
@@ -307,7 +307,7 @@ class MCL_HelpManager():
 		
 		# Check if the question ID exists
 		if questionID not in self.helpQuestions:
-			raise ValueError(f"No question with ID {questionID} exists.")
+			raise ValueError(f"No question with ID {questionID} exists! All question ID's: {list(self.helpQuestions.keys())}")
 
 		# Unclaim the question in the dictionary
 		self.helpQuestions[questionID]["status"] = QuestionStatus.OPEN
