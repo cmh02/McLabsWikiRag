@@ -337,6 +337,9 @@ async def on_message(message: discord.Message):
 					content=f"The API is currently unavailable. Please try again later."
 				)
 				return
+			
+			# Debug log
+			app.state.logger.debug(f"Processing answer message for help question ID {questionId}!\nAnswered By: {message.author.name}\nAnswer Content: {message.content.strip()}")
 
 			# Make API request to answer the help question
 			async with bot.session.post(
