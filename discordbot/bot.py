@@ -186,6 +186,43 @@ class MclBot(commands.Bot):
 			if not any(q.get("id") == question_id for q in questions):
 				await MCL_ThreadManager().deleteHelpThread(threadId=thread_id)
 
+	async def ensureApiAwake(self, numberTries: int=5, sleepInterval: int=3) -> bool:
+		'''
+		## Ensure API Awake
+
+		Makes a request to the API wakeup endpoint to ensure it is awake.
+
+		### Parameters
+		- numberTries (int): Number of times to try waking up the API.
+
+		### Returns
+		- bool: True if the API is awake, False otherwise.
+		'''
+
+		# Make API request to wake up the API
+		wakeupCount = 0
+		isAwake = False
+		wakeup_payload = {"api_token": os.getenv("API_TOKEN")}
+		while (wakeupCount < numberTries) and not isAwake:
+
+			# Make request to wakeup endpoint
+			async with self.session.post(
+				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/wakeup", 
+				json=wakeup_payload
+			) as response:
+				
+				# If we get an OK (200) or 429 (Rate Limited), consider the API awake
+				if response.status == 200 or response.status == 429:
+					app.state.logger.info("API is awake!")
+					isAwake = True
+
+				# Otherwise, wait a bit and try again
+				else:
+					wakeupCount += 1
+					app.state.logger.info(f"API wakeup attempt {wakeupCount} / {numberTries} failed with status {response.status}. Sleeping for {sleepInterval} seconds before retrying!")
+					await asyncio.sleep(sleepInterval)
+		return isAwake
+
 bot = MclBot(
 	command_prefix="/", 
 	intents=intents, 
@@ -283,29 +320,8 @@ async def ask(interaction: discord.Interaction, question: str):
 	# Make API request to wake up the API, trying a few times if necessary
 	try:
 
-		# Define wakeup variables
-		wakeupCount = 0
-		isAwake = False
-		wakeup_payload = {"api_token": os.getenv("API_TOKEN")}
-
-		# Attempt wakeup up to 5 times
-		while (wakeupCount < 5) and not isAwake:
-			async with bot.session.post(
-				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/wakeup", 
-				json=wakeup_payload
-			) as response:
-				await response.json()
-
-				# If we get an OK (200) or rate limit (429), consider the API awake
-				if response.status in (200, 429):
-					isAwake = True
-
-				# Otherwise, wait a bit and try again
-				else:
-					wakeupCount += 1
-					await asyncio.sleep(3)
-
-		# If we couldn't wake up the API, inform the user
+		# Attempt wakeup up to 5 times, and if not successful, inform the user
+		isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
 		if not isAwake:
 			print(f"Wakeup Failed after 5 attempts!")
 			await interaction.response.send_message(
@@ -392,6 +408,15 @@ async def add_help_question(interaction: discord.Interaction, id: str, question:
 		# Acknowledge the command
 		await interaction.response.defer(ephemeral=True)
 
+		# Try to wake up the API
+		isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+		if not isAwake:
+			await interaction.followup.send(
+				content=f"The API is currently unavailable. Please try again later.", 
+				ephemeral=True
+			)
+			return
+
 		# Make API request to add the help question
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/add", 
@@ -432,6 +457,16 @@ async def remove_help_question(interaction: discord.Interaction, id: str):
 		# Acknowledge the command
 		await interaction.response.defer(ephemeral=True)
 
+		# Try to wake up the API
+		isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+		if not isAwake:
+			await interaction.followup.send(
+				content=f"The API is currently unavailable. Please try again later.", 
+				ephemeral=True
+			)
+			return
+
+		# Make API request to remove the help question
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/remove", 
 			json={
@@ -469,6 +504,16 @@ async def answer_help_question(interaction: discord.Interaction, id: str, answer
 		# Acknowledge the command
 		await interaction.response.defer(ephemeral=True)
 
+		# Try to wake up the API
+		isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+		if not isAwake:
+			await interaction.followup.send(
+				content=f"The API is currently unavailable. Please try again later.", 
+				ephemeral=True
+			)
+			return
+
+		# Make API request to answer the help question
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/answer", 
 			json={
@@ -508,6 +553,16 @@ async def claim_help_question(interaction: discord.Interaction, id: str):
 		# Acknowledge the command
 		await interaction.response.defer(ephemeral=True)
 
+		# Try to wake up the API
+		isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+		if not isAwake:
+			await interaction.followup.send(
+				content=f"The API is currently unavailable. Please try again later.", 
+				ephemeral=True
+			)
+			return
+
+		# Make API request to claim the help question
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/claim", 
 			json={
@@ -546,6 +601,16 @@ async def unclaim_help_question(interaction: discord.Interaction, id: str):
 		# Acknowledge the command
 		await interaction.response.defer(ephemeral=True)
 
+		# Try to wake up the API
+		isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+		if not isAwake:
+			await interaction.followup.send(
+				content=f"The API is currently unavailable. Please try again later.", 
+				ephemeral=True
+			)
+			return
+
+		# Make API request to unclaim the help question
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/unclaim", 
 			json={
@@ -583,6 +648,16 @@ async def list_help_questions(interaction: discord.Interaction):
 		# Acknowledge the command
 		await interaction.response.defer(ephemeral=True)
 
+		# Try to wake up the API
+		isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+		if not isAwake:
+			await interaction.followup.send(
+				content=f"The API is currently unavailable. Please try again later.", 
+				ephemeral=True
+			)
+			return
+
+		# Make API request to list the help questions
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/list", 
 			json={
