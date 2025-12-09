@@ -12,8 +12,18 @@ MODULE IMPORTS
 
 import os
 import discord
+import logging
 from discord.ext.commands import Bot
 from discord.ui import View, Button
+
+'''
+COMPONENT LOGGER
+'''
+logger = logging.getLogger("MCL_DISCORD_Logger")
+
+'''
+UI COMPONENTS
+'''
 
 class AdminHelpPanel(View):
 	'''
@@ -38,11 +48,7 @@ class AdminHelpPanel(View):
 			return await interaction.response.send_message(content="You do not have permission to use this button.", ephemeral=True)
 		
 		# Delete all threads in the channel
-		deleted_threads = 0
-		for thread in interaction.channel.threads:
-			await thread.delete()
-			deleted_threads += 1
-		await interaction.response.send_message(content=f"Deleted {deleted_threads} threads.", ephemeral=True)
+		return await interaction.response.send_message(content="Not Implemented.", ephemeral=True)
 
 class AdminHelpEmbed(discord.Embed):
 	'''
