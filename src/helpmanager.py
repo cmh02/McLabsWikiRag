@@ -80,6 +80,7 @@ class MCL_HelpManager():
 		# Check if file exists
 		if not os.path.exists(filePath):
 			self.logger.info(f"No help questions file found at path: {filePath}. Starting with empty help questions.")
+			os.makedirs(os.path.dirname(filePath), exist_ok=True)
 			return True
 
 		# Check that file is a valid JSON file
@@ -108,6 +109,13 @@ class MCL_HelpManager():
 		### Returns
 		- bool: True if the questions were saved successfully, Exception will occur otherwise.
 		'''
+
+		# Check that file directory exists, create if not
+		os.makedirs(os.path.dirname(filePath), exist_ok=True)
+
+		# Check that file is a valid JSON file
+		if not filePath.endswith(".json"):
+			raise ValueError(f"The specified help questions file is not a valid JSON file: {filePath}")
 		
 		# Save questions to JSON file
 		try:
