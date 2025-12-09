@@ -95,7 +95,6 @@ class MCL_HelpManager():
 			return True
 		except Exception as e:
 			self.logger.error(f"Failed to load help questions from JSON file: {filePath}. Error: {e}")
-			raise e
 
 	def saveQuestionsToJson(self, filePath: str) -> bool:
 		'''
@@ -120,13 +119,11 @@ class MCL_HelpManager():
 		# Save questions to JSON file
 		try:
 			with open(filePath, "w") as f:
-				json.dump(self.helpQuestions, f, indent=4)
+				json.dump(jsonable_encoder(self.helpQuestions), f)
 			self.logger.info(f"Saved help questions to JSON file: {filePath}")
 			return True
 		except Exception as e:
 			self.logger.error(f"Failed to save help questions to JSON file: {filePath}. Error: {e}")
-			raise e
-
 
 	def addQuestion(self, questionID: int, questionPlayer: str, questionContent: str) -> bool:
 		'''
