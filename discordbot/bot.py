@@ -333,7 +333,7 @@ async def on_message(message: discord.Message):
 			# Try to wake up the API
 			isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
 			if not isAwake:
-				await message.channel.send(
+				await message.reply(
 					content=f"The API is currently unavailable. Please try again later."
 				)
 				return
@@ -344,20 +344,18 @@ async def on_message(message: discord.Message):
 				json={
 					"api_token": os.getenv("API_TOKEN"),
 					"question_id": questionId,
-					"answered_by": message.author.name,
-					"answer": message.content.strip()
+					"answered_by": f"{message.author.name}",
+					"answer": f"{message.content.strip()}"
 				}
 			) as response:
 				if response.status == 200:
-					await message.channel.send(
+					await message.reply(
 						content=f"Help question #{questionId} answered successfully!", 
-						ephemeral=True
 					)
 					return
 				else:
-					await message.channel.send(
+					await message.reply(
 						content=f"Failed to answer help question #{questionId}. Please try again later.", 
-						ephemeral=True
 					)
 					return
 
