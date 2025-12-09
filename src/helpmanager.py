@@ -79,7 +79,8 @@ class MCL_HelpManager():
 
 		# Check if file exists
 		if not os.path.exists(filePath):
-			raise FileNotFoundError(f"The specified help questions file does not exist: {filePath}")
+			self.logger.info(f"No help questions file found at path: {filePath}. Starting with empty help questions.")
+			return True
 
 		# Check that file is a valid JSON file
 		if not filePath.endswith(".json"):
@@ -90,9 +91,10 @@ class MCL_HelpManager():
 			with open(filePath, "r") as f:
 				self.helpQuestions = json.load(f)
 			self.logger.info(f"Loaded help questions from JSON file: {filePath}")
+			return True
 		except Exception as e:
-			self.logger.error(f"Failed to load help questions from JSON file: {filePath}. Will assume no previous save to resume. \nError: {e}")
-		return True
+			self.logger.error(f"Failed to load help questions from JSON file: {filePath}. Error: {e}")
+			raise e
 
 	def saveQuestionsToJson(self, filePath: str) -> bool:
 		'''
