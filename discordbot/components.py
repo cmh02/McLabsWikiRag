@@ -51,14 +51,14 @@ class AdminHelpEmbed(discord.Embed):
 	Discord Embed for displaying admin help panel information.
 	'''
 
-	def __init__(self):
+	def __init__(self, questionList: str = "No active questions."):
 		super().__init__(
 			title="MCL Help System — Admin Panel",
 			description="This panel shows all current help questions.\nUse the buttons below to manage them.",
 		)
 		self.add_field(
 			name="Active Questions", 
-			value="No active questions.", 
+			value=questionList, 
 			inline=False
 		)
 
