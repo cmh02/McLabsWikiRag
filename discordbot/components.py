@@ -17,11 +17,6 @@ from discord.ext.commands import Bot
 from discord.ui import View, Button
 
 '''
-COMPONENT LOGGER
-'''
-logger = logging.getLogger("MCL_DISCORD_Logger")
-
-'''
 UI COMPONENTS
 '''
 
@@ -36,6 +31,7 @@ class AdminHelpPanel(View):
 	def __init__(self, bot: Bot):
 		super().__init__(timeout=None)
 		self.bot = bot
+		self.logger = logging.getLogger("MCL_DISCORD_Logger")
 
 	# Only allow admins to interact with buttons
 	def check_admin(self, interaction: discord.Interaction) -> bool:
@@ -47,6 +43,9 @@ class AdminHelpPanel(View):
 		if not self.check_admin(interaction):
 			return await interaction.response.send_message(content="You do not have permission to use this button.", ephemeral=True)
 		
+		# Log button usage
+		self.logger.info(f"Admin {interaction.user} used Clear All button in Help Admin Panel.")
+
 		# Delete all threads in the channel
 		return await interaction.response.send_message(content="Not Implemented.", ephemeral=True)
 
@@ -80,6 +79,7 @@ class HelpQuestionPanel(View):
 		super().__init__(timeout=None)
 		self.bot = bot
 		self.questionId = questionId
+		self.logger = logging.getLogger("MCL_DISCORD_Logger")
 
 	# Claim button
 	@discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="help_claim")
@@ -87,6 +87,9 @@ class HelpQuestionPanel(View):
 
 		# Delay response
 		await interaction.response.defer(thinking=True)
+
+		# Log button usage
+		self.logger.info(f"User {interaction.user} used Claim button for help question ID {self.questionId}.")
 		
 		try:
 			# Try to wake up the API
@@ -132,6 +135,9 @@ class HelpQuestionPanel(View):
 		
 		# Delay response
 		await interaction.response.defer(thinking=True)
+
+		# Log button usage
+		self.logger.info(f"User {interaction.user} used Unclaim button for help question ID {self.questionId}.")
 		
 		try:
 			# Try to wake up the API
@@ -176,6 +182,9 @@ class HelpQuestionPanel(View):
 		
 		# Delay response
 		await interaction.response.defer(thinking=True)
+
+		# Log button usage
+		self.logger.info(f"User {interaction.user} used Delete button for help question ID {self.questionId}.")
 
 		try:
 			# Try to wake up the API
