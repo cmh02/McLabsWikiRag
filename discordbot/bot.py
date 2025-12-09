@@ -347,7 +347,7 @@ async def on_message(message: discord.Message):
 				json={
 					"api_token": os.getenv("API_TOKEN"),
 					"question_id": questionId,
-					"answered_by": f"{message.author.name}",
+					"answered_by": f"{message.author.display_name}",
 					"answer": f"{message.content.strip()}"
 				}
 			) as response:

@@ -92,7 +92,7 @@ class HelpQuestionPanel(View):
 			json={
 				"api_token": os.getenv("API_TOKEN"),
 				"question_id": self.questionId,
-				"claimed_by": interaction.user.name
+				"claimed_by": interaction.user.display_name
 			}
 		) as response:
 			if response.status == 200:
