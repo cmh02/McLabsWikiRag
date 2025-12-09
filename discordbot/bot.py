@@ -232,6 +232,29 @@ bot = MclBot(
 	)
 )
 
+'''
+BOT UTILITIES
+'''
+
+STAFF_ROLES = set(["Helper", "Mod", "Admin", "Owner"])
+def doStaffCheck():
+	async def predicate(interaction: discord.Interaction) -> bool:
+		
+		# Extract user role names
+		userRoles = [role.name for role in interaction.user.roles]
+		app.state.logger.debug(f"User {interaction.user.name} roles: {userRoles}")
+
+		# Check if user has any staff roles
+		if STAFF_ROLES.intersection(set(userRoles)):
+			return True
+		return False
+
+	return app_commands.check(predicate)
+
+'''
+BOT EVENTS
+'''
+
 @bot.event
 async def on_ready():
 
@@ -284,25 +307,62 @@ async def on_ready():
 	await bot.tree.sync()
 	app.state.logger.info("Discord bot is ready!")
 
-'''
-BOT UTILITIES
-'''
+@bot.event
+async def on_message(message: discord.Message):
 
-STAFF_ROLES = set(["Helper", "Mod", "Admin", "Owner"])
-def doStaffCheck():
-	async def predicate(interaction: discord.Interaction) -> bool:
-		
-		# Extract user role names
-		userRoles = [role.name for role in interaction.user.roles]
-		app.state.logger.debug(f"User {interaction.user.name} roles: {userRoles}")
+	# Ignore bot's own messages
+	if message.author.bot:
+		return
 
-		# Check if user has any staff roles
-		if STAFF_ROLES.intersection(set(userRoles)):
-			return True
-		return False
+	# Ignore DMs
+	if isinstance(message.channel, discord.DMChannel):
+		return
 
-	return app_commands.check(predicate)
+	# Only process thread messages
+	if isinstance(message.channel, discord.Thread):
+		threadId = message.channel.id
 
+		# Check if this is one of our help threads
+		threads = MCL_ThreadManager().getAllThreads()  
+
+		if threadId in threads:
+
+			# Get question ID
+			questionId = threads[threadId]
+
+			# Try to wake up the API
+			isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+			if not isAwake:
+				await message.channel.send(
+					content=f"The API is currently unavailable. Please try again later."
+				)
+				return
+
+			# Make API request to answer the help question
+			async with bot.session.post(
+				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/answer", 
+				json={
+					"api_token": os.getenv("API_TOKEN"),
+					"question_id": questionId,
+					"answered_by": message.author.name,
+					"answer": message.content.strip()
+				}
+			) as response:
+				if response.status == 200:
+					await message.channel.send(
+						content=f"Help question #{questionId} answered successfully!", 
+						ephemeral=True
+					)
+					return
+				else:
+					await message.channel.send(
+						content=f"Failed to answer help question #{questionId}. Please try again later.", 
+						ephemeral=True
+					)
+					return
+
+	# Allow commands to still work
+	await bot.process_commands(message)
 
 '''
 BOT COMMANDS
@@ -484,55 +544,6 @@ async def remove_help_question(interaction: discord.Interaction, id: str):
 		app.state.logger.error(f"Remove Help Question Exception [ERROR CODE 007]: {e}")
 		await interaction.followup.send(
 			content=f"An error has occured while removing the help question. Please contact a developer for further assistance!", 
-			ephemeral=True
-		)
-		return
-
-@bot.tree.command(name="answer", description="Answer a help question in the help system.")
-@doStaffCheck()
-async def answer_help_question(interaction: discord.Interaction, id: str, answer: str):
-	'''
-	## Answer Help Question Command
-	'''
-	try:
-		# Acknowledge the command
-		await interaction.response.defer(ephemeral=True)
-
-		# Try to wake up the API
-		isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
-		if not isAwake:
-			await interaction.followup.send(
-				content=f"The API is currently unavailable. Please try again later.", 
-				ephemeral=True
-			)
-			return
-
-		# Make API request to answer the help question
-		async with bot.session.post(
-			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/answer", 
-			json={
-				"api_token": os.getenv("API_TOKEN"),
-				"question_id": id,
-				"answered_by": interaction.user.name,
-				"answer": answer
-			}
-		) as response:
-			if response.status == 200:
-				await interaction.followup.send(
-					content=f"Help question #{id} answered successfully!", 
-					ephemeral=True
-				)
-				return
-			else:
-				await interaction.followup.send(
-					content=f"Failed to answer help question #{id}. Please try again later.", 
-					ephemeral=True
-				)
-				return
-	except Exception as e:
-		app.state.logger.error(f"Answer Help Question Exception [ERROR CODE 008]: {e}")
-		await interaction.followup.send(
-			content=f"An error has occured while answering the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
 		)
 		return
