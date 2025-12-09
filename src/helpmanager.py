@@ -90,10 +90,9 @@ class MCL_HelpManager():
 			with open(filePath, "r") as f:
 				self.helpQuestions = json.load(f)
 			self.logger.info(f"Loaded help questions from JSON file: {filePath}")
-			return True
 		except Exception as e:
-			self.logger.error(f"Failed to load help questions from JSON file: {filePath}. Error: {e}")
-			raise e
+			self.logger.error(f"Failed to load help questions from JSON file: {filePath}. Will assume no previous save to resume. \nError: {e}")
+		return True
 
 	def saveQuestionsToJson(self, filePath: str) -> bool:
 		'''
