@@ -177,6 +177,16 @@ class MclBot(commands.Bot):
 					questionClaimedBy=question_claimed_by
 				)
 
+			# Update admin embed
+			adminMessage = await MCL_ThreadManager().getAdminPanelMessage()
+			questionList = "\n".join([f"{q.get('id')} - {q.get('status', 'Open')}" for q in questions])
+			adminMessage.embeds[0].set_field_at(
+				index=0,
+				name="Active Questions",
+				value=questionList if questionList else "No active questions.",
+				inline=False
+			)
+
 		# Delete any threads for questions that no longer exist
 		for thread_id, question_id in threads_ThreadIdToQuestionId.items():
 			if not any(q.get("id") == question_id for q in questions):

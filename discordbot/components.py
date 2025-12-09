@@ -56,6 +56,11 @@ class AdminHelpEmbed(discord.Embed):
 			title="MCL Help System — Admin Panel",
 			description="This panel shows all current help questions.\nUse the buttons below to manage them.",
 		)
+		self.add_field(
+			name="Active Questions", 
+			value="No active questions.", 
+			inline=False
+		)
 
 class HelpQuestionPanel(View):
 	'''
