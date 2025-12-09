@@ -73,8 +73,8 @@ class HelpQuestionPanel(View):
 	# Claim button
 	@discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="help_claim")
 	async def claim(self, interaction: discord.Interaction, button: discord.ui.button):
-		if not self.check_admin(interaction):
-			return await interaction.response.send_message(content="You do not have permission to use this button.", ephemeral=True)
+
+		# Delay response
 		await interaction.response.defer(thinking=True)
 		
 		# Try to wake up the API
@@ -97,13 +97,13 @@ class HelpQuestionPanel(View):
 		) as response:
 			if response.status == 200:
 				await interaction.followup.send(
-					content=f"Help question #{self.questionId} claimed successfully!", 
+					content=f"Claimed!", 
 					ephemeral=True
 				)
 				return
 			else:
 				await interaction.followup.send(
-					content=f"Failed to claim help question #{self.questionId}. Please try again later.", 
+					content=f"Try Again!", 
 					ephemeral=True
 				)
 				return
@@ -111,8 +111,8 @@ class HelpQuestionPanel(View):
 	# Unclaim button
 	@discord.ui.button(label="Unclaim", style=discord.ButtonStyle.gray, custom_id="help_unclaim")
 	async def unclaim(self, interaction: discord.Interaction, button: discord.ui.button):
-		if not self.check_admin(interaction):
-			return await interaction.response.send_message(content="You do not have permission to use this button.", ephemeral=True)
+		
+		# Delay response
 		await interaction.response.defer(thinking=True)
 		
 		# Try to wake up the API
@@ -134,13 +134,13 @@ class HelpQuestionPanel(View):
 		) as response:
 			if response.status == 200:
 				await interaction.followup.send(
-					content=f"Help question #{self.questionId} unclaimed successfully!", 
+					content=f"Unclaimed!", 
 					ephemeral=True
 				)
 				return
 			else:
 				await interaction.followup.send(
-					content=f"Failed to unclaim help question #{self.questionId}. Please try again later.", 
+					content=f"Try Again!", 
 					ephemeral=True
 				)
 				return
