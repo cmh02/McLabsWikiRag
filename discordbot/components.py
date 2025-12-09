@@ -96,7 +96,7 @@ class HelpQuestionPanel(View):
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/claim", 
 			json={
 				"api_token": os.getenv("API_TOKEN"),
-				"question_id": self.questionId,
+				"question_id": int(self.questionId),
 				"claimed_by": interaction.user.display_name
 			}
 		) as response:
@@ -134,7 +134,7 @@ class HelpQuestionPanel(View):
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/unclaim", 
 			json={
 				"api_token": os.getenv("API_TOKEN"),
-				"question_id": self.questionId
+				"question_id": int(self.questionId)
 			}
 		) as response:
 			if response.status == 200:
