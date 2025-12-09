@@ -186,7 +186,7 @@ class MclBot(commands.Bot):
 		adminMessage = await MCL_ThreadManager().getAdminPanelMessage()
 		questionList = "\n".join([f"{question.get('id')} - {question.get('status', 'Open')}" for question in questions])
 		app.state.logger.debug(f"Updating admin panel with questions:\n{questionList}")
-		adminMessage.edit(
+		await adminMessage.edit(
 			embed=AdminHelpEmbed(questionList=questionList),
 			view=AdminHelpPanel(bot=self)
 		)
