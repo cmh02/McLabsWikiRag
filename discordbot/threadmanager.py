@@ -125,7 +125,7 @@ class MCL_ThreadManager():
 			return int(match.group(1))
 		return None
 
-	async def createHelpThread(self, questionId: int, questionPlayer: str, questionStatus: str, questionContent: str, questionClaimedBy: str=None):
+	async def createHelpThread(self, questionId: int, questionPlayer: str, questionStatus: str, questionContent: str, questionClaimedBy: str="Not Claimed Yet!"):
 		'''
 		## Create New Help Thread
 
@@ -156,7 +156,7 @@ class MCL_ThreadManager():
 			questionId=questionId,
 			questionText=questionContent,
 			questionStatus=questionStatus,
-			questionClaimedBy=questionClaimedBy or "Unclaimed"
+			questionClaimedBy=questionClaimedBy
 		)
 		mentions = " ".join([f"<@&{role_id}>" for role_id in self.STAFF_ROLE_IDS if thread.guild.get_role(int(role_id)) is not None])
 		embedMessage = await thread.send(
@@ -205,7 +205,7 @@ class MCL_ThreadManager():
 		thread = self.bot.get_channel(threadId)
 		await thread.delete()
 
-	async def updateHelpThread(self, threadId: int=None, questionId: int=None, questionPlayer: str=None, questionStatus: str=None, questionContent: str=None, questionClaimedBy: str=None):
+	async def updateHelpThread(self, threadId: int=None, questionId: int=None, questionPlayer: str=None, questionStatus: str=None, questionContent: str=None, questionClaimedBy: str="Not Claimed Yet!"):
 		'''
 		## Update Help Thread
 
@@ -257,6 +257,6 @@ class MCL_ThreadManager():
 			questionId=questionId,
 			questionText=questionContent,
 			questionStatus=questionStatus,
-			questionClaimedBy=questionClaimedBy or "Unclaimed"
+			questionClaimedBy=questionClaimedBy
 		 )
 		await pinnedEmbedMessage.edit(embed=newEmbed)
