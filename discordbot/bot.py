@@ -110,10 +110,6 @@ async def update_help_system(request: Request, body: UpdateHelpSystemRequest):
 BOT DEFINITION
 '''
 
-# Configure Discord intents
-intents = discord.Intents.default()
-intents.messages = True
-
 # Initialize bot
 class MclBot(commands.Bot):
 
@@ -223,6 +219,13 @@ class MclBot(commands.Bot):
 					await asyncio.sleep(sleepInterval)
 		return isAwake
 
+# Configure Discord intents
+intents = discord.Intents.default()
+intents.presences = True
+intents.members = True
+intents.message_content = True
+
+# Initialize bot
 bot = MclBot(
 	command_prefix="/", 
 	intents=intents, 
@@ -448,10 +451,6 @@ async def ask(interaction: discord.Interaction, question: str):
 			ephemeral=True
 		)
 		return
-
-'''
-HELP SYSTEM - COMMAND INTERACTIONS
-'''
 
 @bot.tree.command(name="add", description="Add a help question to the help system.")
 @doStaffCheck()
