@@ -63,12 +63,19 @@ async def lifespan(app: FastAPI):
 
 	# Initialize Help Manager
 	MCL_HelpManager().initialize()
+	MCL_HelpManager().loadQuestionsFromJson(filePath=os.getenv("HELP_QUESTIONS_FILE_PATH", "data/help_questions.json"))
 
 	# Log startup
 	app.state.logger.info(f"MCL RAG API started with PID {os.getpid()}!")
 
 	# Yield back for app lifetime
 	yield
+
+	# Log shutdown
+	app.state.logger.info(f"MCL RAG API shutting down with PID {os.getpid()}!")
+
+	# Save help questions on shutdown
+	MCL_HelpManager().saveQuestionsToJson(filePath=os.getenv("HELP_QUESTIONS_FILE_PATH", "data/help_questions.json"))
 
 '''
 FASTAPI APP DEFINITION

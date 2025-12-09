@@ -10,6 +10,7 @@ MODULE IMPORTS
 
 # System
 import os
+import json
 import logging
 import requests
 from enum import Enum
@@ -62,6 +63,60 @@ class MCL_HelpManager():
 		# Log initialization
 		self.logger = logging.getLogger("MCL_API_Logger")
 		self.logger.info(f"Help Manager initialized with PID {os.getpid()}.")
+
+	def loadQuestionsFromJson(self, filePath: str) -> bool:
+		'''
+		## Load Questions From JSON File
+
+		Loads help questions from a JSON file into the help questions dictionary.
+
+		### Parameters
+		- filePath (str): The path to the JSON file containing help questions.
+
+		### Returns
+		- bool: True if the questions were loaded successfully, Exception will occur otherwise.
+		'''
+
+		# Check if file exists
+		if not os.path.exists(filePath):
+			raise FileNotFoundError(f"The specified help questions file does not exist: {filePath}")
+
+		# Check that file is a valid JSON file
+		if not filePath.endswith(".json"):
+			raise ValueError(f"The specified help questions file is not a valid JSON file: {filePath}")
+		
+		# Load questions from JSON file
+		try:
+			with open(filePath, "r") as f:
+				self.helpQuestions = json.load(f)
+			self.logger.info(f"Loaded help questions from JSON file: {filePath}")
+			return True
+		except Exception as e:
+			self.logger.error(f"Failed to load help questions from JSON file: {filePath}. Error: {e}")
+			raise e
+
+	def saveQuestionsToJson(self, filePath: str) -> bool:
+		'''
+		## Save Questions To JSON File
+
+		Saves help questions from the help questions dictionary to a JSON file.
+
+		### Parameters
+		- filePath (str): The path to the JSON file to save help questions.
+
+		### Returns
+		- bool: True if the questions were saved successfully, Exception will occur otherwise.
+		'''
+		
+		# Save questions to JSON file
+		try:
+			with open(filePath, "w") as f:
+				json.dump(self.helpQuestions, f, indent=4)
+			self.logger.info(f"Saved help questions to JSON file: {filePath}")
+			return True
+		except Exception as e:
+			self.logger.error(f"Failed to save help questions to JSON file: {filePath}. Error: {e}")
+			raise e
 
 
 	def addQuestion(self, questionID: int, questionPlayer: str, questionContent: str) -> bool:
