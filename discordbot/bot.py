@@ -153,6 +153,9 @@ class MclBot(commands.Bot):
 			# Check if a thread for this question already exists
 			if question_id in threads_QuestionIdToThreadId:
 
+				# Debug log
+				app.state.logger.debug(f"Help System Update Handler making request to update thread for question ID {question_id}.")
+
 				# If this question already exists, then update the thread with new info
 				thread_id = threads_QuestionIdToThreadId[question_id]
 				await MCL_ThreadManager().updateHelpThread(
@@ -165,6 +168,9 @@ class MclBot(commands.Bot):
 				)
 
 			else:
+
+				# Debug log
+				app.state.logger.debug(f"Help System Update Handler making request to create thread for question ID {question_id}.")
 
 				# Otherwise, create a new thread for this question
 				await MCL_ThreadManager().createHelpThread(
