@@ -177,18 +177,20 @@ class MclBot(commands.Bot):
 					questionClaimedBy=question_claimed_by
 				)
 
+		# Delete any threads for questions that no longer exist
+		for thread_id, question_id in threads_ThreadIdToQuestionId.items():
+			if not any(q.get("id") == question_id for q in questions):
+				await MCL_ThreadManager().deleteHelpThread(threadId=thread_id)
+
 		# Update admin embed
 		adminMessage = await MCL_ThreadManager().getAdminPanelMessage()
 		questionList = "\n".join([f"{question.get('id')} - {question.get('status', 'Open')}" for question in questions])
+		app.state.logger.debug(f"Updating admin panel with questions:\n{questionList}")
 		adminMessage.edit(
 			embed=AdminHelpEmbed(questionList=questionList),
 			view=AdminHelpPanel(bot=self)
 		)
 
-		# Delete any threads for questions that no longer exist
-		for thread_id, question_id in threads_ThreadIdToQuestionId.items():
-			if not any(q.get("id") == question_id for q in questions):
-				await MCL_ThreadManager().deleteHelpThread(threadId=thread_id)
 
 	async def ensureApiAwake(self, numberTries: int=5, sleepInterval: int=3) -> bool:
 		'''
