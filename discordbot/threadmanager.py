@@ -23,7 +23,7 @@ from discord import guild
 from discord.ext.commands import Bot
 
 # Local
-from discordbot.components import HelpQuestionEmbed
+from discordbot.components import HelpQuestionPanel, HelpQuestionEmbed
 
 '''
 THREAD MANAGER
@@ -158,7 +158,9 @@ class MCL_ThreadManager():
 		mentions = " ".join([f"<@&{role_id}>" for role_id in self.STAFF_ROLE_IDS if thread.guild.get_role(int(role_id)) is not None])
 		embedMessage = await thread.send(
 			content=f"A new help question has been created {mentions}!", 
-			embed=embed)
+			embed=embed,
+			view=HelpQuestionPanel(bot=self.bot, questionId=questionId)
+		)
 		await embedMessage.pin()
 
 	async def deleteHelpThread(self, threadId: int=None, questionId: int=None):
@@ -253,4 +255,7 @@ class MCL_ThreadManager():
 			questionStatus=questionStatus,
 			questionClaimedBy=questionClaimedBy
 		 )
-		await pinnedEmbedMessage.edit(embed=newEmbed)
+		await pinnedEmbedMessage.edit(
+			embed=newEmbed,
+			view=HelpQuestionPanel(bot=self.bot, questionId=questionId)
+		)

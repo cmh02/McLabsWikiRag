@@ -25,7 +25,7 @@ from typing import Dict
 
 from src.schemas import BaseRequestSchema
 from discordbot.logger import MCL_Logger
-from discordbot.components import AdminHelpPanel
+from discordbot.components import AdminHelpPanel, AdminHelpEmbed
 from discordbot.threadmanager import MCL_ThreadManager
 
 '''
@@ -254,21 +254,15 @@ async def on_ready():
 			app.state.logger.info(f"About to post admin panel in channel: {channel.name} ({channel.id})")
 		pinnedMessages = await channel.pins()
 
-		# Build embed
-		embed = discord.Embed(
-			title="MCL Help System — Admin Panel",
-			description="This panel shows all current help questions.\nUse the buttons below to manage them."
-		)
-
 		# If the admin panel is already posted, then update it
 		if pinnedMessages:
 			for message in pinnedMessages:
 				if message.embeds[0].title == "MCL Help System — Admin Panel":
-					await message.edit(embed=embed, view=AdminHelpPanel(bot=bot))
+					await message.edit(embed=AdminHelpEmbed(), view=AdminHelpPanel(bot=bot))
 					return
 
 		# Otherwise, post a new admin panel
-		message = await channel.send(embed=embed, view=AdminHelpPanel(bot=bot))
+		message = await channel.send(embed=AdminHelpEmbed(), view=AdminHelpPanel(bot=bot))
 		await message.pin()
 		app.state.logger.info(f"Admin panel posted and pinned in channel: {channel.name} ({channel.id})")
 	await post_admin_panel(channelId=int(os.getenv("DISCORD_HELP_CHANNEL_ID")))
@@ -539,101 +533,6 @@ async def answer_help_question(interaction: discord.Interaction, id: str, answer
 		app.state.logger.error(f"Answer Help Question Exception [ERROR CODE 008]: {e}")
 		await interaction.followup.send(
 			content=f"An error has occured while answering the help question. Please contact a developer for further assistance!", 
-			ephemeral=True
-		)
-		return
-
-@bot.tree.command(name="claim", description="Claim a help question to work on.")
-@doStaffCheck()
-async def claim_help_question(interaction: discord.Interaction, id: str):
-	'''
-	## Claim Help Question Command
-	'''
-	try:
-		# Acknowledge the command
-		await interaction.response.defer(ephemeral=True)
-
-		# Try to wake up the API
-		isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
-		if not isAwake:
-			await interaction.followup.send(
-				content=f"The API is currently unavailable. Please try again later.", 
-				ephemeral=True
-			)
-			return
-
-		# Make API request to claim the help question
-		async with bot.session.post(
-			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/claim", 
-			json={
-				"api_token": os.getenv("API_TOKEN"),
-				"question_id": id,
-				"claimed_by": interaction.user.name
-			}
-		) as response:
-			if response.status == 200:
-				await interaction.followup.send(
-					content=f"Help question #{id} claimed successfully!", 
-					ephemeral=True
-				)
-				return
-			else:
-				await interaction.followup.send(
-					content=f"Failed to claim help question #{id}. Please try again later.", 
-					ephemeral=True
-				)
-				return
-	except Exception as e:
-		app.state.logger.error(f"Claim Help Question Exception [ERROR CODE 009]: {e}")
-		await interaction.followup.send(
-			content=f"An error has occured while claiming the help question. Please contact a developer for further assistance!", 
-			ephemeral=True
-		)
-		return
-
-@bot.tree.command(name="unclaim", description="Unclaim a help question.")
-@doStaffCheck()
-async def unclaim_help_question(interaction: discord.Interaction, id: str):
-	'''
-	## Unclaim Help Question Command
-	'''
-	try:
-		# Acknowledge the command
-		await interaction.response.defer(ephemeral=True)
-
-		# Try to wake up the API
-		isAwake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
-		if not isAwake:
-			await interaction.followup.send(
-				content=f"The API is currently unavailable. Please try again later.", 
-				ephemeral=True
-			)
-			return
-
-		# Make API request to unclaim the help question
-		async with bot.session.post(
-			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/unclaim", 
-			json={
-				"api_token": os.getenv("API_TOKEN"),
-				"question_id": id
-			}
-		) as response:
-			if response.status == 200:
-				await interaction.followup.send(
-					content=f"Help question #{id} unclaimed successfully!", 
-					ephemeral=True
-				)
-				return
-			else:
-				await interaction.followup.send(
-					content=f"Failed to unclaim help question #{id}. Please try again later.", 
-					ephemeral=True
-				)
-				return
-	except Exception as e:
-		app.state.logger.error(f"Unclaim Help Question Exception [ERROR CODE 010]: {e}")
-		await interaction.followup.send(
-			content=f"An error has occured while unclaiming the help question. Please contact a developer for further assistance!", 
 			ephemeral=True
 		)
 		return

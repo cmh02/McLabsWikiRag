@@ -9,13 +9,11 @@ Author: Chris Hinkson @cmh02
 '''
 MODULE IMPORTS
 '''
+
+import os
 import discord
 from discord.ext.commands import Bot
 from discord.ui import View, Button
-
-
-
-
 
 class AdminHelpPanel(View):
 	'''
@@ -45,6 +43,107 @@ class AdminHelpPanel(View):
 			await thread.delete()
 			deleted_threads += 1
 		await interaction.response.send_message(content=f"Deleted {deleted_threads} threads.", ephemeral=True)
+
+class AdminHelpEmbed(discord.Embed):
+	'''
+	# Admin Help Embed
+
+	Discord Embed for displaying admin help panel information.
+	'''
+
+	def __init__(self):
+		super().__init__(
+			title="MCL Help System — Admin Panel",
+			description="This panel shows all current help questions.\nUse the buttons below to manage them.",
+		)
+
+class HelpQuestionPanel(View):
+	'''
+	# Help Question Panel
+
+	Discord UI View for help question management buttons.
+	'''
+
+	# Initialize the help question panel view
+	def __init__(self, bot: Bot, questionId: int):
+		super().__init__(timeout=None)
+		self.bot = bot
+		self.questionId = questionId
+
+	# Claim button
+	@discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="help_claim")
+	async def claim(self, interaction: discord.Interaction, button: discord.ui.button):
+		if not self.check_admin(interaction):
+			return await interaction.response.send_message(content="You do not have permission to use this button.", ephemeral=True)
+		await interaction.response.defer(thinking=True)
+		
+		# Try to wake up the API
+		isAwake = await self.bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+		if not isAwake:
+			await interaction.followup.send(
+				content=f"The API is currently unavailable. Please try again later.", 
+				ephemeral=True
+			)
+			return
+
+		# Make API request to claim the help question
+		async with self.bot.session.post(
+			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/claim", 
+			json={
+				"api_token": os.getenv("API_TOKEN"),
+				"question_id": self.questionId,
+				"claimed_by": interaction.user.name
+			}
+		) as response:
+			if response.status == 200:
+				await interaction.followup.send(
+					content=f"Help question #{self.questionId} claimed successfully!", 
+					ephemeral=True
+				)
+				return
+			else:
+				await interaction.followup.send(
+					content=f"Failed to claim help question #{self.questionId}. Please try again later.", 
+					ephemeral=True
+				)
+				return
+
+	# Unclaim button
+	@discord.ui.button(label="Unclaim", style=discord.ButtonStyle.gray, custom_id="help_unclaim")
+	async def unclaim(self, interaction: discord.Interaction, button: discord.ui.button):
+		if not self.check_admin(interaction):
+			return await interaction.response.send_message(content="You do not have permission to use this button.", ephemeral=True)
+		await interaction.response.defer(thinking=True)
+		
+		# Try to wake up the API
+		isAwake = await self.bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+		if not isAwake:
+			await interaction.followup.send(
+				content=f"The API is currently unavailable. Please try again later.", 
+				ephemeral=True
+			)
+			return
+		
+		# Make API request to unclaim the help question
+		async with self.bot.session.post(
+			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/unclaim", 
+			json={
+				"api_token": os.getenv("API_TOKEN"),
+				"question_id": self.questionId
+			}
+		) as response:
+			if response.status == 200:
+				await interaction.followup.send(
+					content=f"Help question #{self.questionId} unclaimed successfully!", 
+					ephemeral=True
+				)
+				return
+			else:
+				await interaction.followup.send(
+					content=f"Failed to unclaim help question #{self.questionId}. Please try again later.", 
+					ephemeral=True
+				)
+				return
 
 class HelpQuestionEmbed(discord.Embed):
 	'''
