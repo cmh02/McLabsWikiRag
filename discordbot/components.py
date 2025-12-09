@@ -82,36 +82,43 @@ class HelpQuestionPanel(View):
 		# Delay response
 		await interaction.response.defer(thinking=True)
 		
-		# Try to wake up the API
-		isAwake = await self.bot.ensureApiAwake(numberTries=5, sleepInterval=3)
-		if not isAwake:
+		try:
+			# Try to wake up the API
+			isAwake = await self.bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+			if not isAwake:
+				await interaction.followup.send(
+					content=f"The API is currently unavailable. Please try again later.", 
+					ephemeral=True
+				)
+				return
+
+			# Make API request to claim the help question
+			async with self.bot.session.post(
+				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/claim", 
+				json={
+					"api_token": os.getenv("API_TOKEN"),
+					"question_id": int(self.questionId),
+					"claimed_by": interaction.user.display_name
+				}
+			) as response:
+				if response.status == 200:
+					await interaction.followup.send(
+						content=f"Claimed!", 
+						ephemeral=True
+					)
+					return
+				else:
+					await interaction.followup.send(
+						content=f"Try Again!", 
+						ephemeral=True
+					)
+					return
+		except Exception as e:
 			await interaction.followup.send(
-				content=f"The API is currently unavailable. Please try again later.", 
+				content=f"An error occurred while trying to claim the help question: {str(e)}", 
 				ephemeral=True
 			)
 			return
-
-		# Make API request to claim the help question
-		async with self.bot.session.post(
-			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/claim", 
-			json={
-				"api_token": os.getenv("API_TOKEN"),
-				"question_id": int(self.questionId),
-				"claimed_by": interaction.user.display_name
-			}
-		) as response:
-			if response.status == 200:
-				await interaction.followup.send(
-					content=f"Claimed!", 
-					ephemeral=True
-				)
-				return
-			else:
-				await interaction.followup.send(
-					content=f"Try Again!", 
-					ephemeral=True
-				)
-				return
 
 	# Unclaim button
 	@discord.ui.button(label="Unclaim", style=discord.ButtonStyle.gray, custom_id="help_unclaim")
@@ -120,35 +127,86 @@ class HelpQuestionPanel(View):
 		# Delay response
 		await interaction.response.defer(thinking=True)
 		
-		# Try to wake up the API
-		isAwake = await self.bot.ensureApiAwake(numberTries=5, sleepInterval=3)
-		if not isAwake:
+		try:
+			# Try to wake up the API
+			isAwake = await self.bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+			if not isAwake:
+				await interaction.followup.send(
+					content=f"The API is currently unavailable. Please try again later.", 
+					ephemeral=True
+				)
+				return
+			
+			# Make API request to unclaim the help question
+			async with self.bot.session.post(
+				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/unclaim", 
+				json={
+					"api_token": os.getenv("API_TOKEN"),
+					"question_id": int(self.questionId)
+				}
+			) as response:
+				if response.status == 200:
+					await interaction.followup.send(
+						content=f"Unclaimed!", 
+						ephemeral=True
+					)
+					return
+				else:
+					await interaction.followup.send(
+						content=f"Try Again!", 
+						ephemeral=True
+					)
+					return
+		except Exception as e:
 			await interaction.followup.send(
-				content=f"The API is currently unavailable. Please try again later.", 
+				content=f"An error occurred while trying to unclaim the help question: {str(e)}", 
 				ephemeral=True
 			)
 			return
+			
+	# Delete button
+	@discord.ui.button(label="Delete", style=discord.ButtonStyle.red, custom_id="help_delete")
+	async def delete(self, interaction: discord.Interaction, button: discord.ui.button):
 		
-		# Make API request to unclaim the help question
-		async with self.bot.session.post(
-			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/unclaim", 
-			json={
-				"api_token": os.getenv("API_TOKEN"),
-				"question_id": int(self.questionId)
-			}
-		) as response:
-			if response.status == 200:
+		# Delay response
+		await interaction.response.defer(thinking=True)
+
+		try:
+			# Try to wake up the API
+			isAwake = await self.bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+			if not isAwake:
 				await interaction.followup.send(
-					content=f"Unclaimed!", 
+					content=f"The API is currently unavailable. Please try again later.", 
 					ephemeral=True
 				)
 				return
-			else:
-				await interaction.followup.send(
-					content=f"Try Again!", 
-					ephemeral=True
-				)
-				return
+
+			# Make API request to remove the help question
+			async with self.bot.session.post(
+				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/remove", 
+				json={
+					"api_token": os.getenv("API_TOKEN"),
+					"question_id": int(self.questionId)
+				}
+			) as response:
+				if response.status == 200:
+					await interaction.followup.send(
+						content=f"Help question #{self.questionId} removed successfully!", 
+						ephemeral=True
+					)
+					return
+				else:
+					await interaction.followup.send(
+						content=f"Failed to remove help question #{self.questionId}. Please try again later.", 
+						ephemeral=True
+					)
+					return
+		except Exception as e:
+			await interaction.followup.send(
+				content=f"An error occurred while trying to remove help question #{self.questionId}: {str(e)}", 
+				ephemeral=True
+			)
+			return
 
 class HelpQuestionEmbed(discord.Embed):
 	'''
