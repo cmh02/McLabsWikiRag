@@ -230,15 +230,6 @@ class AddHelpQuestionSchema(BaseHelpQuestionSchema):
 
 	# Content of the help question
 	question_content: str = Field(description="The content of the help question.")
-
-	# Time the help question was asked as datetime object
-	question_time: datetime = Field(description="The time the help question was asked.")
-	@field_validator("question_time", mode="before")
-	def convertUnixStringToDatetime(cls, unixString):
-		# Accept strings or ints
-		if isinstance(unixString, (int, float, str)) and str(unixString).isdigit():
-			return datetime.fromtimestamp(int(unixString))
-		return 0
 	
 @app.post("/help/add")
 @appLimiter.limit("100/minute")
@@ -264,7 +255,6 @@ def add_help_question(request: Request, body: AddHelpQuestionSchema):
 		questionID=data.get("question_id"),
 		questionPlayer=data.get("question_player"),
 		questionContent=data.get("question_content"),
-		questionTime=data.get("question_time")
 	)
 
 	# Return success message

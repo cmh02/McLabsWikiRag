@@ -64,7 +64,7 @@ class MCL_HelpManager():
 		self.logger.info(f"Help Manager initialized with PID {os.getpid()}.")
 
 
-	def addQuestion(self, questionID: int, questionPlayer: str, questionContent: str, questionTime: datetime) -> bool:
+	def addQuestion(self, questionID: int, questionPlayer: str, questionContent: str) -> bool:
 		'''
 		## Add New Question
 
@@ -74,7 +74,6 @@ class MCL_HelpManager():
 		- questionID (int): The ID of the help question.
 		- questionPlayer (str): The player who asked the help question.
 		- questionContent (str): The content of the help question.
-		- questionTime (datetime): The time the help question was asked.
 
 		### Returns
 		- bool: True if the question was added successfully, Exception will occur otherwise.
@@ -88,8 +87,6 @@ class MCL_HelpManager():
 			raise ValueError(f"An invalid question player was provided when adding a help question: {questionPlayer}")
 		if not questionContent or not isinstance(questionContent, str):
 			raise ValueError(f"An invalid question content was provided when adding a help question: {questionContent}")
-		if not questionTime or not isinstance(questionTime, datetime):
-			raise ValueError(f"An invalid question time was provided when adding a help question: {questionTime}")
 		
 		# Check if the question ID already exists
 		if questionID in self.helpQuestions:
@@ -99,12 +96,9 @@ class MCL_HelpManager():
 		self.helpQuestions[questionID] = {
 			"player": questionPlayer,
 			"content": questionContent,
-			"time": questionTime,
 			"status": QuestionStatus.OPEN,
 			"claimedBy": None,
-			"claimedTime": None,
 			"answeredBy": None,
-			"answeredTime": None,
 			"answer": None
 		}
 
@@ -180,9 +174,7 @@ class MCL_HelpManager():
 		# Answer the question in the dictionary
 		self.helpQuestions[questionID]["status"] = QuestionStatus.ANSWERED
 		self.helpQuestions[questionID]["claimedBy"] = answeredBy
-		self.helpQuestions[questionID]["claimedTime"] = datetime.now()
 		self.helpQuestions[questionID]["answeredBy"] = answeredBy
-		self.helpQuestions[questionID]["answeredTime"] = datetime.now()
 		self.helpQuestions[questionID]["answer"] = answerContent
 
 		# Log the answer
@@ -225,7 +217,6 @@ class MCL_HelpManager():
 		# Claim the question in the dictionary
 		self.helpQuestions[questionID]["status"] = QuestionStatus.CLAIMED
 		self.helpQuestions[questionID]["claimedBy"] = claimedBy
-		self.helpQuestions[questionID]["claimedTime"] = datetime.now()
 
 		# Log the claim
 		self.logger.debug(f"Claimed help question ID {questionID} by staff {claimedBy}.")
@@ -260,7 +251,6 @@ class MCL_HelpManager():
 		# Unclaim the question in the dictionary
 		self.helpQuestions[questionID]["status"] = QuestionStatus.OPEN
 		self.helpQuestions[questionID]["claimedBy"] = None
-		self.helpQuestions[questionID]["claimedTime"] = None
 
 		# Log the unclaim
 		self.logger.debug(f"Unclaimed help question ID {questionID}.")

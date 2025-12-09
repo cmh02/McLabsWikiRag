@@ -400,7 +400,6 @@ async def add_help_question(interaction: discord.Interaction, id: str, question:
 				"question_id": id,
 				"question_content": question,
 				"question_player": interaction.user.name,
-				"question_time": int(datetime.datetime.now().timestamp())
 			}
 		) as response:
 			if response.status == 200:
