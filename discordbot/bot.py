@@ -142,7 +142,7 @@ class MclBot(commands.Bot):
 		for question in questions:
 			question_id = question.get("id")
 			question_player = question.get("player")
-			question_text = question.get("question")
+			question_text = question.get("content")
 			question_status = question.get("status", "OPEN")
 			question_claimed_by = question.get("claimedBy", "Not Claimed Yet!")
 

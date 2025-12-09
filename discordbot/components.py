@@ -160,8 +160,8 @@ class HelpQuestionEmbed(discord.Embed):
 	def __init__(self, questionId: int, questionText: str, questionStatus: str, questionClaimedBy: str):
 		super().__init__(
 			title=f"Help Question #{questionId}",
+			description=questionText,
 			color=discord.Color.blue()
 		)
 		self.add_field(name="Status", value=questionStatus, inline=True)
 		self.add_field(name="Claimed By", value=questionClaimedBy, inline=True)
-		self.add_field(name="Question", value=questionText, inline=False)
