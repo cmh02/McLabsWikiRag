@@ -147,8 +147,8 @@ class MclBot(commands.Bot):
 			question_id = question.get("id")
 			question_player = question.get("player")
 			question_text = question.get("question")
-			question_status = question.get("status", "Open")
-			question_claimed_by = question.get("claimed_by", "Unclaimed")
+			question_status = question.get("status", "OPEN")
+			question_claimed_by = question.get("claimedBy", "Not Claimed Yet!")
 
 			# Check if a thread for this question already exists
 			if question_id in threads_QuestionIdToThreadId:

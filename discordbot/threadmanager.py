@@ -145,9 +145,6 @@ class MCL_ThreadManager():
 		# Log creation
 		self.logger.debug(f"Creating new help thread '{threadName}' for question ID {questionId} from player {questionPlayer}.")
 
-		# # Make a starter message to make thread
-		# starterMessage = await self.channel.send(f"Creating help thread for question ID {questionId} from player {questionPlayer}...")
-
 		# Make the thread creation async
 		thread = await self.channel.create_thread(name=threadName, type=discord.ChannelType.private_thread)
 
@@ -163,9 +160,6 @@ class MCL_ThreadManager():
 			content=f"A new help question has been created {mentions}!", 
 			embed=embed)
 		await embedMessage.pin()
-
-		# # Delete the starter message
-		# await starterMessage.delete()
 
 	async def deleteHelpThread(self, threadId: int=None, questionId: int=None):
 		'''
