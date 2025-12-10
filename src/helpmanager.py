@@ -92,9 +92,21 @@ class MCL_HelpManager():
 			with open(filePath, "r") as f:
 				self.helpQuestions = json.load(f)
 			self.logger.info(f"Loaded help questions from JSON file: {filePath}")
-			return True
 		except Exception as e:
 			self.logger.error(f"Failed to load help questions from JSON file: {filePath}. Error: {e}")
+
+		# Datatype corrections
+		correctedData: Dict[int, Dict] = {}
+		for questionId, details in self.helpQuestions.items():
+			correctedData[int(questionId)] = {
+				"player": details.get("player", None),
+				"content": details.get("content", None),
+				"status": QuestionStatus(details.get("status"), QuestionStatus.OPEN),
+				"claimedBy": details.get("claimedBy", None),
+				"answeredBy": details.get("answeredBy", None),
+				"answer": details.get("answer", None)
+			}
+		self.helpQuestions = correctedData
 
 	def saveQuestionsToJson(self, filePath: str) -> bool:
 		'''
