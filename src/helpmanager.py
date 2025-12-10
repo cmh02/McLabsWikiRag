@@ -101,7 +101,7 @@ class MCL_HelpManager():
 			correctedData[int(questionId)] = {
 				"player": details.get("player", None),
 				"content": details.get("content", None),
-				"status": QuestionStatus(details.get("status"), QuestionStatus.OPEN),
+				"status": QuestionStatus(details.get("status", QuestionStatus.OPEN.value)),
 				"claimedBy": details.get("claimedBy", None),
 				"answeredBy": details.get("answeredBy", None),
 				"answer": details.get("answer", None)
