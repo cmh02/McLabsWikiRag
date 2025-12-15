@@ -45,7 +45,7 @@ def wakeup(request: Request, body: BaseRequestSchema):
 	'''
 	
 	# Verify request
-	verifyRequest(request=request)
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get the request data
 	data: Dict = body.model_dump()
@@ -73,7 +73,7 @@ async def update_help_system(request: Request, body: UpdateHelpSystemRequest):
 	'''
 
 	# Verify request
-	verifyRequest(request=request)
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get the request data
 	data: Dict = body.model_dump()

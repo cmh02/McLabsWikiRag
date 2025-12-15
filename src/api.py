@@ -99,7 +99,7 @@ This endpoint is used solely for waking up the API when asleep on Railway. It st
 def wakeup(request: Request, body: BaseRequestSchema):
 	
 	# Verify request
-	verifyRequest(request=request)
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get the request data
 	data: Dict = body.model_dump()
@@ -140,7 +140,7 @@ class RagQuerySchema(BaseRequestSchema):
 def query(request: Request, body: RagQuerySchema):
 
 	# Verify request
-	verifyRequest(request=request)
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get the request data
 	data: Dict = body.model_dump()
@@ -225,7 +225,7 @@ class AddHelpQuestionSchema(BaseHelpQuestionSchema):
 def add_help_question(request: Request, body: AddHelpQuestionSchema):
 	
 	# Verify request
-	verifyRequest(request=request)
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get request data
 	data: Dict = body.model_dump()
@@ -262,7 +262,7 @@ for removing help questions from the queue, not to answer them.
 def remove_help_question(request: Request, body: BaseHelpQuestionSchema):
 	
 	# Verify request
-	verifyRequest(request=request)
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get request data
 	data: Dict = body.model_dump()
@@ -312,7 +312,7 @@ class AnswerHelpQuestionSchema(BaseHelpQuestionSchema):
 def answer_help_question(request: Request, body: AnswerHelpQuestionSchema):
 	
 	# Verify request
-	verifyRequest(request=request)
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get request data
 	data: Dict = body.model_dump()
@@ -360,7 +360,7 @@ class ClaimHelpQuestionSchema(BaseHelpQuestionSchema):
 def claim_help_question(request: Request, body: ClaimHelpQuestionSchema):
 	
 	# Verify request
-	verifyRequest(request=request)
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get request data
 	data: Dict = body.model_dump()
@@ -395,7 +395,7 @@ question as no longer being worked on by a staff member in the case they are una
 def unclaim_help_question(request: Request, body: BaseHelpQuestionSchema):
 	
 	# Verify request
-	verifyRequest(request=request)
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get request data
 	data: Dict = body.model_dump()
@@ -427,7 +427,7 @@ This endpoint will allow for listing all current help questions in the system.
 def list_help_questions(request: Request, body: BaseRequestSchema):
 	
 	# Verify request
-	verifyRequest(request=request)
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get request data
 	data: Dict = body.model_dump()
