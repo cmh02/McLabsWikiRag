@@ -16,17 +16,7 @@ from fastapi import Header
 MODEL DEFINITIONS
 '''
 
-class BaseRequestSchema(BaseModel):
-	'''
-	# BaseRequest
-
-	Basic model for all requests to the API. All this provides is authentication via API token in the headers.
-	'''
-
-	# API token for authentication
-	X_API_Token: str = Header(description="The API token for authentication.")
-
-class BaseHelpQuestionSchema(BaseRequestSchema):
+class BaseHelpQuestionSchema(BaseModel):
 	'''
 	# BaseHelpQuestionRequest
 

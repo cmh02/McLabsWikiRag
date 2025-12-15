@@ -22,9 +22,9 @@ from discord.ext import commands, tasks
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, HTTPException
 from typing import Dict
+from pydantic import BaseModel
 
 from src.security import verifyRequest
-from src.schemas import BaseRequestSchema
 from discordbot.logger import MCL_Logger
 from discordbot.components import AdminHelpPanel, AdminHelpEmbed
 from discordbot.threadmanager import MCL_ThreadManager
@@ -56,7 +56,7 @@ def wakeup(request: Request):
 		content={"status": "awake"}
 	)
 
-class UpdateHelpSystemRequest(BaseRequestSchema):
+class UpdateHelpSystemRequest(BaseModel):
 
 	# List for questions
 	questions: list

@@ -36,7 +36,7 @@ from src.logger import MCL_Logger
 from src.security import verifyRequest
 from src.docfetch import MCL_WikiEmbedder
 from src.helpmanager import MCL_HelpManager
-from src.schemas import BaseRequestSchema, BaseHelpQuestionSchema, QuestionSchema
+from src.schemas import BaseHelpQuestionSchema, QuestionSchema
 
 '''
 FASTAPI APP STARTUP / SHUTDOWN
@@ -119,11 +119,11 @@ There is a singular endpoint for querying the RAG system. Users can POST to /que
 - "include_context": (optional) Boolean to include context chunks in the response
 '''
 
-class RagQuerySchema(BaseRequestSchema):
+class RagQuerySchema(BaseModel):
 	'''
 	# RagQuerySchema
 
-	Model for query requests to the RAG API. Inherits authentication from BaseRequestSchema.
+	Model for query requests to the RAG API. Inherits authentication from BaseModel.
 	'''
 
 	# The question to ask
@@ -421,13 +421,10 @@ This endpoint will allow for listing all current help questions in the system.
 '''
 @app.post("/help/list")
 @appLimiter.limit("100/minute")
-def list_help_questions(request: Request, body: BaseRequestSchema):
+def list_help_questions(request: Request):
 	
 	# Verify request
 	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
-
-	# Get request data
-	data: Dict = body.model_dump()
 
 	# Get all help questions
 	questions = MCL_HelpManager().getAllQuestions()
