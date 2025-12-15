@@ -1,5 +1,5 @@
 '''
-MCLabs Help Manager
+MCLabs Backend - Help Manager
 
 Author: Chris Hinkson @cmh02
 '''
