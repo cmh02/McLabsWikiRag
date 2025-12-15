@@ -37,7 +37,7 @@ BOT BACKEND SETUP
 app = FastAPI()
 
 @app.post("/wakeup")
-def wakeup(request: Request, body: BaseRequestSchema):
+def wakeup(request: Request):
 	'''
 	# WAKEUP ENDPOINT
 
@@ -46,9 +46,6 @@ def wakeup(request: Request, body: BaseRequestSchema):
 	
 	# Verify request
 	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
-
-	# Get the request data
-	data: Dict = body.model_dump()
 
 	# Log wakeup attempt
 	app.state.logger.debug(f"Discord bot wakeup request received!")

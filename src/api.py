@@ -96,13 +96,10 @@ This endpoint is used solely for waking up the API when asleep on Railway. It st
 '''
 @app.post("/wakeup")
 @appLimiter.limit("50/minute")
-def wakeup(request: Request, body: BaseRequestSchema):
+def wakeup(request: Request):
 	
 	# Verify request
 	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
-
-	# Get the request data
-	data: Dict = body.model_dump()
 
 	# Log for debugging
 	app.state.logger.debug(f"Received wakeup request! \nRequest: {request}")
