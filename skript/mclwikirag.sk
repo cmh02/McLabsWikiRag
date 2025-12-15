@@ -78,7 +78,6 @@ on load:
 
 			# Create JSON object for wakeup request body
 			set {_jsonWakeupRequestBody} to try new JSONObject()
-			try {_jsonWakeupRequestBody}.put("api_token", mwr_getEnvironmentalVariable("API_TOKEN"))
 			if the last java exception is set:
 				mwr_messageLogFile("&cError: An error occured when creating JSON wakeup request body! %nl%Player: %{_player}% %nl%Question: %{_question}% %nl%Error: %the last java exception%", true, "severe")
 				set {_responseString} to "&cError: An error has occured when generating a response. Please contact a developer for further assistance!"
@@ -169,6 +168,7 @@ on load:
 			try {_apiConnection}.setRequestMethod("POST")
 			try {_apiConnection}.setRequestProperty("Content-Type", "application/json")
 			try {_apiConnection}.setRequestProperty("Accept", "application/json")
+			try {_apiConnection}.setRequestProperty("X-API-TOKEN", mwr_getEnvironmentalVariable("API_TOKEN"))
 			try {_apiConnection}.setInstanceFollowRedirects(true)
 			if the last java exception is set:
 				mwr_messageLogFile("&cError: An error occured when configuring HTTP connection! %nl%Player: %{_player}% %nl%Question: %{_question}% %nl%Error: %the last java exception%", true, "severe")
