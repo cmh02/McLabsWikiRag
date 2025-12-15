@@ -207,7 +207,8 @@ class MclBot(commands.Bot):
 				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/wakeup",
 				headers={
 					"Content-Type": "application/json",
-					"Authorization": os.getenv("API_TOKEN")
+					"Authorization": os.getenv("API_TOKEN"),
+					"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 				}
 			) as response:
 				
@@ -353,7 +354,8 @@ async def on_message(message: discord.Message):
 				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/answer",
 				headers={
 					"Content-Type": "application/json",
-					"Authorization": os.getenv("API_TOKEN")
+					"Authorization": os.getenv("API_TOKEN"),
+					"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 				},
 				json={
 					"question_id": questionId,
@@ -410,7 +412,8 @@ async def ask(interaction: discord.Interaction, question: str):
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/query", 
 			headers={
 				"Content-Type": "application/json",
-				"Authorization": os.getenv("API_TOKEN")
+				"Authorization": os.getenv("API_TOKEN"),
+				"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 			},
 			json={
 				"question": question, 
@@ -485,7 +488,8 @@ async def add_help_question(interaction: discord.Interaction, id: str, question:
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/add",
 			headers={
 				"Content-Type": "application/json",
-				"Authorization": os.getenv("API_TOKEN")
+				"Authorization": os.getenv("API_TOKEN"),
+				"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 			},
 			json={
 				"question_id": id,

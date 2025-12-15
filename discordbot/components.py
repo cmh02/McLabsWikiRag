@@ -106,7 +106,8 @@ class HelpQuestionPanel(View):
 				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/claim",
 				headers={
 					"Content-Type": "application/json",
-					"Authorization": os.getenv("API_TOKEN")
+					"Authorization": os.getenv("API_TOKEN"),
+					"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 				},
 				json={
 					"question_id": int(self.questionId),
@@ -157,7 +158,8 @@ class HelpQuestionPanel(View):
 				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/unclaim", 
 				headers={
 					"Content-Type": "application/json",
-					"Authorization": os.getenv("API_TOKEN")
+					"Authorization": os.getenv("API_TOKEN"),
+					"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 				},
 				json={
 					"question_id": int(self.questionId)
@@ -207,7 +209,8 @@ class HelpQuestionPanel(View):
 				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/remove", 
 				headers={
 					"Content-Type": "application/json",
-					"Authorization": os.getenv("API_TOKEN")
+					"Authorization": os.getenv("API_TOKEN"),
+					"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 				},
 				json={
 					"question_id": int(self.questionId)
