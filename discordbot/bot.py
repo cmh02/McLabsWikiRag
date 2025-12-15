@@ -203,13 +203,15 @@ class MclBot(commands.Bot):
 		# Make API request to wake up the API
 		wakeupCount = 0
 		isAwake = False
-		wakeup_payload = {"api_token": os.getenv("API_TOKEN")}
 		while (wakeupCount < numberTries) and not isAwake:
 
 			# Make request to wakeup endpoint
 			async with self.session.post(
-				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/wakeup", 
-				json=wakeup_payload
+				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/wakeup",
+				headers={
+					"Content-Type": "application/json",
+					"X-API-Token": os.getenv("API_TOKEN")
+				}
 			) as response:
 				
 				# If we get an OK (200) or 429 (Rate Limited), consider the API awake
@@ -351,9 +353,12 @@ async def on_message(message: discord.Message):
 
 			# Make API request to answer the help question
 			async with bot.session.post(
-				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/answer", 
+				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/answer",
+				headers={
+					"Content-Type": "application/json",
+					"X-API-Token": os.getenv("API_TOKEN")
+				},
 				json={
-					"api_token": os.getenv("API_TOKEN"),
 					"question_id": questionId,
 					"answered_by": f"{message.author.display_name}",
 					"answer": f"{message.content.strip()}"
@@ -404,14 +409,16 @@ async def ask(interaction: discord.Interaction, question: str):
 	query_response = None
 	query_data = None
 	try:
-		query_payload = {
-			"api_token": os.getenv("API_TOKEN"), 
-			"question": question, 
-			"include_context": "False"
-		}
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/query", 
-			json=query_payload
+			headers={
+				"Content-Type": "application/json",
+				"X-API-Token": os.getenv("API_TOKEN")
+			},
+			json={
+				"question": question, 
+				"include_context": "False"
+			}
 		) as response:
 			query_response = response
 			query_data = await query_response.json()
@@ -478,9 +485,12 @@ async def add_help_question(interaction: discord.Interaction, id: str, question:
 
 		# Make API request to add the help question
 		async with bot.session.post(
-			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/add", 
+			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/add",
+			headers={
+				"Content-Type": "application/json",
+				"X-API-Token": os.getenv("API_TOKEN")
+			},
 			json={
-				"api_token": os.getenv("API_TOKEN"),
 				"question_id": id,
 				"question_content": question,
 				"question_player": interaction.user.name,
@@ -528,8 +538,11 @@ async def remove_help_question(interaction: discord.Interaction, id: str):
 		# Make API request to remove the help question
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/remove", 
+			headers={
+				"Content-Type": "application/json",
+				"X-API-Token": os.getenv("API_TOKEN")
+			},
 			json={
-				"api_token": os.getenv("API_TOKEN"),
 				"question_id": id
 			}
 		) as response:
@@ -575,9 +588,10 @@ async def list_help_questions(interaction: discord.Interaction):
 		# Make API request to list the help questions
 		async with bot.session.post(
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/list", 
-			json={
-				"api_token": os.getenv("API_TOKEN")
-			}
+			headers={
+				"Content-Type": "application/json",
+				"X-API-Token": os.getenv("API_TOKEN")
+			},
 		) as response:
 			if response.status == 200:
 				data = await response.json()
