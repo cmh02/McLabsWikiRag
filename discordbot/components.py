@@ -103,9 +103,12 @@ class HelpQuestionPanel(View):
 
 			# Make API request to claim the help question
 			async with self.bot.session.post(
-				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/claim", 
+				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/claim",
+				headers={
+					"Content-Type": "application/json",
+					"X-API-Token": os.getenv("API_TOKEN")
+				},
 				json={
-					"api_token": os.getenv("API_TOKEN"),
 					"question_id": int(self.questionId),
 					"claimed_by": interaction.user.display_name
 				}
@@ -152,8 +155,11 @@ class HelpQuestionPanel(View):
 			# Make API request to unclaim the help question
 			async with self.bot.session.post(
 				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/unclaim", 
+				headers={
+					"Content-Type": "application/json",
+					"X-API-Token": os.getenv("API_TOKEN")
+				},
 				json={
-					"api_token": os.getenv("API_TOKEN"),
 					"question_id": int(self.questionId)
 				}
 			) as response:
@@ -199,8 +205,11 @@ class HelpQuestionPanel(View):
 			# Make API request to remove the help question
 			async with self.bot.session.post(
 				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/remove", 
+				headers={
+					"Content-Type": "application/json",
+					"X-API-Token": os.getenv("API_TOKEN")
+				},
 				json={
-					"api_token": os.getenv("API_TOKEN"),
 					"question_id": int(self.questionId)
 				}
 			) as response:
