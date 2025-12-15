@@ -20,7 +20,7 @@ logger = logging.getLogger("MCL_API_Logger")
 Security Utilities
 '''
 
-def verifyRequest(request: Request) -> None:
+def verifyRequest(request: Request, verifyToken: bool=True, verifyIpAddress: bool=True) -> None:
 	'''
 	# verifyRequest
 
@@ -34,11 +34,13 @@ def verifyRequest(request: Request) -> None:
 	'''
 
 	# Verify API token
-	verifyApiToken(request=request)
+	if verifyToken:
+		verifyApiToken(request=request)
 
 	# Verify IP address
-	verifyIp(request=request)
-
+	if verifyIpAddress:
+		verifyIp(request=request)
+		
 def verifyApiToken(request: Request) -> None:
 	'''
 	# verifyApiToken
