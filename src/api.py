@@ -33,6 +33,7 @@ from google import genai
 # MCL Packages
 from src.rag import MCL_WikiRag
 from src.logger import MCL_Logger
+from src.security import verifyRequest
 from src.docfetch import MCL_WikiEmbedder
 from src.helpmanager import MCL_HelpManager
 from src.schemas import BaseRequestSchema, BaseHelpQuestionSchema, QuestionSchema
@@ -97,24 +98,14 @@ This endpoint is used solely for waking up the API when asleep on Railway. It st
 @appLimiter.limit("50/minute")
 def wakeup(request: Request, body: BaseRequestSchema):
 	
+	# Verify request
+	verifyRequest(request=request)
+
 	# Get the request data
 	data: Dict = body.model_dump()
 
 	# Log for debugging
 	app.state.logger.debug(f"Received wakeup request! \nRequest: {request}")
-
-	# Check API token
-	if data.get("api_token") != os.getenv("API_TOKEN"):
-			
-		# Print for debugging
-		if os.environ.get("MCL_DEBUG", "FALSE") == "TRUE":
-			app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
-				  
-		# Return error
-		raise HTTPException(
-			status_code=401, 
-			detail="Invalid API token"
-		)
 
 	# Return success message
 	return JSONResponse(
@@ -148,23 +139,14 @@ class RagQuerySchema(BaseRequestSchema):
 @appLimiter.limit("100/minute")
 def query(request: Request, body: RagQuerySchema):
 
+	# Verify request
+	verifyRequest(request=request)
+
 	# Get the request data
 	data: Dict = body.model_dump()
 
 	# Print for debugging
 	app.state.logger.debug(f"Received query request! \nRequest: {request}")
-
-	# Check API token
-	if data.get("api_token") != os.getenv("API_TOKEN"):
-            
-		# Log invalid attempt
-		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
-                  
-		# Return error
-		raise HTTPException(
-			status_code=401, 
-			detail="Invalid API token"
-		)
 
 	# Get the question from the request
 	question = data.get("question")
@@ -242,21 +224,12 @@ class AddHelpQuestionSchema(BaseHelpQuestionSchema):
 @appLimiter.limit("100/minute")
 def add_help_question(request: Request, body: AddHelpQuestionSchema):
 	
+	# Verify request
+	verifyRequest(request=request)
+
 	# Get request data
 	data: Dict = body.model_dump()
 	
-	# Check API token
-	if data.get("api_token") != os.getenv("API_TOKEN"):
-            
-		# Log invalid attempt
-		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
-                  
-		# Return error
-		raise HTTPException(
-			status_code=401, 
-			detail="Invalid API token"
-		)
-
 	# Add the help question
 	success = MCL_HelpManager().addQuestion(
 		questionID=data.get("question_id"),
@@ -288,20 +261,11 @@ for removing help questions from the queue, not to answer them.
 @appLimiter.limit("100/minute")
 def remove_help_question(request: Request, body: BaseHelpQuestionSchema):
 	
+	# Verify request
+	verifyRequest(request=request)
+
 	# Get request data
 	data: Dict = body.model_dump()
-	
-	# Check API token
-	if data.get("api_token") != os.getenv("API_TOKEN"):
-            
-		# Log invalid attempt
-		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
-                  
-		# Return error
-		raise HTTPException(
-			status_code=401, 
-			detail="Invalid API token"
-		)
 
 	# Remove the help question
 	success = MCL_HelpManager().removeQuestion(
@@ -347,20 +311,11 @@ class AnswerHelpQuestionSchema(BaseHelpQuestionSchema):
 @appLimiter.limit("100/minute")
 def answer_help_question(request: Request, body: AnswerHelpQuestionSchema):
 	
+	# Verify request
+	verifyRequest(request=request)
+
 	# Get request data
 	data: Dict = body.model_dump()
-	
-	# Check API token
-	if data.get("api_token") != os.getenv("API_TOKEN"):
-            
-		# Log invalid attempt
-		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
-                  
-		# Return error
-		raise HTTPException(
-			status_code=401, 
-			detail="Invalid API token"
-		)
 
 	# Answer the help question
 	success = MCL_HelpManager().answerQuestion(
@@ -404,20 +359,11 @@ class ClaimHelpQuestionSchema(BaseHelpQuestionSchema):
 @appLimiter.limit("100/minute")
 def claim_help_question(request: Request, body: ClaimHelpQuestionSchema):
 	
+	# Verify request
+	verifyRequest(request=request)
+
 	# Get request data
 	data: Dict = body.model_dump()
-	
-	# Check API token
-	if data.get("api_token") != os.getenv("API_TOKEN"):
-            
-		# Log invalid attempt
-		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
-                  
-		# Return error
-		raise HTTPException(
-			status_code=401, 
-			detail="Invalid API token"
-		)
 
 	# Claim the help question
 	success = MCL_HelpManager().claimQuestion(
@@ -448,20 +394,11 @@ question as no longer being worked on by a staff member in the case they are una
 @appLimiter.limit("100/minute")
 def unclaim_help_question(request: Request, body: BaseHelpQuestionSchema):
 	
+	# Verify request
+	verifyRequest(request=request)
+
 	# Get request data
 	data: Dict = body.model_dump()
-	
-	# Check API token
-	if data.get("api_token") != os.getenv("API_TOKEN"):
-            
-		# Log invalid attempt
-		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
-                  
-		# Return error
-		raise HTTPException(
-			status_code=401, 
-			detail="Invalid API token"
-		)
 
 	# Unclaim the help question
 	success = MCL_HelpManager().unclaimQuestion(
@@ -489,20 +426,11 @@ This endpoint will allow for listing all current help questions in the system.
 @appLimiter.limit("100/minute")
 def list_help_questions(request: Request, body: BaseRequestSchema):
 	
+	# Verify request
+	verifyRequest(request=request)
+
 	# Get request data
 	data: Dict = body.model_dump()
-	
-	# Check API token
-	if data.get("api_token") != os.getenv("API_TOKEN"):
-            
-		# Log invalid attempt
-		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
-                  
-		# Return error
-		raise HTTPException(
-			status_code=401, 
-			detail="Invalid API token"
-		)
 
 	# Get all help questions
 	questions = MCL_HelpManager().getAllQuestions()
