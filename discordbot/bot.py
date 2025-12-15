@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, HTTPException
 from typing import Dict
 
+from src.security import verifyRequest
 from src.schemas import BaseRequestSchema
 from discordbot.logger import MCL_Logger
 from discordbot.components import AdminHelpPanel, AdminHelpEmbed
@@ -43,24 +44,15 @@ def wakeup(request: Request, body: BaseRequestSchema):
 	This endpoint is used solely for waking up the API when asleep on Railway. It still needs authentication.
 	'''
 	
+	# Verify request
+	verifyRequest(request=request)
+
 	# Get the request data
 	data: Dict = body.model_dump()
 
 	# Log wakeup attempt
 	app.state.logger.debug(f"Discord bot wakeup request received!")
 	
-	# Check API token
-	if data.get("api_token") != os.getenv("API_TOKEN"):
-			
-		# Log invalid attempt
-		app.state.logger.debug(f"Invalid API token attempt: {data.get('api_token')}")
-				  
-		# Return error
-		raise HTTPException(
-			status_code=401, 
-			detail="Invalid API token"
-		)
-
 	# Return success message
 	return JSONResponse(
 		status_code=200,
@@ -79,6 +71,9 @@ async def update_help_system(request: Request, body: UpdateHelpSystemRequest):
 
 	Periodically syncs help questions from the API to Discord threads.
 	'''
+
+	# Verify request
+	verifyRequest(request=request)
 
 	# Get the request data
 	data: Dict = body.model_dump()
