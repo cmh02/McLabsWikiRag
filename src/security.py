@@ -20,6 +20,25 @@ logger = logging.getLogger("MCL_API_Logger")
 Security Utilities
 '''
 
+def verifyRequest(request: Request) -> None:
+	'''
+	# verifyRequest
+
+	Verifies both the API token and IP address of the incoming request.
+
+	## Parameters
+	- request: The incoming FastAPI request object.
+
+	## Raises
+	- HTTPException: If the API token is missing/invalid or the IP address is not allowed.
+	'''
+
+	# Verify API token
+	verifyApiToken(request=request)
+
+	# Verify IP address
+	verifyIp(request=request)
+
 def verifyApiToken(request: Request) -> None:
 	'''
 	# verifyApiToken
@@ -80,7 +99,7 @@ def verifyIp(request: Request) -> None:
 
 	# Check if client IP is in allowed list
 	if client_ip not in allowed_ips:
-		
+
 		# Print for debugging
 		logger.warning(f"Unauthorized IP address attempt: {client_ip}")
 
