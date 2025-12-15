@@ -367,7 +367,7 @@ class MCL_HelpManager():
 			url=f"https://{os.getenv('RAILWAY_DISCORD_DOMAIN')}/update",
 			headers={
 				"Content-Type": "application/json",
-				"X-API-Token": os.getenv("API_TOKEN")
+				"Authorization": os.getenv("API_TOKEN")
 			},
 			json=jsonable_encoder({ 
 				 "questions": [QuestionSchema(id=questionId, **details).model_dump() for questionId, details in questions.items()] 

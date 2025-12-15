@@ -40,7 +40,7 @@ def verifyRequest(request: Request, verifyToken: bool=True, verifyIpAddress: boo
 	# Verify IP address
 	if verifyIpAddress:
 		verifyIp(request=request)
-		
+
 def verifyApiToken(request: Request) -> None:
 	'''
 	# verifyApiToken
@@ -55,7 +55,7 @@ def verifyApiToken(request: Request) -> None:
 	'''
 
 	# Get request header token
-	token = request.headers.get("X-API-Token")
+	token = request.headers.get("Authorization")
 
 	# Check if token is missing
 	if not token:

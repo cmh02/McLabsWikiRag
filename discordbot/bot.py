@@ -207,7 +207,7 @@ class MclBot(commands.Bot):
 				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/wakeup",
 				headers={
 					"Content-Type": "application/json",
-					"X-API-Token": os.getenv("API_TOKEN")
+					"Authorization": os.getenv("API_TOKEN")
 				}
 			) as response:
 				
@@ -353,7 +353,7 @@ async def on_message(message: discord.Message):
 				url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/answer",
 				headers={
 					"Content-Type": "application/json",
-					"X-API-Token": os.getenv("API_TOKEN")
+					"Authorization": os.getenv("API_TOKEN")
 				},
 				json={
 					"question_id": questionId,
@@ -410,7 +410,7 @@ async def ask(interaction: discord.Interaction, question: str):
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/query", 
 			headers={
 				"Content-Type": "application/json",
-				"X-API-Token": os.getenv("API_TOKEN")
+				"Authorization": os.getenv("API_TOKEN")
 			},
 			json={
 				"question": question, 
@@ -485,7 +485,7 @@ async def add_help_question(interaction: discord.Interaction, id: str, question:
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/add",
 			headers={
 				"Content-Type": "application/json",
-				"X-API-Token": os.getenv("API_TOKEN")
+				"Authorization": os.getenv("API_TOKEN")
 			},
 			json={
 				"question_id": id,
@@ -537,7 +537,7 @@ async def remove_help_question(interaction: discord.Interaction, id: str):
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/remove", 
 			headers={
 				"Content-Type": "application/json",
-				"X-API-Token": os.getenv("API_TOKEN")
+				"Authorization": os.getenv("API_TOKEN")
 			},
 			json={
 				"question_id": id
@@ -587,7 +587,7 @@ async def list_help_questions(interaction: discord.Interaction):
 			url=f"https://{os.getenv('RAILWAY_API_DOMAIN')}/help/list", 
 			headers={
 				"Content-Type": "application/json",
-				"X-API-Token": os.getenv("API_TOKEN")
+				"Authorization": os.getenv("API_TOKEN")
 			},
 		) as response:
 			if response.status == 200:
