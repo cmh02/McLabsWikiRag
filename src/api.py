@@ -90,9 +90,13 @@ app.state.limiter = appLimiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 '''
-WAKEUP ENDPOINT
+# WAKEUP ENDPOINT
 
 This endpoint is used solely for waking up the API when asleep on Railway. It still needs authentication.
+
+## Request Headers
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
 '''
 @app.post("/wakeup")
 @appLimiter.limit("50/minute")
@@ -111,10 +115,15 @@ def wakeup(request: Request):
 	)
 
 '''
-QUESTION ENDPOINT
+# RAG QUERY ENDPOINT
 
 There is a singular endpoint for querying the RAG system. Users can POST to /query with a JSON body containing:
-- "api_token": Your API token for authentication
+
+## Request Headers
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
 - "question": The question you want to ask (max 256 characters)
 - "include_context": (optional) Boolean to include context chunks in the response
 '''
@@ -194,10 +203,15 @@ def query(request: Request, body: RagQuerySchema):
 	)
 
 '''
-ADD HELP QUESTION ENDPOINT
+# ADD HELP QUESTION ENDPOINT
 
 This endpoint will allow for adding help questions via question ID.
-- "api_token": Your API token for authentication
+
+## Request Headers
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
 - "question_id": The ID of the help question to add
 - "question_player": The player who asked the help question
 - "question_content": The content of the help question to add
@@ -246,11 +260,16 @@ def add_help_question(request: Request, body: AddHelpQuestionSchema):
 	)
 
 '''
-REMOVE HELP QUESTION ENDPOINT
+# REMOVE HELP QUESTION ENDPOINT
 
 This endpoint will allow for removing help questions via question ID. This endpoint is specifically
 for removing help questions from the queue, not to answer them.
-- "api_token": Your API token for authentication
+
+## Request Headers
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
 - "question_id": The ID of the help question to remove
 '''
 
@@ -281,11 +300,16 @@ def remove_help_question(request: Request, body: BaseHelpQuestionSchema):
 	)
 
 '''
-ANSWER HELP QUESTION ENDPOINT
+# ANSWER HELP QUESTION ENDPOINT
 
 This endpoint will allow for answering help questions via question ID. This should be used to provide an
 answer that will be later retrieved by the in-game help system.
-- "api_token": Your API token for authentication
+
+## Request Headers
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
 - "question_id": The ID of the help question to answer
 - "answer": The answer to the help question
 - "answered_by": The name of the staff member answering the question
@@ -333,11 +357,16 @@ def answer_help_question(request: Request, body: AnswerHelpQuestionSchema):
 	)
 
 '''
-CLAIM HELP QUESTION ENDPOINT
+# CLAIM HELP QUESTION ENDPOINT
 
 This endpoint will allow for claiming help questions via question ID. This should be used to mark a help
 question as being worked on by a staff member.
-- "api_token": Your API token for authentication
+
+## Request Headers
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
 - "question_id": The ID of the help question to claim
 - "claimed_by": The name of the staff member claiming the question
 '''
@@ -380,11 +409,16 @@ def claim_help_question(request: Request, body: ClaimHelpQuestionSchema):
 	)
 
 '''
-UNCLAIM HELP QUESTION ENDPOINT
+# UNCLAIM HELP QUESTION ENDPOINT
 
 This endpoint will allow for unclaiming help questions via question ID. This should be used to mark a help
 question as no longer being worked on by a staff member in the case they are unable to complete it.
-- "api_token": Your API token for authentication
+
+## Request Headers
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
 - "question_id": The ID of the help question to unclaim
 '''
 @app.post("/help/unclaim")
@@ -414,10 +448,13 @@ def unclaim_help_question(request: Request, body: BaseHelpQuestionSchema):
 	)
 
 '''
-LIST HELP QUESTIONS ENDPOINT
+# LIST HELP QUESTIONS ENDPOINT
 
 This endpoint will allow for listing all current help questions in the system.
-- "api_token": Your API token for authentication
+
+## Request Headers
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
 '''
 @app.post("/help/list")
 @appLimiter.limit("100/minute")
