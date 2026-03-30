@@ -471,3 +471,19 @@ def list_help_questions(request: Request):
 		status_code=200,
 		content=jsonable_encoder({"questions": [QuestionSchema(id=questionId, **details).model_dump() for questionId, details in questions.items()]})
 	)
+
+'''
+LONG POLL ENDPOINT
+
+This endpoint will allow for long-polling for help system updates. This is primarily used by the Minecraft server to get real-time updates.
+
+## Request Headers
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+'''
+@app.get("/help/updatepoll")
+@appLimiter.limit("30/minute")
+def help_update_poll(request: Request):
+	
+	# Verify request
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
