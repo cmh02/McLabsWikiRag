@@ -29,6 +29,10 @@ class QuestionStatus(Enum):
 	CLAIMED = "CLAIMED"
 	ANSWERED = "ANSWERED"
 
+class UpdateSource(Enum):
+	MINECRAFT = "MINECRAFT"
+	DISCORD = "DISCORD"
+
 '''
 HELP MANAGER
 '''
@@ -137,13 +141,14 @@ class MCL_HelpManager():
 		except Exception as e:
 			self.logger.error(f"Failed to save help questions to JSON file: {filePath}. Error: {e}")
 
-	def addQuestion(self, questionID: int, questionPlayer: str, questionContent: str) -> bool:
+	def addQuestion(self, source: UpdateSource, questionID: int, questionPlayer: str, questionContent: str) -> bool:
 		'''
 		## Add New Question
 
 		Adds a help question to the help questions dictionary.
 
 		### Parameters
+		- source (UpdateSource): The source of the question (MINECRAFT or DISCORD).
 		- questionID (int): The ID of the help question.
 		- questionPlayer (str): The player who asked the help question.
 		- questionContent (str): The content of the help question.
@@ -181,16 +186,21 @@ class MCL_HelpManager():
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
 
+		# If update is via discord, notify minecraft server to add question
+		if source == UpdateSource.DISCORD:
+			self.executor.submit(self.updateMinecraft)
+
 		# Return success
 		return True
 
-	def removeQuestion(self, questionID: int) -> bool:
+	def removeQuestion(self, source: UpdateSource, questionID: int) -> bool:
 		'''
 		# Remove Question
 
 		Removes a help question from the help questions dictionary.
 
 		## Parameters
+		- source (UpdateSource): The source of the removal (MINECRAFT or DISCORD).
 		- questionID (int): The ID of the help question to remove.
 
 		### Returns
@@ -214,16 +224,21 @@ class MCL_HelpManager():
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
 
+		# If update is via discord, notify minecraft server to remove question
+		if source == UpdateSource.DISCORD:
+			self.executor.submit(self.updateMinecraft)
+
 		# Return success
 		return True
 	
-	def answerQuestion(self, questionID: int, answeredBy: str, answerContent: str) -> bool:
+	def answerQuestion(self, source: UpdateSource, questionID: int, answeredBy: str, answerContent: str) -> bool:
 		'''
 		# Answer Question
 
 		Answers a help question in the help questions dictionary.
 
 		## Parameters
+		- source (UpdateSource): The source of the answer (MINECRAFT or DISCORD).
 		- questionID (int): The ID of the help question to answer.
 		- answeredBy (str): The staff answering the help question.
 		- answerContent (str): The content of the answer.
@@ -256,16 +271,21 @@ class MCL_HelpManager():
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
 
+		# If update is via discord, notify minecraft server to answer question
+		if source == UpdateSource.DISCORD:
+			self.executor.submit(self.updateMinecraft)
+
 		# Return success
 		return True
 	
-	def claimQuestion(self, questionID: int, claimedBy: str) -> bool:
+	def claimQuestion(self, source: UpdateSource, questionID: int, claimedBy: str) -> bool:
 		'''
 		# Claim Question
 
 		Claims a help question in the help questions dictionary.
 
 		## Parameters
+		- source (UpdateSource): The source of the claim (MINECRAFT or DISCORD).
 		- questionID (int): The ID of the help question to claim.
 		- claimedBy (str): The staff claiming the help question.
 
@@ -297,16 +317,21 @@ class MCL_HelpManager():
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
 
+		# If update is via discord, notify minecraft server to claim question
+		if source == UpdateSource.DISCORD:
+			self.executor.submit(self.updateMinecraft)
+
 		# Return success
 		return True
 
-	def unclaimQuestion(self, questionID: int) -> bool:
+	def unclaimQuestion(self, source: UpdateSource, questionID: int) -> bool:
 		'''
 		# Unclaim Question
 
 		Unclaims a help question in the help questions dictionary.
 
 		## Parameters
+		- source (UpdateSource): The source of the unclaim (MINECRAFT or DISCORD).
 		- questionID (int): The ID of the help question to unclaim.
 
 		### Returns
@@ -330,6 +355,10 @@ class MCL_HelpManager():
 
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
+
+		# If update is via discord, notify minecraft server to unclaim question
+		if source == UpdateSource.DISCORD:
+			self.executor.submit(self.updateMinecraft)
 
 		# Return success
 		return True
@@ -374,3 +403,12 @@ class MCL_HelpManager():
 				 "questions": [QuestionSchema(id=questionId, **details).model_dump() for questionId, details in questions.items()] 
 			})
 		)
+
+	def updateMinecraftOutboundQueue(self, update: Dict):
+		'''
+		# Update Minecraft Outbound Queue
+
+		Updates the outbound queue for minecraft server long-polling with a given help question update.
+		'''
+
+		pass
