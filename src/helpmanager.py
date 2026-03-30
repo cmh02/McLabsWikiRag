@@ -188,7 +188,8 @@ class MCL_HelpManager():
 
 		# If update is via discord, notify minecraft server to add question
 		if source == UpdateSource.DISCORD:
-			self.executor.submit(self.updateMinecraft)
+			temp = None
+			# self.executor.submit(self.updateMinecraft)
 
 		# Return success
 		return True
@@ -226,7 +227,8 @@ class MCL_HelpManager():
 
 		# If update is via discord, notify minecraft server to remove question
 		if source == UpdateSource.DISCORD:
-			self.executor.submit(self.updateMinecraft)
+			temp=None
+			# self.executor.submit(self.updateMinecraft)
 
 		# Return success
 		return True
@@ -273,7 +275,8 @@ class MCL_HelpManager():
 
 		# If update is via discord, notify minecraft server to answer question
 		if source == UpdateSource.DISCORD:
-			self.executor.submit(self.updateMinecraft)
+			temp=None
+			# self.executor.submit(self.updateMinecraft)
 
 		# Return success
 		return True
@@ -319,7 +322,8 @@ class MCL_HelpManager():
 
 		# If update is via discord, notify minecraft server to claim question
 		if source == UpdateSource.DISCORD:
-			self.executor.submit(self.updateMinecraft)
+			temp=None
+			# self.executor.submit(self.updateMinecraft)
 
 		# Return success
 		return True
@@ -358,7 +362,8 @@ class MCL_HelpManager():
 
 		# If update is via discord, notify minecraft server to unclaim question
 		if source == UpdateSource.DISCORD:
-			self.executor.submit(self.updateMinecraft)
+			temp=None
+			# self.executor.submit(self.updateMinecraft)
 
 		# Return success
 		return True
