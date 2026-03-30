@@ -231,9 +231,6 @@ class AddHelpQuestionSchema(BaseHelpQuestionSchema):
 
 	# Content of the help question
 	question_content: str = Field(description="The content of the help question.")
-
-	# Source of the help question (either minecraft or discord)
-	question_source: UpdateSource = Field(description="The source of the help question.")
 	
 @app.post("/help/add")
 @appLimiter.limit("100/minute")
@@ -276,6 +273,7 @@ for removing help questions from the queue, not to answer them.
 
 ## JSON Body Parameters
 - "question_id": The ID of the help question to remove
+- "question_source": The source of the help question (either minecraft or discord)
 '''
 
 @app.post("/help/remove")
@@ -316,6 +314,7 @@ answer that will be later retrieved by the in-game help system.
 
 ## JSON Body Parameters
 - "question_id": The ID of the help question to answer
+- "question_source": The source of the help question (either minecraft or discord)
 - "answer": The answer to the help question
 - "answered_by": The name of the staff member answering the question
 '''
@@ -373,6 +372,7 @@ question as being worked on by a staff member.
 
 ## JSON Body Parameters
 - "question_id": The ID of the help question to claim
+- "question_source": The source of the help question (either minecraft or discord)
 - "claimed_by": The name of the staff member claiming the question
 '''
 
@@ -425,6 +425,7 @@ question as no longer being worked on by a staff member in the case they are una
 
 ## JSON Body Parameters
 - "question_id": The ID of the help question to unclaim
+- "question_source": The source of the help question (either minecraft or discord)
 '''
 @app.post("/help/unclaim")
 @appLimiter.limit("100/minute")

@@ -545,7 +545,8 @@ async def remove_help_question(interaction: discord.Interaction, id: str):
 				"Authorization": os.getenv("API_TOKEN")
 			},
 			json={
-				"question_id": id
+				"question_id": id,
+				"question_source": os.getenv("USER-AGENT-DISCORD-BOT")
 			}
 		) as response:
 			if response.status == 200:

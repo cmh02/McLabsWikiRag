@@ -111,6 +111,7 @@ class HelpQuestionPanel(View):
 				},
 				json={
 					"question_id": int(self.questionId),
+					"question_source": os.getenv("USER-AGENT-DISCORD-BOT"),
 					"claimed_by": interaction.user.display_name
 				}
 			) as response:
@@ -162,7 +163,8 @@ class HelpQuestionPanel(View):
 					"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 				},
 				json={
-					"question_id": int(self.questionId)
+					"question_id": int(self.questionId),
+					"question_source": os.getenv("USER-AGENT-DISCORD-BOT")
 				}
 			) as response:
 				if response.status == 200:
@@ -213,7 +215,8 @@ class HelpQuestionPanel(View):
 					"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 				},
 				json={
-					"question_id": int(self.questionId)
+					"question_id": int(self.questionId),
+					"question_source": os.getenv("USER-AGENT-DISCORD-BOT")
 				}
 			) as response:
 				if response.status == 200:
