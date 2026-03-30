@@ -492,6 +492,7 @@ async def add_help_question(interaction: discord.Interaction, id: str, question:
 				"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 			},
 			json={
+				"question_source": os.getenv("USER-AGENT-DISCORD-BOT"),
 				"question_id": id,
 				"question_content": question,
 				"question_player": interaction.user.name,

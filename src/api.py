@@ -35,7 +35,7 @@ from src.rag import MCL_WikiRag
 from src.logger import MCL_Logger
 from src.security import verifyRequest
 from src.docfetch import MCL_WikiEmbedder
-from src.helpmanager import MCL_HelpManager
+from src.helpmanager import MCL_HelpManager, UpdateSource
 from src.schemas import BaseHelpQuestionSchema, QuestionSchema
 
 '''
@@ -216,6 +216,7 @@ This endpoint will allow for adding help questions via question ID.
 - "question_player": The player who asked the help question
 - "question_content": The content of the help question to add
 - "question_time": The time the help question was asked
+- "question_source": The source of the help question (either minecraft or discord)
 '''
 
 class AddHelpQuestionSchema(BaseHelpQuestionSchema):
@@ -230,6 +231,9 @@ class AddHelpQuestionSchema(BaseHelpQuestionSchema):
 
 	# Content of the help question
 	question_content: str = Field(description="The content of the help question.")
+
+	# Source of the help question (either minecraft or discord)
+	question_source: UpdateSource = Field(description="The source of the help question.")
 	
 @app.post("/help/add")
 @appLimiter.limit("100/minute")
@@ -243,6 +247,7 @@ def add_help_question(request: Request, body: AddHelpQuestionSchema):
 	
 	# Add the help question
 	success = MCL_HelpManager().addQuestion(
+		source=data.get("question_source"),
 		questionID=data.get("question_id"),
 		questionPlayer=data.get("question_player"),
 		questionContent=data.get("question_content"),
