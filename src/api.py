@@ -288,6 +288,7 @@ def remove_help_question(request: Request, body: BaseHelpQuestionSchema):
 
 	# Remove the help question
 	success = MCL_HelpManager().removeQuestion(
+		sourrce=data.get("question_source"),
 		questionID=data.get("question_id")
 	)
 
@@ -344,6 +345,7 @@ def answer_help_question(request: Request, body: AnswerHelpQuestionSchema):
 
 	# Answer the help question
 	success = MCL_HelpManager().answerQuestion(
+		source=data.get("question_source"),
 		questionID=data.get("question_id"),
 		answeredBy=data.get("answered_by"),
 		answerContent=data.get("answer")
@@ -398,6 +400,7 @@ def claim_help_question(request: Request, body: ClaimHelpQuestionSchema):
 
 	# Claim the help question
 	success = MCL_HelpManager().claimQuestion(
+		source=data.get("question_source"),
 		questionID=data.get("question_id"),
 		claimedBy=data.get("claimed_by")
 	)
@@ -439,6 +442,7 @@ def unclaim_help_question(request: Request, body: BaseHelpQuestionSchema):
 
 	# Unclaim the help question
 	success = MCL_HelpManager().unclaimQuestion(
+		source=data.get("question_source"),
 		questionID=data.get("question_id")
 	)
 
