@@ -13,25 +13,12 @@ import os
 import json
 import logging
 import requests
-from enum import Enum
 from typing import Dict
-from datetime import datetime
 from src.schemas import QuestionSchema
 from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
 
-'''
-QUESTION STATUS ENUM
-'''
-
-class QuestionStatus(Enum):
-	OPEN = "OPEN"
-	CLAIMED = "CLAIMED"
-	ANSWERED = "ANSWERED"
-
-class UpdateSource(Enum):
-	MINECRAFT = "MINECRAFT"
-	DISCORD = "DISCORD"
+from src.enum import QuestionStatus, UpdateSource
 
 '''
 HELP MANAGER

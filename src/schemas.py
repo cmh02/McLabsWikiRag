@@ -12,7 +12,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 from fastapi import Header
 
-from src.helpmanager import UpdateSource
+from src.enum import UpdateSource
 
 '''
 MODEL DEFINITIONS

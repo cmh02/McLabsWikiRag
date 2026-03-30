@@ -35,7 +35,7 @@ from src.rag import MCL_WikiRag
 from src.logger import MCL_Logger
 from src.security import verifyRequest
 from src.docfetch import MCL_WikiEmbedder
-from src.helpmanager import MCL_HelpManager, UpdateSource
+from src.helpmanager import MCL_HelpManager
 from src.schemas import BaseHelpQuestionSchema, QuestionSchema
 
 '''
