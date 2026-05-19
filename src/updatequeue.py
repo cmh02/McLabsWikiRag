@@ -14,7 +14,7 @@ import json
 import logging
 import requests
 import datetime
-from typing import Dict
+from typing import Dict, Tuple
 from src.schemas import QuestionSchema
 from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
@@ -108,7 +108,7 @@ class MCL_UpdateQueue():
 		self.updates[timestamp] = updateData
 		self.logger.info(f"Added update with ID {updateData.get('id', 'N/A')} to queue at timestamp {timestamp}.")
 
-	def getNexUpdate(self) -> Dict:
+	def getNextUpdate(self) -> Tuple[float, Dict]:
 		'''
 		# Get Next Update
 
@@ -126,7 +126,7 @@ class MCL_UpdateQueue():
 		
 		# Get the corresponding update data
 		nextUpdate = self.updates[nextTimestamp]
-		return nextUpdate
+		return nextTimestamp, nextUpdate
 	
 	def removeUpdate(self, updateTimestamp: float):
 		'''

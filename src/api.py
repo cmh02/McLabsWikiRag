@@ -10,6 +10,7 @@ MODULE IMPORTS
 
 # System
 import os
+import asyncio
 import logging
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -501,7 +502,47 @@ This endpoint will allow for long-polling for help system updates. This is prima
 '''
 @app.get("/help/updatepoll")
 @appLimiter.limit("30/minute")
-def help_update_poll(request: Request):
+async def help_update_poll(request: Request, timeout: Optional[int] = 30):
 	
 	# Verify request
 	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
+
+	# Wait until deadline has passed
+	deadline = datetime.now().timestamp() + timeout
+	while datetime.now().timestamp() < deadline:
+
+		# Check if the client disconnected
+		if await request.is_disconnected():
+			app.state.logger.debug("Client disconnected from long poll")
+			return JSONResponse(
+				status_code=200,
+				content={"status": "client disconnected"}
+			)
+
+		# Check if there are any updates in queue ready
+		timestamp, update = MCL_UpdateQueue().getNextUpdate()
+		if update:
+
+			# Log the update for debugging
+			app.state.logger.debug(f"Sending update to client: {update}")
+
+			# Remove the update from the queue
+			MCL_UpdateQueue().removeUpdate(updateTimestamp=timestamp)
+
+			# Return the update
+			return JSONResponse(
+				status_code=200,
+				content={
+					"timestamp": timestamp,
+					"update": update
+				}
+			)
+		
+		# Sleep for a short bit of time
+		await asyncio.sleep(1)
+
+	# If deadline passes, timeout w no changes
+	return JSONResponse(
+		status_code=204,
+		content={"status": "timeout"}
+	)
