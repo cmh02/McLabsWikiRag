@@ -19,6 +19,7 @@ from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
 
 from src.enum import QuestionStatus, UpdateSource
+from src.updatequeue import MCL_UpdateQueue
 
 '''
 HELP MANAGER
@@ -175,7 +176,8 @@ class MCL_HelpManager():
 
 		# If update is via discord, notify minecraft server to add question
 		if source == UpdateSource.DISCORD:
-			self.executor.submit(self.updateMinecraft)
+			updateData = QuestionSchema(id=questionID, **self.helpQuestions[questionID]).model_dump()
+			MCL_UpdateQueue().addUpdate(updateData=updateData)
 
 		# Return success
 		return True
@@ -213,7 +215,8 @@ class MCL_HelpManager():
 
 		# If update is via discord, notify minecraft server to remove question
 		if source == UpdateSource.DISCORD:
-			self.executor.submit(self.updateMinecraft)
+			updateData = QuestionSchema(id=questionID, **self.helpQuestions[questionID]).model_dump()
+			MCL_UpdateQueue().addUpdate(updateData=updateData)
 
 		# Return success
 		return True
@@ -260,7 +263,8 @@ class MCL_HelpManager():
 
 		# If update is via discord, notify minecraft server to answer question
 		if source == UpdateSource.DISCORD:
-			self.executor.submit(self.updateMinecraft)
+			updateData = QuestionSchema(id=questionID, **self.helpQuestions[questionID]).model_dump()
+			MCL_UpdateQueue().addUpdate(updateData=updateData)
 
 		# Return success
 		return True
@@ -304,9 +308,10 @@ class MCL_HelpManager():
 		# Make call to update Discord in new thread
 		self.executor.submit(self.updateDiscord)
 
-		# If update is via discord, notify minecraft server to claim question
+		# If update is via discord, queue the update for minecraft server long-polling
 		if source == UpdateSource.DISCORD:
-			self.executor.submit(self.updateMinecraft)
+			updateData = QuestionSchema(id=questionID, **self.helpQuestions[questionID]).model_dump()
+			MCL_UpdateQueue().addUpdate(updateData=updateData)
 
 		# Return success
 		return True
@@ -345,7 +350,8 @@ class MCL_HelpManager():
 
 		# If update is via discord, notify minecraft server to unclaim question
 		if source == UpdateSource.DISCORD:
-			self.executor.submit(self.updateMinecraft)
+			updateData = QuestionSchema(id=questionID, **self.helpQuestions[questionID]).model_dump()
+			MCL_UpdateQueue().addUpdate(updateData=updateData)
 
 		# Return success
 		return True
@@ -391,24 +397,3 @@ class MCL_HelpManager():
 			})
 		)
 		return True
-
-	def updateMinecraft(self):
-		'''
-		# Update Minecraft Server
-
-		Updates the Minecraft server with the current help questions for long-polling.
-
-		### Returns
-		- bool: True if the Minecraft server was updated successfully. Exception will occur otherwise.
-		'''
-
-		return True
-
-	def updateMinecraftOutboundQueue(self, update: Dict):
-		'''
-		# Update Minecraft Outbound Queue
-
-		Updates the outbound queue for minecraft server long-polling with a given help question update.
-		'''
-
-		pass
