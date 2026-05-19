@@ -36,6 +36,7 @@ from src.logger import MCL_Logger
 from src.security import verifyRequest
 from src.docfetch import MCL_WikiEmbedder
 from src.helpmanager import MCL_HelpManager
+from src.updatequeue import MCL_UpdateQueue
 from src.schemas import BaseHelpQuestionSchema, QuestionSchema
 
 '''
@@ -66,6 +67,10 @@ async def lifespan(app: FastAPI):
 	MCL_HelpManager().initialize()
 	MCL_HelpManager().loadQuestionsFromJson(filePath=os.getenv("HELP_QUESTIONS_FILE_PATH", "data/help_questions.json"))
 
+	# Initialize Update Queue
+	MCL_UpdateQueue().initialize()
+	MCL_UpdateQueue.loadFromFile(filePath=os.getenv("UPDATE_QUEUE_FILE_PATH", "data/update_queue.json"))
+
 	# Log startup
 	app.state.logger.info(f"MCL RAG API started with PID {os.getpid()}!")
 
@@ -74,6 +79,9 @@ async def lifespan(app: FastAPI):
 
 	# Log shutdown
 	app.state.logger.info(f"MCL RAG API shutting down with PID {os.getpid()}!")
+
+	# Save update queue on shutdown
+	MCL_UpdateQueue().saveToFile(filePath=os.getenv("UPDATE_QUEUE_FILE_PATH", "data/update_queue.json"))
 
 	# Save help questions on shutdown
 	MCL_HelpManager().saveQuestionsToJson(filePath=os.getenv("HELP_QUESTIONS_FILE_PATH", "data/help_questions.json"))
