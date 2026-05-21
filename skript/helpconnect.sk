@@ -1,0 +1,177 @@
+###
+MCL Wiki RAG Skript
+Author: @cmh02
+Version: 1.0
+
+This skript will provide utilities for sending messages to the MCL Help Manager API.
+###
+
+# Skript-Wide Options
+options:
+	# Prefixes
+	labsprefix: <##00cdf6>&lMC<##00cdf6>&lL<##00b8e8>&la<##00a2da>&lb<##008dcc>&ls &f»
+
+	# Colors
+	color_mclabs: <##00cdf6>
+
+# Skript-Reflect Java Imports
+import:
+	java.io.OutputStream
+	java.io.InputStream
+	java.io.InputStreamReader
+	java.io.BufferedReader
+	java.net.URL
+	java.net.HttpURLConnection
+	org.json.simple.JSONObject
+	com.google.gson.Gson
+	com.google.gson.JsonObject
+
+# Skript-Reflect Section for HTTP Requests
+on load:
+
+	"""
+	API ENDPOINT: /wakeup
+
+	"""
+	create new section stored in {reflect::help::alive}:
+
+		# Create JSON object for wakeup request body
+		set {_jsonWakeupRequestBody} to try new JSONObject()
+		if the last java exception is set:
+			mwr_messageLogFile("&cError: An error occured when creating JSON wakeup request body! %nl%Error: %the last java exception%", true, "severe")
+			return false
+
+		# Give API 5 chances to wake up
+		set {_wakeupCount} to 0
+		set {_isAwake} to "trying"
+		while {_isAwake} is "trying":
+
+			# Create URL and open connection for wakeup
+			set {_domain} to mwr_getEnvironmentalVariable("RAILWAY_PUBLIC_DOMAIN")
+			set {_endpoint} to mwr_getEnvironmentalVariable("API_ENDPOINT_WAKEUP")
+			set {_urlString} to "%{_domain}%%{_endpoint}%"
+			set {_wakeupApiUrl} to try new URL(mwr_getEnvironmentalVariable({_urlString}))
+			set {_wakeupApiConnection} to try {_wakeupApiUrl}.openConnection()
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when opening HTTP wakeup connection! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+			# Configure wakeup connection for POST request
+			try {_wakeupApiConnection}.setRequestMethod("POST")
+			try {_wakeupApiConnection}.setRequestProperty("Content-Type", "application/json")
+			try {_wakeupApiConnection}.setRequestProperty("Accept", "application/json")
+			try {_wakeupApiConnection}.setRequestProperty("Authorization", mwr_getEnvironmentalVariable("API_TOKEN"))
+			try {_wakeupApiConnection}.setRequestProperty("User-Agent", mwr_getEnvironmentalVariable("USER-AGENT-MC-SERVER"))
+			try {_wakeupApiConnection}.setInstanceFollowRedirects(true)
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when configuring HTTP wakeup connection! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+			# Write to the wakeup connection via OutputStream
+			try {_wakeupApiConnection}.setDoOutput(true)
+			set {_wakeupOutputStream} to try {_wakeupApiConnection}.getOutputStream()
+			try {_wakeupOutputStream}.write({_jsonWakeupRequestBody}.toString().getBytes())
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when writing to HTTP wakeup connection! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+			# Get the wakeup response code and message
+			set {_wakeupResponseCode} to try {_wakeupApiConnection}.getResponseCode()
+			set {_wakeupResponseMessage} to try {_wakeupApiConnection}.getResponseMessage()
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when getting HTTP wakeup response code/message! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+			# If we have a 200 or 429 response, we are awake
+			if any:
+				{_wakeupResponseCode} is 200
+				{_wakeupResponseCode} is 429
+			then:
+				set {_isAwake} to "awake"
+			else if {_wakeupCount} >= 5:
+				set {_isAwake} to "failed"
+			else:
+				add 1 to {_wakeupCount}
+
+			# Close wakeup output stream
+			try {_wakeupOutputStream}.close()
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when closing wakeup output stream! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+		# Check that we are awake before proceeding
+		if {_isAwake} is not "awake":
+			mwr_messageLogFile("&cError: API did not wake up after multiple attempts! %nl%Error: %the last java exception%", true, "severe")
+			return false
+		return true
+
+	"""
+	API ENDPOINT: /help/add
+	
+	"""
+	create new section with {_player}, {_questionId}, {_questionContent} stored in {reflect::help::add}:
+
+	# Validate input to ensure given
+	if {_player} is not set:
+		mwr_messageLogFile("A call was made to make API request to add question, but no player was provided!")
+		stop
+	if {_questionId} is not set:
+		mwr_messageLogFile("A call was made to make API request to add question, but no question ID was provided!")
+		stop
+	if {_questionContent} is not set:
+		mwr_messageLogFile("A call was made to make API request to add question, but no question content was provided!")
+		stop
+
+	# Create JSON object for request body
+	set {_jsonRequestBody} to try new JSONObject()
+	try {_jsonRequestBody}.put("question_source", mwr_getEnvironmentalVariable("API_SOURCE"))
+	try {_jsonRequestBody}.put("question_id", {_questionId})
+	try {_jsonRequestBody}.put("question_content", {_questionContent})
+	try {_jsonRequestBody}.put("question_player", {_player})
+	if the last java exception is set:
+		mwr_messageLogFile("&cError: An error occured when creating JSON request body for add question API request! %nl%Error: %the last java exception%", true, "severe")
+		return false
+
+	# Create URL and open connection
+	set {_domain} to mwr_getEnvironmentalVariable("RAILWAY_PUBLIC_DOMAIN")
+	set {_endpoint} to mwr_getEnvironmentalVariable("API_ENDPOINT_ADD")
+	set {_urlString} to "%{_domain}%%{_endpoint}%"
+	set {_apiUrl} to try new URL(mwr_getEnvironmentalVariable({_urlString}))
+	set {_apiConnection} to try {_apiUrl}.openConnection()
+	if the last java exception is set:
+		mwr_messageLogFile("&cError: An error occured when opening HTTP connection for add question API request! %nl%Error: %the last java exception%", true, "severe")
+		return false
+
+	# Configure connection for POST request
+	try {_apiConnection}.setRequestMethod("POST")
+	try {_apiConnection}.setRequestProperty("Content-Type", "application/json")
+	try {_apiConnection}.setRequestProperty("Accept", "application/json")
+	try {_apiConnection}.setRequestProperty("Authorization", mwr_getEnvironmentalVariable("API_TOKEN"))
+	try {_apiConnection}.setRequestProperty("User-Agent", mwr_getEnvironmentalVariable("USER-AGENT-MC-SERVER"))
+	try {_apiConnection}.setInstanceFollowRedirects(true)
+	if the last java exception is set:
+		mwr_messageLogFile("&cError: An error occured when configuring HTTP connection for add question API request! %nl%Error: %the last java exception%", true, "severe")
+		return false
+
+	# Write to the connection via OutputStream
+	try {_apiConnection}.setDoOutput(true)
+	set {_outputStream} to try {_apiConnection}.getOutputStream()
+	try {_outputStream}.write({_jsonRequestBody}.toString().getBytes())
+	if the last java exception is set:
+		mwr_messageLogFile("&cError: An error occured when writing to HTTP connection for add question API request! %nl%Error: %the last java exception%", true, "severe")
+		return false
+
+	# Get the response code and message
+	set {_responseCode} to try {_apiConnection}.getResponseCode()
+	set {_responseMessage} to try {_apiConnection}.getResponseMessage()
+	if the last java exception is set:
+		mwr_messageLogFile("&cError: An error occured when getting HTTP response code/message for add question API request! %nl%Error: %the last java exception%", true, "severe")
+		return false
+
+	# Check response code for 200
+	if {_responseCode} is not 200:
+		mwr_messageLogFile("&cError: Received non-200 response code for add question API request! %nl%Response Code: %{_responseCode}% %nl%Response Message: %{_responseMessage}%", true, "severe")
+		return false
+	else:
+		mwr_messageLogFile("Successfully added question to API via add question endpoint! %nl%Question ID: %{_questionId}% %nl%Question Content: %{_questionContent}%", true, "info")
+		return true
