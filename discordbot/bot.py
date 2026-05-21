@@ -358,6 +358,7 @@ async def on_message(message: discord.Message):
 					"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
 				},
 				json={
+					"question_source": os.getenv("USER-AGENT-DISCORD-BOT"),
 					"question_id": questionId,
 					"answered_by": f"{message.author.display_name}",
 					"answer": f"{message.content.strip()}"
