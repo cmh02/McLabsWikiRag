@@ -476,6 +476,8 @@ on load:
 		try {_apiConnection}.setRequestProperty("Accept", "application/json")
 		try {_apiConnection}.setRequestProperty("Authorization", mwr_getEnvironmentalVariable("API_TOKEN"))
 		try {_apiConnection}.setRequestProperty("User-Agent", mwr_getEnvironmentalVariable("USER-AGENT-MC-SERVER"))
+		try {_apiConnection}.setConnectionTimeout(60000)
+		try {_apiConnection}.setReadTimeout(300000)
 		try {_apiConnection}.setInstanceFollowRedirects(true)
 		if the last java exception is set:
 			mwr_messageLogFile("&cError: An error occured when configuring HTTP connection for updatepoll API request! %nl%Error: %the last java exception%", true, "severe")
