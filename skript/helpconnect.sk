@@ -503,5 +503,54 @@ on load:
 			mwr_messageLogFile("&cError: Received non-200 response code for updatepoll API request! %nl%Response Code: %{_responseCode}% %nl%Response Message: %{_responseMessage}%", true, "severe")
 			return false
 		else:
-			mwr_messageLogFile("Successfully  via updatepoll endpoint! %nl%Poll ID: %{_pollId}%", true, "info")
-			return true
+
+			# Open InputStream to read the response
+			set {_inputStream} to try {_apiConnection}.getInputStream()
+			set {_bufferedInputReader} to try new BufferedReader(new InputStreamReader({_inputStream}))
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when getting input stream! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+			# Read the response body
+			set {_responseString} to ""
+			set {_line} to try {_bufferedInputReader}.readLine()
+			while {_line} is set:
+				set {_responseString} to {_responseString} + {_line}
+				set {_line} to try {_bufferedInputReader}.readLine()
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when reading HTTP response as string! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+			# Read the response into a json object using Gson
+			set {_Gson} to try new Gson()
+			set {_responseJson} to try {_Gson}.fromJson({_responseString}, JsonObject.class)
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when parsing HTTP response string as JSON! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+			# Extract the "timestamp" field from the JSON response
+			set {_timestamp} to try {_responseJson}.get("timestamp").getAsString()
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when extracting 'timestamp' from JSON response! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+			# Extract the "update" json object from the JSON response
+			set {_updateJson} to try {_responseJson}.get("update").getAsJsonObject()
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when extracting 'update' JSON object from JSON response! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+			# Extract the individual fields for the update
+			set {_questionId} to try {_updateJson}.get("id").getAsString()
+			set {_questionPlayer} to try {_updateJson}.get("player").getAsString()
+			set {_questionContent} to try {_updateJson}.get("content").getAsString()
+			set {_questionStatus} to try {_updateJson}.get("status").getAsString()
+			set {_questionClaimedBy} to try {_updateJson}.get("claimedBy").getAsString()
+			set {_questionAnsweredBy} to try {_updateJson}.get("answeredBy").getAsString()
+			set {_questionAnswer} to try {_updateJson}.get("answer").getAsString()
+			if the last java exception is set:
+				mwr_messageLogFile("&cError: An error occured when extracting individual fields from 'update' JSON object! %nl%Error: %the last java exception%", true, "severe")
+				return false
+
+			# TODO: Get info from help system about question
+			
