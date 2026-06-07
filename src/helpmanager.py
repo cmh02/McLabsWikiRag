@@ -18,6 +18,7 @@ from src.schemas import QuestionSchema
 from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
 
+from src.mongo import MCL_MongoManager
 from src.enum import TicketType, TicketStatus, TicketFeedback
 from src.datatypes import Message, Conversation, HelpTicket
 
@@ -53,6 +54,9 @@ class MCL_HelpManager():
 		# Create executor for threading
 		# self.executor = ThreadPoolExecutor(max_workers=5)
 
+		# Get mongo manager for persistence
+		self.mongoManager = MCL_MongoManager()
+
 		# Log initialization
 		self.logger = logging.getLogger("MCL_API_Logger")
 		self.logger.info(f"Help Manager initialized with PID {os.getpid()}.")
@@ -72,7 +76,7 @@ class MCL_HelpManager():
 		'''
 		
 		# Generate a new ticket id
-		ticketId = 030403 # TODO: replace w mongo generator
+		ticketId = self.mongoManager.getNextTicketId()
 
 		# Create new help ticket
 		newTicket = HelpTicket(
@@ -83,6 +87,9 @@ class MCL_HelpManager():
 
 		# Add the new ticket to the dictionary
 		self.tickets[ticketId] = newTicket
+		self.mongoManager.saveTicket(
+			ticket=newTicket
+		)
 		return ticketId
 
 	def closeTicket(self, ticketId: int, closedBy: str):
@@ -103,7 +110,9 @@ class MCL_HelpManager():
 		)
 
 		# Save to mongo then remove from help manager
-		#TODO: implement mongo save
+		self.mongoManager.saveTicket(
+			ticket=self.tickets[ticketId]
+		)
 		self.tickets.pop(ticketId)
 
 	def claimTicket(self, ticketId: int, claimedBy: str):
@@ -121,6 +130,11 @@ class MCL_HelpManager():
 		# Claim the ticket
 		self.tickets[ticketId].claim(
 			claimedBy=claimedBy
+		)
+
+		# Save to mongo
+		self.mongoManager.saveTicket(
+			ticket=self.tickets[ticketId]
 		)
 
 	def unclaimTicket(self, ticketId: int):
@@ -142,7 +156,12 @@ class MCL_HelpManager():
 
 		# Unclaim the ticket
 		self.tickets[ticketId].unclaim()
-		
+
+		# Save to mongo
+		self.mongoManager.saveTicket(
+			ticket=self.tickets[ticketId]
+		)
+
 	def setTicketFeedback(self, ticketId: int, feedback: TicketFeedback):
 		'''
 		# Set Ticket Feedback
@@ -165,4 +184,9 @@ class MCL_HelpManager():
 		# Set the feedback for the ticket
 		self.tickets[ticketId].setFeedback(
 			feedback=feedback
+		)
+
+		# Save to mongo
+		self.mongoManager.saveTicket(
+			ticket=self.tickets[ticketId]
 		)
