@@ -18,7 +18,7 @@ from src.schemas import QuestionSchema
 from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
 
-from src.enum import TicketStatus, TicketFeedback, UpdateSource
+from src.enum import TicketType, TicketStatus, TicketFeedback
 from src.datatypes import Message, Conversation, HelpTicket
 
 
@@ -47,55 +47,122 @@ class MCL_HelpManager():
 		Initializes the help manager with an empty dictionary for help questions.
 		'''
 
-		# Dict for holding help tickets, structured per status
-		self.tickets: Dict[TicketStatus, Dict[int, HelpTicket]] = {}
-		self.tickets[TicketStatus.OPEN] = {}
-		self.tickets[TicketStatus.CLAIMED] = {}
-		self.tickets[TicketStatus.CLOSED] = {}
+		# Dict for holding help tickets
+		self.tickets: Dict[int, HelpTicket] = {}
 
 		# Create executor for threading
-		self.executor = ThreadPoolExecutor(max_workers=5)
+		# self.executor = ThreadPoolExecutor(max_workers=5)
 
 		# Log initialization
 		self.logger = logging.getLogger("MCL_API_Logger")
 		self.logger.info(f"Help Manager initialized with PID {os.getpid()}.")
 
-	def createTicket(self):
+	def createTicket(self, type: TicketType, player: str) -> int:
 		'''
 		# Create Ticket
 
 		Creates a new help ticket and adds it to the open tickets dictionary.
-		'''
-		pass
 
-	def closeTicket(self):
+		## Parameters
+			type (TicketType): The type of the help ticket.
+			player (str): The UUID of the player creating the ticket.
+
+		## Returns
+			int: The ID of the newly created help ticket.
+		'''
+		
+		# Generate a new ticket id
+		ticketId = 030403 # TODO: replace w mongo generator
+
+		# Create new help ticket
+		newTicket = HelpTicket(
+			ticketId=ticketId,
+			player=player,
+			type=type
+		)
+
+		# Add the new ticket to the dictionary
+		self.tickets[ticketId] = newTicket
+		return ticketId
+
+	def closeTicket(self, ticketId: int, closedBy: str):
 		'''
 		# Close Ticket
 
 		Closes an existing help ticket and moves it to the closed tickets dictionary.
 		'''
-		pass
+		
+		# Check if the ticket exists
+		if ticketId not in self.tickets:
+			self.logger.error(f"Attempted to close non-existent ticket with ID {ticketId}.")
+			return
+		
+		# Close the ticket
+		self.tickets[ticketId].close(
+			closedBy=closedBy
+		)
 
-	def claimTicket(self):
+		# Save to mongo then remove from help manager
+		#TODO: implement mongo save
+		self.tickets.pop(ticketId)
+
+	def claimTicket(self, ticketId: int, claimedBy: str):
 		'''
 		# Claim Ticket
 
 		Claims an existing help ticket and moves it to the claimed tickets dictionary.
 		'''
-		pass
+		
+		# Check if the ticket exists
+		if ticketId not in self.tickets:
+			self.logger.error(f"Attempted to claim non-existent ticket with ID {ticketId}.")
+			return
+		
+		# Claim the ticket
+		self.tickets[ticketId].claim(
+			claimedBy=claimedBy
+		)
 
-	def unclaimTicket(self):
+	def unclaimTicket(self, ticketId: int):
 		'''
 		# Unclaim Ticket
 
 		Unclaims an existing help ticket and moves it back to the open tickets dictionary.
-		'''
-		pass
+		
+		## Parameters
+			ticketId (int): The ID of the help ticket to unclaim.
 
-	def retrieveTicket(self):
+		## Returns
+			None
 		'''
-		# Retrieve Ticket
+		# Check if the ticket exists
+		if ticketId not in self.tickets:
+			self.logger.error(f"Attempted to unclaim non-existent ticket with ID {ticketId}.")
+			return
 
-		Retrieves a help ticket by ID and status.
+		# Unclaim the ticket
+		self.tickets[ticketId].unclaim()
+		
+	def setTicketFeedback(self, ticketId: int, feedback: TicketFeedback):
 		'''
-		pass
+		# Set Ticket Feedback
+
+		Sets the feedback for a help ticket.
+
+		## Parameters
+			ticketId (int): The ID of the help ticket to set feedback for.
+			feedback (TicketFeedback): The feedback to set for the help ticket.
+
+		## Returns
+			None
+		'''
+		
+		# Check if the ticket exists
+		if ticketId not in self.tickets:
+			self.logger.error(f"Attempted to set feedback for non-existent ticket with ID {ticketId}.")
+			return
+		
+		# Set the feedback for the ticket
+		self.tickets[ticketId].setFeedback(
+			feedback=feedback
+		)
