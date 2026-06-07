@@ -14,6 +14,11 @@ class TicketStatus(Enum):
 	CLAIMED = "CLAIMED"
 	CLOSED = "CLOSED"
 
+class TicketFeedback(Enum):
+	NONE = "NONE"
+	HELPFUL = "HELPFUL"
+	UNHELPFUL = "UNHELPFUL"
+
 class UpdateSource(Enum):
 	MINECRAFT = "MINECRAFT"
 	DISCORD = "DISCORD"
