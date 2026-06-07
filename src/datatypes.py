@@ -10,6 +10,7 @@ MODULE IMPORTS
 from typing import Optional
 from datetime import datetime
 
+from src.enum import TicketStatus, TicketFeedback
 
 
 '''
@@ -56,3 +57,23 @@ class Conversation:
 			"player": self.player,
 			"messages": [message.toDict() for message in self.messages]
 		}
+	
+class HelpTicket:
+	'''
+	# HelpTicket
+
+	Represents a help ticket, which contains a conversation and several metadata fields.
+	'''
+
+	def __init__(self, 
+			  	 ticketId: int, 
+				 player: str, 
+				 conversation: Optional[Conversation] = None,
+				 ticketStatus: Optional[TicketStatus] = TicketStatus.OPEN,
+				 ticketFeedback: Optional[TicketFeedback] = TicketFeedback.NONE
+				):
+		self.ticketId: int = ticketId
+		self.player: str = player
+		self.conversation: Conversation = conversation if conversation else Conversation(conversationId=ticketId, player=player)
+		self.status: TicketStatus = ticketStatus
+		self.feedback: TicketFeedback = ticketFeedback
