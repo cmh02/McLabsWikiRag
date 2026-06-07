@@ -10,7 +10,7 @@ MODULE IMPORTS
 from typing import Optional
 from datetime import datetime
 
-from src.enum import TicketStatus, TicketFeedback
+from src.enum import TicketType, TicketStatus, TicketFeedback
 
 
 '''
@@ -70,11 +70,13 @@ class HelpTicket:
 
 	def __init__(self, 
 			  	 ticketId: int, 
-				 player: str, 
+				 player: str,
+				 type: TicketType,
 				 conversation: Optional[Conversation] = None
 				):
 		self.ticketId: int = ticketId
 		self.player: str = player
+		self.type: TicketType = type
 		self.conversation: Conversation = conversation if conversation else Conversation(conversationId=ticketId)
 		self.status: TicketStatus = TicketStatus.OPEN
 		self.feedback: TicketFeedback = TicketFeedback.NONE
@@ -98,6 +100,7 @@ class HelpTicket:
 		return {
 			"ticketId": self.ticketId,
 			"player": self.player,
+			"type": self.type.value,
 			"conversation": self.conversation.toDict(),
 			"status": self.status.value,
 			"feedback": self.feedback.value,
@@ -123,7 +126,7 @@ class HelpTicket:
 
 	def getLastMessage(self) -> Optional[Message]:
 		"""
-		## Get Last Message
+		## Get Last Message from Conversation
 		Retrieves the last message in the help ticket's conversation.
 
 		### Parameters

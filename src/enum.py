@@ -9,6 +9,9 @@ MODULE IMPORTS
 '''
 from enum import Enum
 
+class TicketType(Enum):
+	SUPPORT = "SUPPORT"
+
 class TicketStatus(Enum):
 	OPEN = "OPEN"
 	CLAIMED = "CLAIMED"
