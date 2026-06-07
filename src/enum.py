@@ -9,14 +9,10 @@ MODULE IMPORTS
 '''
 from enum import Enum
 
-'''
-QUESTION STATUS ENUM
-'''
-
-class QuestionStatus(Enum):
+class TicketStatus(Enum):
 	OPEN = "OPEN"
 	CLAIMED = "CLAIMED"
-	ANSWERED = "ANSWERED"
+	CLOSED = "CLOSED"
 
 class UpdateSource(Enum):
 	MINECRAFT = "MINECRAFT"
