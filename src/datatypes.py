@@ -43,18 +43,21 @@ class Conversation:
 	Represents a conversation between a player and staff members.
 	'''
 
-	def __init__(self, conversationId: int, player: str):
+	def __init__(self, conversationId: int):
 		self.conversationId: int = conversationId
-		self.player: str = player
 		self.messages: list[Message] = []
 
 	def appendMessage(self, message: Message):
 		self.messages.append(object=message)
 
+	def getLastMessage(self) -> Optional[Message]:
+		if len(self.messages) == 0:
+			return None
+		return self.messages[-1]
+
 	def toDict(self) -> dict:
 		return {
 			"conversationId": self.conversationId,
-			"player": self.player,
 			"messages": [message.toDict() for message in self.messages]
 		}
 	
@@ -68,12 +71,138 @@ class HelpTicket:
 	def __init__(self, 
 			  	 ticketId: int, 
 				 player: str, 
-				 conversation: Optional[Conversation] = None,
-				 ticketStatus: Optional[TicketStatus] = TicketStatus.OPEN,
-				 ticketFeedback: Optional[TicketFeedback] = TicketFeedback.NONE
+				 conversation: Optional[Conversation] = None
 				):
 		self.ticketId: int = ticketId
 		self.player: str = player
-		self.conversation: Conversation = conversation if conversation else Conversation(conversationId=ticketId, player=player)
-		self.status: TicketStatus = ticketStatus
-		self.feedback: TicketFeedback = ticketFeedback
+		self.conversation: Conversation = conversation if conversation else Conversation(conversationId=ticketId)
+		self.status: TicketStatus = TicketStatus.OPEN
+		self.feedback: TicketFeedback = TicketFeedback.NONE
+		self.claimedBy: Optional[str] = None
+		self.closedBy: Optional[str] = None
+		self.time_create: Optional[float] = datetime.now().timestamp()
+		self.time_claim: Optional[float] = None
+		self.time_close: Optional[float] = None
+
+	def toDict(self) -> dict:
+		"""
+		## Serialize As Dictionary
+		Serializes the help ticket as a dictionary for easy JSON conversion.
+
+		### Parameters
+			None
+
+		### Returns
+			dict: A dictionary representation of the help ticket.
+		"""
+		return {
+			"ticketId": self.ticketId,
+			"player": self.player,
+			"conversation": self.conversation.toDict(),
+			"status": self.status.value,
+			"feedback": self.feedback.value,
+			"claimedBy": self.claimedBy,
+			"closedBy": self.closedBy,
+			"time_create": self.time_create,
+			"time_claim": self.time_claim,
+			"time_close": self.time_close
+		}
+	
+	def appendMessage(self, message: Message):
+		"""
+		## Append Message to Conversation
+		Appends a message to the help ticket's conversation.
+
+		### Parameters
+			message (Message): The message to append to the conversation.
+
+		### Returns
+			None
+		"""
+		self.conversation.appendMessage(message=message)
+
+	def getLastMessage(self) -> Optional[Message]:
+		"""
+		## Get Last Message
+		Retrieves the last message in the help ticket's conversation.
+
+		### Parameters
+			None
+
+		### Returns
+			Optional[Message]: The last message in the conversation, or None if there are no messages.
+		"""
+		return self.conversation.getLastMessage()
+	
+	def open(self):
+		"""
+		## Open Ticket
+		Open the help ticket.
+
+		### Parameters
+			None
+
+		### Returns
+			None
+		"""
+		self.status = TicketStatus.OPEN
+		self.closedBy = None
+		self.time_close = None
+
+	def claim(self, claimedBy: str):
+		"""
+		## Claim Ticket
+		Claim the help ticket for a staff member.
+
+		### Parameters
+			claimedBy (str): The UUID of the staff member claiming the ticket.
+
+		### Returns
+			None
+		"""
+		self.status = TicketStatus.CLAIMED
+		self.claimedBy = claimedBy
+		self.time_claim = datetime.now().timestamp()
+
+	def unclaim(self):
+		"""
+		## Unclaim Ticket
+		Unclaim the help ticket, returning it to the open status.
+
+		### Parameters
+			None
+
+		### Returns
+			None
+		"""
+		self.status = TicketStatus.OPEN
+		self.claimedBy = None
+		self.time_claim = None
+
+	def close(self, closedBy: str):
+		"""
+		## Close Ticket
+		Close the help ticket for a staff member.
+
+		### Parameters
+			closedBy (str): The UUID of the staff member closing the ticket.
+
+		### Returns
+			None
+		"""
+		self.status = TicketStatus.CLOSED
+		self.closedBy = closedBy
+		self.time_close = datetime.now().timestamp()
+
+	def setFeedback(self, feedback: TicketFeedback):
+		"""
+		## Set Feedback
+		Set the feedback for the help ticket.
+
+		### Parameters
+			feedback (TicketFeedback): The feedback to set.
+
+		### Returns
+			None
+		"""
+		self.feedback = feedback
