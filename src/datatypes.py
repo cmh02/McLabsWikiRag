@@ -36,6 +36,14 @@ class Message:
 			"content": self.content
 		}
 	
+	@staticmethod
+	def fromDict(data: dict) -> 'Message':
+		return Message(
+			timestamp=data["timestamp"],
+			sender=data["sender"],
+			content=data["content"]
+		)
+	
 class Conversation:
 	'''
 	# Conversation
@@ -43,8 +51,7 @@ class Conversation:
 	Represents a conversation between a player and staff members.
 	'''
 
-	def __init__(self, conversationId: int):
-		self.conversationId: int = conversationId
+	def __init__(self):
 		self.messages: list[Message] = []
 
 	def appendMessage(self, message: Message):
@@ -57,9 +64,16 @@ class Conversation:
 
 	def toDict(self) -> dict:
 		return {
-			"conversationId": self.conversationId,
 			"messages": [message.toDict() for message in self.messages]
 		}
+	
+	@staticmethod
+	def fromDict(data: dict) -> 'Conversation':
+		conv = Conversation()
+		for message_data in data.get("messages", []):
+			message = Message.fromDict(message_data)
+			conv.appendMessage(message)
+		return conv
 	
 class HelpTicket:
 	'''
