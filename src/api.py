@@ -38,6 +38,7 @@ from src.security import verifyRequest
 from src.docfetch import MCL_WikiEmbedder
 from src.helpmanager import MCL_HelpManager
 from src.mongo import MCL_MongoManager
+from src.datatypes import Message
 from src.schemas import BaseHelpQuestionSchema, QuestionSchema
 from src.enum import TicketType, TicketStatus, TicketFeedback, UpdateSource
 
@@ -483,4 +484,38 @@ class AppendTicketMessageSchema(BaseModel):
 @app.post("/append_ticket_message")
 @appLimiter.limit("500/minute")
 def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
-	pass
+	
+	# Verify request
+	verifyRequest(
+		request=request,
+		verifyToken=True,
+		verifyIpAddress=False
+	)
+
+	# Extract data from request body
+	data: Dict = body.model_dump()
+	ticketId: int = data.get("ticketId")
+	content: str = data.get("content")
+	updateSource: UpdateSource = data.get("update_source")
+	sentBy: str = data.get("sentBy")
+
+	# Create message object
+	message = Message(
+		timestamp=datetime.utcnow().isoformat(),
+		sender=sentBy,
+		content=content
+	)
+
+	# Add message to ticket conversation
+	MCL_HelpManager().addMessageToConversation(
+		ticketId=ticketId,
+		message=message
+	)
+
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={
+			"status": "success"
+		}
+	)
