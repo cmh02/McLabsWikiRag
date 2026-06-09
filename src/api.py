@@ -39,6 +39,7 @@ from src.docfetch import MCL_WikiEmbedder
 from src.helpmanager import MCL_HelpManager
 from src.mongo import MCL_MongoManager
 from src.schemas import BaseHelpQuestionSchema, QuestionSchema
+from src.enum import TicketType, TicketStatus, TicketFeedback, UpdateSource
 
 '''
 FASTAPI APP STARTUP / SHUTDOWN
@@ -206,3 +207,127 @@ def query(request: Request, body: RagQuerySchema):
 		status_code=200,
 		content={"answer": result, "context": topChunks}
 	)
+
+
+
+
+
+
+
+
+'''
+# CREATE TICKET ENDPOINT
+
+This endpoint can be used for making a new help ticket.
+
+## Request Headers
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
+- "update_source": The source of the update. Must be one of UpdateSource enum.
+- "type": The type of ticket to be created. Must be one of TicketType enum.
+- "player": The UUID of the player creating the ticket.
+'''
+
+class CreateTicketSchema(BaseModel):
+	'''
+	# CreateTicketSchema
+
+	Model for creating new help tickets. Inherits authentication from BaseModel.
+	'''
+
+	# The type of ticket to be created
+	type: TicketType = Field(description="The type of ticket to be created.")
+
+	# The source of the update
+	update_source: UpdateSource = Field(description="The source of the update.")
+
+	# The UUID of the player creating the ticket
+	player: str = Field(description="The UUID of the player creating the ticket.")
+
+@app.post("/create_ticket")
+@appLimiter.limit("100/minute")
+def create_ticket(request: Request, body: CreateTicketSchema):
+	pass
+
+class CloseTicketSchema(BaseModel):
+	'''
+	# CloseTicketSchema
+
+	Model for closing help tickets. Inherits authentication from BaseModel.
+	'''
+
+	# The ID of the ticket to be closed
+	ticketId: int = Field(description="The ID of the ticket to be closed.")
+
+	# The source of the update
+	update_source: UpdateSource = Field(description="The source of the update.")
+
+	# The UUID of the player closing the ticket
+	closedBy: str = Field(description="The UUID of the player closing the ticket.")
+
+@app.post("/close_ticket")
+@appLimiter.limit("100/minute")
+def close_ticket(request: Request, body: CloseTicketSchema):
+	pass
+
+class ClaimTicketSchema(BaseModel):
+	'''
+	# ClaimTicketSchema
+
+	Model for claiming help tickets. Inherits authentication from BaseModel.
+	'''
+
+	# The ID of the ticket to be claimed
+	ticketId: int = Field(description="The ID of the ticket to be claimed.")
+
+	# The source of the update
+	update_source: UpdateSource = Field(description="The source of the update.")
+
+	# The UUID of the player claiming the ticket
+	claimedBy: str = Field(description="The UUID of the player claiming the ticket.")
+
+@app.post("/claim_ticket")
+@appLimiter.limit("100/minute")
+def claim_ticket(request: Request, body: ClaimTicketSchema):
+	pass
+
+class UnclaimTicketSchema(BaseModel):
+	'''
+	# UnclaimTicketSchema
+
+	Model for unclaiming help tickets. Inherits authentication from BaseModel.
+	'''
+
+	# The ID of the ticket to be unclaimed
+	ticketId: int = Field(description="The ID of the ticket to be unclaimed.")
+
+	# The source of the update
+	update_source: UpdateSource = Field(description="The source of the update.")
+
+@app.post("/unclaim_ticket")
+@appLimiter.limit("100/minute")
+def unclaim_ticket(request: Request, body: UnclaimTicketSchema):
+	pass
+
+class SetTicketFeedbackSchema(BaseModel):
+	'''
+	# SetTicketFeedbackSchema
+
+	Model for setting help ticket feedback. Inherits authentication from BaseModel.
+	'''
+
+	# The ID of the ticket to set feedback for
+	ticketId: int = Field(description="The ID of the ticket to set feedback for.")
+
+	# The feedback to be set
+	feedback: TicketFeedback = Field(description="The feedback to be set.")
+
+	# The source of the update
+	update_source: UpdateSource = Field(description="The source of the update.")
+
+@app.post("/set_ticket_feedback")
+@appLimiter.limit("100/minute")
+def set_ticket_feedback(request: Request, body: SetTicketFeedbackSchema):
+	pass
