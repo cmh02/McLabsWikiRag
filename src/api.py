@@ -249,7 +249,33 @@ class CreateTicketSchema(BaseModel):
 @app.post("/create_ticket")
 @appLimiter.limit("100/minute")
 def create_ticket(request: Request, body: CreateTicketSchema):
-	pass
+	
+	# Verify request
+	verifyRequest(
+		request=request,
+		verifyToken=True,
+		verifyIpAddress=False
+	)
+
+	# Extract data from request body
+	data: Dict = body.model_dump()
+	ticketType: TicketType = data.get("type")
+	updateSource: UpdateSource = data.get("update_source")
+	player: str = data.get("player")
+
+	# Create ticket
+	ticketId = MCL_HelpManager().createTicket(
+		type=ticketType,
+		player=player
+	)
+
+	# Return ticketId in response
+	return JSONResponse(
+		status_code=200,
+		content={
+			"ticketId": ticketId
+		}
+	)
 
 class CloseTicketSchema(BaseModel):
 	'''
