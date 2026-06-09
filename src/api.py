@@ -388,7 +388,31 @@ class UnclaimTicketSchema(BaseModel):
 @app.post("/unclaim_ticket")
 @appLimiter.limit("100/minute")
 def unclaim_ticket(request: Request, body: UnclaimTicketSchema):
-	pass
+	
+	# Verify request
+	verifyRequest(
+		request=request,
+		verifyToken=True,
+		verifyIpAddress=False
+	)
+
+	# Extract data from request body
+	data: Dict = body.model_dump()
+	ticketId: int = data.get("ticketId")
+	updateSource: UpdateSource = data.get("update_source")
+
+	# Unclaim ticket
+	MCL_HelpManager().unclaimTicket(
+		ticketId=ticketId
+	)
+
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={
+			"status": "success"
+		}
+	)
 
 class SetTicketFeedbackSchema(BaseModel):
 	'''
