@@ -190,3 +190,32 @@ class MCL_HelpManager():
 		self.mongoManager.saveTicket(
 			ticket=self.tickets[ticketId]
 		)
+
+	def addMessageToConversation(self, ticketId: int, message: Message):
+		'''
+		# Add Message to Conversation
+
+		Adds a message to the conversation associated with a help ticket.
+
+		## Parameters
+			ticketId (int): The ID of the help ticket to add the message to.
+			message (Message): The message to add to the conversation.
+
+		## Returns
+			None
+		'''
+		
+		# Check if the ticket exists
+		if ticketId not in self.tickets:
+			self.logger.error(f"Attempted to add message to non-existent ticket with ID {ticketId}.")
+			return
+		
+		# Add the message to the conversation
+		self.tickets[ticketId].conversation.appendMessage(
+			message=message
+		)
+
+		# Save to mongo
+		self.mongoManager.saveTicket(
+			ticket=self.tickets[ticketId]
+		)
