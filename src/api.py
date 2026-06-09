@@ -331,3 +331,27 @@ class SetTicketFeedbackSchema(BaseModel):
 @appLimiter.limit("100/minute")
 def set_ticket_feedback(request: Request, body: SetTicketFeedbackSchema):
 	pass
+
+class AppendTicketMessageSchema(BaseModel):
+	'''
+	# AppendTicketMessageSchema
+
+	Model for appending messages to help tickets. Inherits authentication from BaseModel.
+	'''
+
+	# The ID of the ticket to append a message to
+	ticketId: int = Field(description="The ID of the ticket to append a message to.")
+
+	# The content of the message to append
+	content: str = Field(description="The content of the message to append.")
+
+	# The source of the update
+	update_source: UpdateSource = Field(description="The source of the update.")
+
+	# The UUID of the player sending the message
+	sentBy: str = Field(description="The UUID of the player sending the message.")
+
+@app.post("/append_ticket_message")
+@appLimiter.limit("500/minute")
+def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
+	pass
