@@ -433,7 +433,33 @@ class SetTicketFeedbackSchema(BaseModel):
 @app.post("/set_ticket_feedback")
 @appLimiter.limit("100/minute")
 def set_ticket_feedback(request: Request, body: SetTicketFeedbackSchema):
-	pass
+	
+	# Verify request
+	verifyRequest(
+		request=request,
+		verifyToken=True,
+		verifyIpAddress=False
+	)
+
+	# Extract data from request body
+	data: Dict = body.model_dump()
+	ticketId: int = data.get("ticketId")
+	feedback: TicketFeedback = data.get("feedback")
+	updateSource: UpdateSource = data.get("update_source")
+
+	# Set ticket feedback
+	MCL_HelpManager().setTicketFeedback(
+		ticketId=ticketId,
+		feedback=feedback
+	)
+
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={
+			"status": "success"
+		}
+	)
 
 class AppendTicketMessageSchema(BaseModel):
 	'''
