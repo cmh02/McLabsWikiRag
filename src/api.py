@@ -344,7 +344,33 @@ class ClaimTicketSchema(BaseModel):
 @app.post("/claim_ticket")
 @appLimiter.limit("100/minute")
 def claim_ticket(request: Request, body: ClaimTicketSchema):
-	pass
+	
+	# Verify request
+	verifyRequest(
+		request=request,
+		verifyToken=True,
+		verifyIpAddress=False
+	)
+
+	# Extract data from request body
+	data: Dict = body.model_dump()
+	ticketId: int = data.get("ticketId")
+	updateSource: UpdateSource = data.get("update_source")
+	claimedBy: str = data.get("claimedBy")
+
+	# Claim ticket
+	MCL_HelpManager().claimTicket(
+		ticketId=ticketId,
+		claimedBy=claimedBy
+	)
+
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={
+			"status": "success"
+		}
+	)
 
 class UnclaimTicketSchema(BaseModel):
 	'''
