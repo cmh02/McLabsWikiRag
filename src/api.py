@@ -273,6 +273,7 @@ def create_ticket(request: Request, body: CreateTicketSchema):
 	return JSONResponse(
 		status_code=200,
 		content={
+			"status": "success",
 			"ticketId": ticketId
 		}
 	)
@@ -296,7 +297,33 @@ class CloseTicketSchema(BaseModel):
 @app.post("/close_ticket")
 @appLimiter.limit("100/minute")
 def close_ticket(request: Request, body: CloseTicketSchema):
-	pass
+	
+	# Verify request
+	verifyRequest(
+		request=request,
+		verifyToken=True,
+		verifyIpAddress=False
+	)
+
+	# Extract data from request body
+	data: Dict = body.model_dump()
+	ticketId: int = data.get("ticketId")
+	updateSource: UpdateSource = data.get("update_source")
+	closedBy: str = data.get("closedBy")
+
+	# Close ticket
+	MCL_HelpManager().closeTicket(
+		ticketId=ticketId,
+		closedBy=closedBy
+	)
+
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={
+			"status": "success"
+		}
+	)
 
 class ClaimTicketSchema(BaseModel):
 	'''
