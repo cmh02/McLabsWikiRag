@@ -219,3 +219,22 @@ class MCL_HelpManager():
 		self.mongoManager.saveTicket(
 			ticket=self.tickets[ticketId]
 		)
+
+	def getTicketInfo(self, ticketId: int) -> dict:
+		'''
+		# Get Ticket Info
+
+		Retrieves the information for a help ticket.
+
+		## Parameters
+			ticketId (int): The ID of the help ticket to retrieve information for.
+
+		## Returns
+			dict: The help ticket information.
+		'''
+		
+		# Check if the ticket exists
+		if ticketId not in self.tickets:
+			self.logger.error(f"Attempted to get info for non-existent ticket with ID {ticketId}.")
+			return None
+		return self.tickets[ticketId].toDict()

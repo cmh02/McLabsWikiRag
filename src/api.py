@@ -211,11 +211,6 @@ def query(request: Request, body: RagQuerySchema):
 
 
 
-
-
-
-
-
 '''
 # CREATE TICKET ENDPOINT
 
@@ -518,4 +513,54 @@ def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
 		content={
 			"status": "success"
 		}
+	)
+
+class GetTicketSchema(BaseModel):
+	'''
+	# GetTicketSchema
+
+	Model for getting help ticket information. Inherits authentication from BaseModel.
+	'''
+
+	# The ID of the ticket to get
+	ticketId: int = Field(description="The ID of the ticket to get.")
+
+@app.post("/get_ticket")
+@appLimiter.limit("100/minute")
+def get_ticket(request: Request, body: GetTicketSchema):
+	
+	# Verify request
+	verifyRequest(
+		request=request,
+		verifyToken=True,
+		verifyIpAddress=False
+	)
+
+	# Extract data from request body
+	data: Dict = body.model_dump()
+	ticketId: int = data.get("ticketId")
+
+	# Get ticket information
+	ticketInfo: Dict = MCL_HelpManager().getTicketInfo(
+		ticketId=ticketId
+	)
+
+	# If ticket not found, return error
+	if ticketInfo is None:
+		
+		# Log ticket not found
+		app.state.logger.debug(f"Ticket with ID {ticketId} not found!")
+
+		# Return error
+		raise HTTPException(
+			status_code=404,
+			detail=f"Ticket with ID {ticketId} not found!"
+		)
+
+	# Return ticket information
+	return JSONResponse(
+		status_code=200,
+		content=jsonable_encoder(
+			obj=ticketInfo
+		)
 	)
