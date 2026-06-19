@@ -68,7 +68,6 @@ async def lifespan(app: FastAPI):
 
 	# Initialize Help Manager
 	MCL_HelpManager().initialize()
-	MCL_HelpManager().loadQuestionsFromJson(filePath=os.getenv("HELP_QUESTIONS_FILE_PATH", "data/help_questions.json"))
 
 	# Initialize Mongo Manager
 	MCL_MongoManager().initialize()
