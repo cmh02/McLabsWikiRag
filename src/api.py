@@ -82,7 +82,6 @@ async def lifespan(app: FastAPI):
 	app.state.logger.info(f"MCL RAG API shutting down with PID {os.getpid()}!")
 
 	# Save help questions on shutdown
-	MCL_HelpManager().saveQuestionsToJson(filePath=os.getenv("HELP_QUESTIONS_FILE_PATH", "data/help_questions.json"))
 
 '''
 FASTAPI APP DEFINITION
