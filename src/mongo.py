@@ -55,6 +55,12 @@ class MCL_MongoManager():
 		self.logger = logging.getLogger("MCL_API_Logger")
 		self.logger.info(f"Mongo Manager initialized with PID {os.getpid()}.")
 
+	def shutdown(self):
+
+		# Close mongo connection
+		self.client.close()
+		self.logger.info(f"Mongo Manager connection closed for PID {os.getpid()}.")
+
 	def saveTicket(self, ticket: HelpTicket):
 		
 		# Convert ticket to dict and save to mongo

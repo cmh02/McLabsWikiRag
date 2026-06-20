@@ -78,6 +78,9 @@ async def lifespan(app: FastAPI):
 	# Yield back for app lifetime
 	yield
 
+	# Shutdown Mongo Manager
+	MCL_MongoManager().shutdown()
+
 	# Log shutdown
 	app.state.logger.info(f"MCL RAG API shutting down with PID {os.getpid()}!")
 
