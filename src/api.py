@@ -86,8 +86,6 @@ async def lifespan(app: FastAPI):
 	# Log shutdown
 	app.state.logger.info(f"MCL RAG API shutting down with PID {os.getpid()}!")
 
-	# Save help questions on shutdown
-
 '''
 FASTAPI APP DEFINITION
 '''
