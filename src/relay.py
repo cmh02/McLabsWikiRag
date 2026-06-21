@@ -48,6 +48,10 @@ class MCL_OutboundRelay():
 		# Notify All
 
 		Notifies all relevant external systems (Minecraft server, Discord bot) of a ticket update.
+
+		## Parameters
+		- `ticketId` (int): The ID of the ticket that was updated.
+		- `action` (TicketAction): The action that was taken on the ticket.
 		'''
 
 		self.notifyMinecraftServer(ticketId, action)
@@ -58,6 +62,10 @@ class MCL_OutboundRelay():
 		# Notify Minecraft Server
 
 		Notifies the Minecraft server of a ticket update via an outbound API call.
+
+		## Parameters
+		- `ticketId` (int): The ID of the ticket that was updated.
+		- `action` (TicketAction): The action that was taken on the ticket.
 		'''
 
 		# Log the outbound API call
@@ -68,6 +76,10 @@ class MCL_OutboundRelay():
 		# Notify Discord Bot
 
 		Notifies the Discord bot of a ticket update via an outbound API call.
+
+		## Parameters
+		- `ticketId` (int): The ID of the ticket that was updated.
+		- `action` (TicketAction): The action that was taken on the ticket.
 		'''
 
 		# Log the outbound API call
