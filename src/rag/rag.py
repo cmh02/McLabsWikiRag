@@ -23,7 +23,7 @@ from google import genai
 from google.genai import types
 
 # MCL Packages
-from src.docfetch import MCL_WikiEmbedder
+from src.rag.docfetch import MCL_WikiEmbedder
 
 '''
 RAG CLASS

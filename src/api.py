@@ -35,7 +35,7 @@ from google import genai
 from src.rag import MCL_WikiRag
 from src.utils.logger import MCL_Logger
 from src.security import verifyRequest
-from src.docfetch import MCL_WikiEmbedder
+from src.rag.docfetch import MCL_WikiEmbedder
 from src.helpmanager import MCL_HelpManager
 from src.mongo import MCL_MongoManager
 from src.utils.datatypes import Message
