@@ -43,6 +43,16 @@ class MCL_OutboundRelay():
 		self.logger = logging.getLogger("MCL_API_Logger")
 		self.logger.info(f"Outbound Relay initialized with PID {os.getpid()}.")
 
+	def notifyAll(self, ticketId: int, action: TicketAction):
+		'''
+		# Notify All
+
+		Notifies all relevant external systems (Minecraft server, Discord bot) of a ticket update.
+		'''
+
+		self.notifyMinecraftServer(ticketId, action)
+		self.notifyDiscordBot(ticketId, action)
+
 	def notifyMinecraftServer(self, ticketId: int, action: TicketAction):
 		'''
 		# Notify Minecraft Server
