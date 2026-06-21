@@ -10,7 +10,7 @@ MODULE IMPORTS
 from typing import Optional
 from datetime import datetime
 
-from src.enum import TicketType, TicketStatus, TicketFeedback
+from src.utils.enum import TicketType, TicketStatus, TicketFeedback
 
 
 '''

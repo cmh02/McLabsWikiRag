@@ -19,8 +19,8 @@ from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
 
 from src.mongo import MCL_MongoManager
-from src.enum import TicketType, TicketStatus, TicketFeedback
-from src.datatypes import Message, Conversation, HelpTicket
+from src.utils.enum import TicketType, TicketStatus, TicketFeedback
+from src.utils.datatypes import Message, Conversation, HelpTicket
 
 
 '''

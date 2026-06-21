@@ -17,8 +17,8 @@ import logging
 from pymongo import MongoClient
 from starlette import status
 
-from src.datatypes import HelpTicket, Conversation, Message
-from src.enum import TicketType, TicketStatus, TicketFeedback
+from src.utils.datatypes import HelpTicket, Conversation, Message
+from src.utils.enum import TicketType, TicketStatus, TicketFeedback
 
 
 class MCL_MongoManager():

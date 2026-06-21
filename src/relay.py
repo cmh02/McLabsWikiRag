@@ -11,7 +11,7 @@ MODULE IMPORTS
 import os
 import logging
 
-from src.enum import TicketAction
+from src.utils.enum import TicketAction
 
 '''
 OUTBOUND RELAY

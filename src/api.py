@@ -33,14 +33,14 @@ from google import genai
 
 # MCL Packages
 from src.rag import MCL_WikiRag
-from src.logger import MCL_Logger
+from src.utils.logger import MCL_Logger
 from src.security import verifyRequest
 from src.docfetch import MCL_WikiEmbedder
 from src.helpmanager import MCL_HelpManager
 from src.mongo import MCL_MongoManager
-from src.datatypes import Message
+from src.utils.datatypes import Message
 from src.schemas import BaseHelpQuestionSchema, QuestionSchema
-from src.enum import TicketType, TicketStatus, TicketFeedback, UpdateSource
+from src.utils.enum import TicketType, TicketStatus, TicketFeedback, UpdateSource
 
 '''
 FASTAPI APP STARTUP / SHUTDOWN
