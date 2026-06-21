@@ -19,30 +19,14 @@ OUTBOUND RELAY
 
 class MCL_OutboundRelay():
 	'''
-	MCL Outbound Relay Singleton
+	MCL Outbound Relay
 
 	Class to manage outbound API calls for the MCLabs backend. Provides a
 	single point of management for all outbound API calls, including logging
 	and error handling.
 	'''
-	_instance = None
 
-	def __new__(cls):
-		if cls._instance is None:
-			cls._instance = super(MCL_OutboundRelay, cls).__new__(cls)
-		return cls._instance
-
-	def initialize(self):
-		'''
-		# Class Initialization
-
-		Initializes the outbound relay with a logger for logging outbound API calls.
-		'''
-
-		# Log initialization
-		self.logger = logging.getLogger("MCL_API_Logger")
-		self.logger.info(f"Outbound Relay initialized with PID {os.getpid()}.")
-
+	@staticmethod
 	def notifyAll(self, ticketId: int, action: TicketAction):
 		'''
 		# Notify All
@@ -54,9 +38,10 @@ class MCL_OutboundRelay():
 		- `action` (TicketAction): The action that was taken on the ticket.
 		'''
 
-		self.notifyMinecraftServer(ticketId, action)
-		self.notifyDiscordBot(ticketId, action)
+		MCL_OutboundRelay.notifyMinecraftServer(ticketId, action)
+		MCL_OutboundRelay.notifyDiscordBot(ticketId, action)
 
+	@staticmethod
 	def notifyMinecraftServer(self, ticketId: int, action: TicketAction):
 		'''
 		# Notify Minecraft Server
@@ -69,8 +54,10 @@ class MCL_OutboundRelay():
 		'''
 
 		# Log the outbound API call
-		self.logger.info(f"Notifying Minecraft server of ticket {ticketId} update with action {action.value}.")
+		logger = logging.getLogger("MCL_API_Logger")
+		logger.info(f"Notifying Minecraft server of ticket {ticketId} update with action {action.value}.")
 
+	@staticmethod
 	def notifyDiscordBot(self, ticketId: int, action: TicketAction):
 		'''
 		# Notify Discord Bot
@@ -83,4 +70,5 @@ class MCL_OutboundRelay():
 		'''
 
 		# Log the outbound API call
-		self.logger.info(f"Notifying Discord bot of ticket {ticketId} update with action {action.value}.")
+		logger = logging.getLogger("MCL_API_Logger")
+		logger.info(f"Notifying Discord bot of ticket {ticketId} update with action {action.value}.")
