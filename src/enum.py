@@ -22,6 +22,14 @@ class TicketFeedback(Enum):
 	HELPFUL = "HELPFUL"
 	UNHELPFUL = "UNHELPFUL"
 
+class TicketAction(Enum):
+	CREATE = "CREATE"
+	CLOSE = "CLOSE"
+	CLAIM = "CLAIM"
+	UNCLAIM = "UNCLAIM"
+	FEEDBACK = "FEEDBACK"
+	NEWMESSAGE = "NEW_MESSAGE"
+
 class UpdateSource(Enum):
 	MINECRAFT = "MINECRAFT"
 	DISCORD = "DISCORD"
