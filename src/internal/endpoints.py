@@ -20,7 +20,7 @@ from src.internal.helpmanager import MCL_HelpManager
 from src.utils.datatypes import Message
 from src.network.schemas import BaseHelpQuestionSchema, QuestionSchema
 from src.utils.enum import TicketType, TicketStatus, TicketFeedback, UpdateSource
-from src.internal.limiter import limiter
+from src.network.limiter import limiter
 
 '''
 API ROUTER
