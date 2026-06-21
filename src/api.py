@@ -42,6 +42,7 @@ from src.utils.datatypes import Message
 from src.network.schemas import BaseHelpQuestionSchema, QuestionSchema
 from src.utils.enum import TicketType, TicketStatus, TicketFeedback, UpdateSource
 from src.network.limiter import limiter
+from src.network.endpoints import router as InternalEndpointsRouter
 
 '''
 FASTAPI APP STARTUP / SHUTDOWN
@@ -96,3 +97,4 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(SlowAPIMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.include_router(InternalEndpointsRouter)
