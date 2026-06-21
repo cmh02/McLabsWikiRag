@@ -14,7 +14,7 @@ import json
 import logging
 import requests
 from typing import Dict
-from src.schemas import QuestionSchema
+from src.network.schemas import QuestionSchema
 from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
 

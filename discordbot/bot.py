@@ -24,7 +24,7 @@ from fastapi import FastAPI, Request, HTTPException
 from typing import Dict
 from pydantic import BaseModel
 
-from src.security import verifyRequest
+from src.network.security import verifyRequest
 from discordbot.logger import MCL_Logger
 from discordbot.components import AdminHelpPanel, AdminHelpEmbed
 from discordbot.threadmanager import MCL_ThreadManager
