@@ -36,8 +36,8 @@ from src.rag import MCL_WikiRag
 from src.utils.logger import MCL_Logger
 from src.network.security import verifyRequest
 from src.rag.docfetch import MCL_WikiEmbedder
-from src.helpmanager import MCL_HelpManager
-from src.mongo import MCL_MongoManager
+from src.internal.helpmanager import MCL_HelpManager
+from src.internal.mongo import MCL_MongoManager
 from src.utils.datatypes import Message
 from src.network.schemas import BaseHelpQuestionSchema, QuestionSchema
 from src.utils.enum import TicketType, TicketStatus, TicketFeedback, UpdateSource

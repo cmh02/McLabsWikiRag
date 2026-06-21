@@ -18,7 +18,7 @@ from src.network.schemas import QuestionSchema
 from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
 
-from src.mongo import MCL_MongoManager
+from src.internal.mongo import MCL_MongoManager
 from src.utils.enum import TicketType, TicketStatus, TicketFeedback
 from src.utils.datatypes import Message, Conversation, HelpTicket
 
