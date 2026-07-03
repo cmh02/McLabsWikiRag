@@ -19,7 +19,7 @@ from src.network.security import verifyRequest
 from src.internal.helpmanager import MCL_HelpManager
 from src.utils.datatypes import Message
 from src.network.schemas import BaseHelpQuestionSchema, QuestionSchema
-from src.utils.enum import TicketType, TicketStatus, TicketFeedback, UpdateSource
+from src.utils.enum import TicketType, TicketStatus, TicketFeedback
 from src.network.limiter import limiter
 
 '''
@@ -154,7 +154,6 @@ This endpoint can be used for making a new help ticket.
 - 'User-Agent': User agent string to identify discord versus minecraft requests
 
 ## JSON Body Parameters
-- "update_source": The source of the update. Must be one of UpdateSource enum.
 - "type": The type of ticket to be created. Must be one of TicketType enum.
 - "player": The UUID of the player creating the ticket.
 '''
@@ -168,9 +167,6 @@ class CreateTicketSchema(BaseModel):
 
 	# The type of ticket to be created
 	type: TicketType = Field(description="The type of ticket to be created.")
-
-	# The source of the update
-	update_source: UpdateSource = Field(description="The source of the update.")
 
 	# The UUID of the player creating the ticket
 	player: str = Field(description="The UUID of the player creating the ticket.")
@@ -189,7 +185,6 @@ def create_ticket(request: Request, body: CreateTicketSchema):
 	# Extract data from request body
 	data: Dict = body.model_dump()
 	ticketType: TicketType = data.get("type")
-	updateSource: UpdateSource = data.get("update_source")
 	player: str = data.get("player")
 
 	# Create ticket
@@ -217,9 +212,6 @@ class CloseTicketSchema(BaseModel):
 	# The ID of the ticket to be closed
 	ticketId: int = Field(description="The ID of the ticket to be closed.")
 
-	# The source of the update
-	update_source: UpdateSource = Field(description="The source of the update.")
-
 	# The UUID of the player closing the ticket
 	closedBy: str = Field(description="The UUID of the player closing the ticket.")
 
@@ -237,7 +229,6 @@ def close_ticket(request: Request, body: CloseTicketSchema):
 	# Extract data from request body
 	data: Dict = body.model_dump()
 	ticketId: int = data.get("ticketId")
-	updateSource: UpdateSource = data.get("update_source")
 	closedBy: str = data.get("closedBy")
 
 	# Close ticket
@@ -264,9 +255,6 @@ class ClaimTicketSchema(BaseModel):
 	# The ID of the ticket to be claimed
 	ticketId: int = Field(description="The ID of the ticket to be claimed.")
 
-	# The source of the update
-	update_source: UpdateSource = Field(description="The source of the update.")
-
 	# The UUID of the player claiming the ticket
 	claimedBy: str = Field(description="The UUID of the player claiming the ticket.")
 
@@ -284,7 +272,6 @@ def claim_ticket(request: Request, body: ClaimTicketSchema):
 	# Extract data from request body
 	data: Dict = body.model_dump()
 	ticketId: int = data.get("ticketId")
-	updateSource: UpdateSource = data.get("update_source")
 	claimedBy: str = data.get("claimedBy")
 
 	# Claim ticket
@@ -311,9 +298,6 @@ class UnclaimTicketSchema(BaseModel):
 	# The ID of the ticket to be unclaimed
 	ticketId: int = Field(description="The ID of the ticket to be unclaimed.")
 
-	# The source of the update
-	update_source: UpdateSource = Field(description="The source of the update.")
-
 @router.post("/unclaim_ticket")
 @limiter.limit("100/minute")
 def unclaim_ticket(request: Request, body: UnclaimTicketSchema):
@@ -328,7 +312,6 @@ def unclaim_ticket(request: Request, body: UnclaimTicketSchema):
 	# Extract data from request body
 	data: Dict = body.model_dump()
 	ticketId: int = data.get("ticketId")
-	updateSource: UpdateSource = data.get("update_source")
 
 	# Unclaim ticket
 	MCL_HelpManager().unclaimTicket(
@@ -356,9 +339,6 @@ class SetTicketFeedbackSchema(BaseModel):
 	# The feedback to be set
 	feedback: TicketFeedback = Field(description="The feedback to be set.")
 
-	# The source of the update
-	update_source: UpdateSource = Field(description="The source of the update.")
-
 @router.post("/set_ticket_feedback")
 @limiter.limit("100/minute")
 def set_ticket_feedback(request: Request, body: SetTicketFeedbackSchema):
@@ -374,7 +354,6 @@ def set_ticket_feedback(request: Request, body: SetTicketFeedbackSchema):
 	data: Dict = body.model_dump()
 	ticketId: int = data.get("ticketId")
 	feedback: TicketFeedback = data.get("feedback")
-	updateSource: UpdateSource = data.get("update_source")
 
 	# Set ticket feedback
 	MCL_HelpManager().setTicketFeedback(
@@ -403,9 +382,6 @@ class AppendTicketMessageSchema(BaseModel):
 	# The content of the message to append
 	content: str = Field(description="The content of the message to append.")
 
-	# The source of the update
-	update_source: UpdateSource = Field(description="The source of the update.")
-
 	# The UUID of the player sending the message
 	sentBy: str = Field(description="The UUID of the player sending the message.")
 
@@ -424,7 +400,6 @@ def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
 	data: Dict = body.model_dump()
 	ticketId: int = data.get("ticketId")
 	content: str = data.get("content")
-	updateSource: UpdateSource = data.get("update_source")
 	sentBy: str = data.get("sentBy")
 
 	# Create message object

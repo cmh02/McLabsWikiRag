@@ -29,7 +29,3 @@ class TicketAction(Enum):
 	UNCLAIM = "UNCLAIM"
 	FEEDBACK = "FEEDBACK"
 	NEWMESSAGE = "NEW_MESSAGE"
-
-class UpdateSource(Enum):
-	MINECRAFT = "MINECRAFT"
-	DISCORD = "DISCORD"
