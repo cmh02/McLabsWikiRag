@@ -8,7 +8,7 @@ Author: Chris Hinkson @cmh02
 MODULE IMPORTS
 '''
 
-from fastapi import APIRouter, Request, HTTPException, Header, Depends
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
@@ -21,55 +21,21 @@ from src.utils.datatypes import Message
 from src.network.schemas import BaseHelpQuestionSchema, QuestionSchema
 from src.utils.enum import TicketType, TicketStatus, TicketFeedback
 from src.network.limiter import limiter
+from src.network.router import MclRouter
 
 '''
-API ROUTER
+# API ROUTER
 
-Creation of the API router for all endpoints. 
-This will be included in the main FastAPI app in api.py.
-The router also handles global header requirements.
+Creation of the API router for all endpoints.
 '''
-def router_ValidateGlobalRequestHeaders(
-		request: Request,
-		authorization: str = Header(
-			...,
-			description="API token for authentication",
-			alias="Authorization"
-		),
-		user_agent: str = Header(
-			...,
-			description="User agent string to identify discord versus minecraft requests",
-			alias="User-Agent"
-		)
-	):
-
-	# Verify request headers are given
-	if not authorization.strip():
-		raise HTTPException(
-			status_code=400,
-			detail="Missing authorization header"
-		)
-	if not user_agent.strip():
-		raise HTTPException(
-			status_code=400,
-			detail="Missing user-agent header"
-		)
-
-	# Implement API auth
-	verifyRequest(
-		request=request,
-		verifyToken=True,
-		verifyIpAddress=False
-	)
-	
-router = APIRouter(dependencies=[Depends(router_ValidateGlobalRequestHeaders)])
+router = MclRouter.getNewRouter()
 
 '''
 # WAKEUP ENDPOINT
 
-This endpoint is used solely for waking up the API when asleep on Railway. It still needs authentication.
+This endpoint is used solely for waking up the API when asleep on Railway.
 
-## Request Headers
+## Request Headers (via router)
 - 'Authorization': API token for authentication
 - 'User-Agent': User agent string to identify discord versus minecraft requests
 '''
@@ -77,9 +43,6 @@ This endpoint is used solely for waking up the API when asleep on Railway. It st
 @limiter.limit("50/minute")
 def wakeup(request: Request):
 	
-	# Verify request
-	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
-
 	# Log for debugging
 	request.app.state.logger.debug(f"Received wakeup request! \nRequest: {request}")
 
@@ -92,9 +55,9 @@ def wakeup(request: Request):
 '''
 # RAG QUERY ENDPOINT
 
-There is a singular endpoint for querying the RAG system. Users can POST to /query with a JSON body containing:
+There is a singular endpoint for querying the RAG system.
 
-## Request Headers
+## Request Headers (via router)
 - 'Authorization': API token for authentication
 - 'User-Agent': User agent string to identify discord versus minecraft requests
 
@@ -107,7 +70,7 @@ class RagQuerySchema(BaseModel):
 	'''
 	# RagQuerySchema
 
-	Model for query requests to the RAG API. Inherits authentication from BaseModel.
+	Model for query requests to the RAG API.
 	'''
 
 	# The question to ask
@@ -119,9 +82,6 @@ class RagQuerySchema(BaseModel):
 @router.post("/query")
 @limiter.limit("100/minute")
 def query(request: Request, body: RagQuerySchema):
-
-	# Verify request
-	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Get the request data
 	data: Dict = body.model_dump()
@@ -184,7 +144,7 @@ def query(request: Request, body: RagQuerySchema):
 
 This endpoint can be used for making a new help ticket.
 
-## Request Headers
+## Request Headers (via router)
 - 'Authorization': API token for authentication
 - 'User-Agent': User agent string to identify discord versus minecraft requests
 
@@ -197,7 +157,7 @@ class CreateTicketSchema(BaseModel):
 	'''
 	# CreateTicketSchema
 
-	Model for creating new help tickets. Inherits authentication from BaseModel.
+	Model for creating new help tickets.
 	'''
 
 	# The type of ticket to be created
@@ -209,13 +169,6 @@ class CreateTicketSchema(BaseModel):
 @router.post("/create_ticket")
 @limiter.limit("100/minute")
 def create_ticket(request: Request, body: CreateTicketSchema):
-	
-	# Verify request
-	verifyRequest(
-		request=request,
-		verifyToken=True,
-		verifyIpAddress=False
-	)
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
@@ -237,11 +190,27 @@ def create_ticket(request: Request, body: CreateTicketSchema):
 		}
 	)
 
+
+
+'''
+# CLOSE TICKET ENDPOINT
+
+This endpoint can be used for closing an existing help ticket.
+
+## Request Headers (via router)
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
+- "ticketId": The ID of the ticket to be closed.
+- "closedBy": The UUID of the player closing the ticket.
+'''
+
 class CloseTicketSchema(BaseModel):
 	'''
 	# CloseTicketSchema
 
-	Model for closing help tickets. Inherits authentication from BaseModel.
+	Model for closing help tickets.
 	'''
 
 	# The ID of the ticket to be closed
@@ -254,13 +223,6 @@ class CloseTicketSchema(BaseModel):
 @limiter.limit("100/minute")
 def close_ticket(request: Request, body: CloseTicketSchema):
 	
-	# Verify request
-	verifyRequest(
-		request=request,
-		verifyToken=True,
-		verifyIpAddress=False
-	)
-
 	# Extract data from request body
 	data: Dict = body.model_dump()
 	ticketId: int = data.get("ticketId")
@@ -280,11 +242,27 @@ def close_ticket(request: Request, body: CloseTicketSchema):
 		}
 	)
 
+
+
+'''
+# CLAIM TICKET ENDPOINT
+
+This endpoint can be used for claiming an existing help ticket.
+
+## Request Headers (via router)
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
+- "ticketId": The ID of the ticket to be claimed.
+- "claimedBy": The UUID of the player claiming the ticket.
+'''
+
 class ClaimTicketSchema(BaseModel):
 	'''
 	# ClaimTicketSchema
 
-	Model for claiming help tickets. Inherits authentication from BaseModel.
+	Model for claiming help tickets.
 	'''
 
 	# The ID of the ticket to be claimed
@@ -297,13 +275,6 @@ class ClaimTicketSchema(BaseModel):
 @limiter.limit("100/minute")
 def claim_ticket(request: Request, body: ClaimTicketSchema):
 	
-	# Verify request
-	verifyRequest(
-		request=request,
-		verifyToken=True,
-		verifyIpAddress=False
-	)
-
 	# Extract data from request body
 	data: Dict = body.model_dump()
 	ticketId: int = data.get("ticketId")
@@ -323,11 +294,26 @@ def claim_ticket(request: Request, body: ClaimTicketSchema):
 		}
 	)
 
+
+
+'''
+# UNCLAIM TICKET ENDPOINT
+
+This endpoint can be used for unclaiming an existing help ticket.
+
+## Request Headers (via router)
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
+- "ticketId": The ID of the ticket to be unclaimed.
+'''
+
 class UnclaimTicketSchema(BaseModel):
 	'''
 	# UnclaimTicketSchema
 
-	Model for unclaiming help tickets. Inherits authentication from BaseModel.
+	Model for unclaiming help tickets.
 	'''
 
 	# The ID of the ticket to be unclaimed
@@ -336,13 +322,6 @@ class UnclaimTicketSchema(BaseModel):
 @router.post("/unclaim_ticket")
 @limiter.limit("100/minute")
 def unclaim_ticket(request: Request, body: UnclaimTicketSchema):
-	
-	# Verify request
-	verifyRequest(
-		request=request,
-		verifyToken=True,
-		verifyIpAddress=False
-	)
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
@@ -361,11 +340,27 @@ def unclaim_ticket(request: Request, body: UnclaimTicketSchema):
 		}
 	)
 
+
+
+'''
+# SET TICKET FEEDBACK ENDPOINT
+
+This endpoint can be used for setting feedback for an existing help ticket.
+
+## Request Headers (via router)
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
+- "ticketId": The ID of the ticket to set feedback for.
+- "feedback": The feedback to be set. Must be one of TicketFeedback enum.
+'''
+
 class SetTicketFeedbackSchema(BaseModel):
 	'''
 	# SetTicketFeedbackSchema
 
-	Model for setting help ticket feedback. Inherits authentication from BaseModel.
+	Model for setting help ticket feedback.
 	'''
 
 	# The ID of the ticket to set feedback for
@@ -377,13 +372,6 @@ class SetTicketFeedbackSchema(BaseModel):
 @router.post("/set_ticket_feedback")
 @limiter.limit("100/minute")
 def set_ticket_feedback(request: Request, body: SetTicketFeedbackSchema):
-	
-	# Verify request
-	verifyRequest(
-		request=request,
-		verifyToken=True,
-		verifyIpAddress=False
-	)
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
@@ -404,11 +392,28 @@ def set_ticket_feedback(request: Request, body: SetTicketFeedbackSchema):
 		}
 	)
 
+
+
+'''
+# APPEND TICKET MESSAGE ENDPOINT
+
+This endpoint can be used for appending messages to existing help tickets.
+
+## Request Headers (via router)
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
+- "ticketId": The ID of the ticket to append a message to.
+- "content": The content of the message to append.
+- "sentBy": The UUID of the player sending the message.
+'''
+
 class AppendTicketMessageSchema(BaseModel):
 	'''
 	# AppendTicketMessageSchema
 
-	Model for appending messages to help tickets. Inherits authentication from BaseModel.
+	Model for appending messages to help tickets.
 	'''
 
 	# The ID of the ticket to append a message to
@@ -424,13 +429,6 @@ class AppendTicketMessageSchema(BaseModel):
 @limiter.limit("500/minute")
 def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
 	
-	# Verify request
-	verifyRequest(
-		request=request,
-		verifyToken=True,
-		verifyIpAddress=False
-	)
-
 	# Extract data from request body
 	data: Dict = body.model_dump()
 	ticketId: int = data.get("ticketId")
@@ -458,11 +456,13 @@ def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
 		}
 	)
 
+
+
 class GetTicketSchema(BaseModel):
 	'''
 	# GetTicketSchema
 
-	Model for getting help ticket information. Inherits authentication from BaseModel.
+	Model for getting help ticket information.
 	'''
 
 	# The ID of the ticket to get
@@ -471,13 +471,6 @@ class GetTicketSchema(BaseModel):
 @router.post("/get_ticket")
 @limiter.limit("100/minute")
 def get_ticket(request: Request, body: GetTicketSchema):
-	
-	# Verify request
-	verifyRequest(
-		request=request,
-		verifyToken=True,
-		verifyIpAddress=False
-	)
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
