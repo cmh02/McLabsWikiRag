@@ -28,7 +28,9 @@ from src.network.router import MclRouter
 
 Creation of the API router for all endpoints.
 '''
-router = MclRouter.getNewRouter()
+router: APIRouter = MclRouter.getNewRouter()
+
+
 
 '''
 # WAKEUP ENDPOINT
