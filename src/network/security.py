@@ -33,13 +33,33 @@ def verifyRequest(request: Request, verifyToken: bool=True, verifyIpAddress: boo
 	- HTTPException: If the API token is missing/invalid or the IP address is not allowed.
 	'''
 
-	# Verify API token
-	if verifyToken:
-		verifyApiToken(request=request)
+	# Get client IP address for logging
+	client_ip = request.client.host if request.client else "unknown"
 
-	# Verify IP address
-	if verifyIpAddress:
-		verifyIp(request=request)
+	# Log request arrival and enabled checks
+	logger.debug(
+		f"API request received from IP `{client_ip}` with verifications enabled: token={verifyToken}, ip={verifyIpAddress}"
+	)
+
+	try:
+		# Verify API token
+		if verifyToken:
+			verifyApiToken(request=request)
+
+		# Verify IP address
+		if verifyIpAddress:
+			verifyIp(request=request)
+
+		# Log verification success
+		logger.info(f"API request has been successfully verified for new request from IP `{client_ip}`!")
+
+	except HTTPException as exc:
+
+		# Log verification failure
+		logger.warning(
+			f"API request failed verification for new request from IP {client_ip}! \nstatus_code={exc.status_code} \ndetail={exc.detail}"
+		)
+		raise
 
 def verifyApiToken(request: Request) -> None:
 	'''
@@ -72,7 +92,7 @@ def verifyApiToken(request: Request) -> None:
 	if token != os.getenv("API_TOKEN"):
 			
 		# Print for debugging
-		logger.warning(f"Invalid API token attempt: {token}")
+		logger.warning("Invalid API token attempt.")
 				  
 		# Return error
 		raise HTTPException(
