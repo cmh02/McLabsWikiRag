@@ -8,7 +8,7 @@ Author: Chris Hinkson @cmh02
 MODULE IMPORTS
 '''
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Header, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
@@ -25,9 +25,44 @@ from src.network.limiter import limiter
 '''
 API ROUTER
 
-Creation of the API router for all endpoints. This will be included in the main FastAPI app in api.py.
+Creation of the API router for all endpoints. 
+This will be included in the main FastAPI app in api.py.
+The router also handles global header requirements.
 '''
-router = APIRouter()
+def router_ValidateGlobalRequestHeaders(
+		request: Request,
+		authorization: str = Header(
+			...,
+			description="API token for authentication",
+			alias="Authorization"
+		),
+		user_agent: str = Header(
+			...,
+			description="User agent string to identify discord versus minecraft requests",
+			alias="User-Agent"
+		)
+	):
+
+	# Verify request headers are given
+	if not authorization.strip():
+		raise HTTPException(
+			status_code=400,
+			detail="Missing authorization header"
+		)
+	if not user_agent.strip():
+		raise HTTPException(
+			status_code=400,
+			detail="Missing user-agent header"
+		)
+
+	# Implement API auth
+	verifyRequest(
+		request=request,
+		verifyToken=True,
+		verifyIpAddress=False
+	)
+	
+router = APIRouter(dependencies=[Depends(router_ValidateGlobalRequestHeaders)])
 
 '''
 # WAKEUP ENDPOINT
