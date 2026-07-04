@@ -55,48 +55,6 @@ def wakeup(request: Request):
 		status_code=200,
 		content={"status": "awake"}
 	)
-
-class UpdateHelpSystemRequest(BaseModel):
-
-	# List for questions
-	questions: list
-
-@app.post("/update")
-async def update_help_system(request: Request, body: UpdateHelpSystemRequest):
-	'''
-	# Sync Help Questions Task
-
-	Periodically syncs help questions from the API to Discord threads.
-	'''
-
-	# Verify request
-	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
-
-	# Get the request data
-	data: Dict = body.model_dump()
-
-	# Log update request
-	app.state.logger.debug(f"Discord bot help questions update request received!")
-	app.state.logger.debug(f"Request Data: {data}")
-
-	# Make sure some questions exist
-	questions = data.get("questions", [])
-	if not questions:
-		return JSONResponse(
-			status_code=400,
-			content={"error": "No questions provided"}
-		)
-	
-	# Dispatch to bot handler
-	bot.loop.create_task(
-		coro=bot.handleHelpSystemUpdate(questions=questions)
-	)
-
-	# Return success message
-	return JSONResponse(
-		status_code=200,
-		content={"status": "Update Received!"}
-	)
 	
 '''
 BOT DEFINITION
