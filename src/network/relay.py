@@ -171,3 +171,25 @@ class MCL_OutboundRelay():
 		Stops the relay thread to process the outbound relay queue.
 		'''
 		pass
+
+	def notifyMinecraft(self, data: MCL_RelayQueueData):
+		'''
+		# Notify Minecraft
+
+		Notifies the Minecraft server of an update.
+
+		## Parameters
+		- `data` (MCL_RelayQueueData): The data associated with the update.
+		'''
+		pass
+
+	def notifyDiscord(self, data: MCL_RelayQueueData):
+		'''
+		# Notify Discord
+
+		Notifies the Discord bot of an update.
+
+		## Parameters
+		- `data` (MCL_RelayQueueData): The data associated with the update.
+		'''
+		pass
