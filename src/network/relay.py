@@ -66,6 +66,26 @@ class MCL_OutboundRelay():
 		# Dictionaries for update information
 		self.data: Dict[uuid.UUID, MCL_RelayQueueData] = {}
 
+	def acknowledgeUpdate(self, updateId: uuid.UUID):
+		'''
+		# Acknowledge Update
+
+		Acknowledges an update from the receiving system, removing it from the queue.
+
+		## Parameters
+		- `updateId` (uuid.UUID): The unique ID of the update to acknowledge.
+		'''
+		if updateId in self.queue_Minecraft:
+			self.queue_Minecraft.remove(updateId)
+			self.data.pop(updateId, None)
+			self.logger.info(f"Acknowledged update {updateId} from Minecraft server and removed from queue.")
+		elif updateId in self.queue_Discord:
+			self.queue_Discord.remove(updateId)
+			self.data.pop(updateId, None)
+			self.logger.info(f"Acknowledged update {updateId} from Discord bot and removed from queue.")
+		else:
+			self.logger.warning(f"Attempted to acknowledge unknown update {updateId}.")
+
 	def notifyAll(self, ticketId: int, action: TicketAction):
 		'''
 		# Notify All
