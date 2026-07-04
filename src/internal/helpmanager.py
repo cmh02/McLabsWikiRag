@@ -18,8 +18,9 @@ from src.network.schemas import QuestionSchema
 from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
 
+from src.network.relay import MCL_OutboundRelay
 from src.internal.mongo import MCL_MongoManager
-from src.utils.enum import TicketType, TicketStatus, TicketFeedback
+from src.utils.enum import TicketType, TicketStatus, TicketFeedback, TicketAction
 from src.utils.datatypes import Message, Conversation, HelpTicket
 
 
@@ -90,6 +91,12 @@ class MCL_HelpManager():
 		self.mongoManager.saveTicket(
 			ticket=newTicket
 		)
+
+		# Relay update and return
+		MCL_OutboundRelay().relay(
+			ticketId=ticketId,
+			action=TicketAction.CREATE
+		)
 		return ticketId
 
 	def closeTicket(self, ticketId: int, closedBy: str):
@@ -109,11 +116,15 @@ class MCL_HelpManager():
 			closedBy=closedBy
 		)
 
-		# Save to mongo then remove from help manager
+		# Save to mongo, remove, and relay update
 		self.mongoManager.saveTicket(
 			ticket=self.tickets[ticketId]
 		)
 		self.tickets.pop(ticketId)
+		MCL_OutboundRelay().relay(
+			ticketId=ticketId,
+			action=TicketAction.CLOSE
+		)
 
 	def claimTicket(self, ticketId: int, claimedBy: str):
 		'''
@@ -135,6 +146,12 @@ class MCL_HelpManager():
 		# Save to mongo
 		self.mongoManager.saveTicket(
 			ticket=self.tickets[ticketId]
+		)
+
+		# Relay update
+		MCL_OutboundRelay().relay(
+			ticketId=ticketId,
+			action=TicketAction.CLAIM
 		)
 
 	def unclaimTicket(self, ticketId: int):
@@ -160,6 +177,12 @@ class MCL_HelpManager():
 		# Save to mongo
 		self.mongoManager.saveTicket(
 			ticket=self.tickets[ticketId]
+		)
+
+		# Relay update
+		MCL_OutboundRelay().relay(
+			ticketId=ticketId,
+			action=TicketAction.UNCLAIM
 		)
 
 	def setTicketFeedback(self, ticketId: int, feedback: TicketFeedback):
@@ -191,6 +214,12 @@ class MCL_HelpManager():
 			ticket=self.tickets[ticketId]
 		)
 
+		# Relay update
+		MCL_OutboundRelay().relay(
+			ticketId=ticketId,
+			action=TicketAction.FEEDBACK
+		)
+
 	def addMessageToConversation(self, ticketId: int, message: Message):
 		'''
 		# Add Message to Conversation
@@ -218,6 +247,12 @@ class MCL_HelpManager():
 		# Save to mongo
 		self.mongoManager.saveTicket(
 			ticket=self.tickets[ticketId]
+		)
+
+		# Relay update
+		MCL_OutboundRelay().relay(
+			ticketId=ticketId,
+			action=TicketAction.NEWMESSAGE
 		)
 
 	def getTicketInfo(self, ticketId: int) -> dict:
