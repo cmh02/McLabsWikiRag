@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Dict
 
+from src.network.relay import MCL_OutboundRelay
 from src.network.security import verifyRequest
 from src.internal.helpmanager import MCL_HelpManager
 from src.utils.datatypes import Message
@@ -460,6 +461,19 @@ def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
 
 
 
+'''
+# GET TICKET ENDPOINT
+
+This endpoint can be used for retrieving information about existing help tickets.
+
+## Request Headers (via router)
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
+- "ticketId": The ID of the ticket to retrieve information for.
+'''
+
 class GetTicketSchema(BaseModel):
 	'''
 	# GetTicketSchema
@@ -501,4 +515,50 @@ def get_ticket(request: Request, body: GetTicketSchema):
 		content=jsonable_encoder(
 			obj=ticketInfo
 		)
+	)
+
+
+
+'''
+# ACKNOWLEDGE UPDATE ENDPOINT
+
+This endpoint can be used for acknowledging updates from external systems.
+
+## Request Headers (via router)
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
+- "guid": The unique ID of the update to acknowledge.
+'''
+
+class AcknowledgeUpdateSchema(BaseModel):
+	'''
+	# AcknowledgeUpdateSchema
+
+	Model for acknowledging updates from external systems.
+	'''
+
+	# The unique ID of the update to acknowledge
+	guid: str = Field(description="The unique ID of the update to acknowledge.")
+
+@router.post("/acknowledge_update")
+@limiter.limit("100/minute")
+def acknowledge_update(request: Request, body: AcknowledgeUpdateSchema):
+
+	# Extract data from request body
+	data: Dict = body.model_dump()
+	guid: str = data.get("guid")
+
+	# Acknowledge update
+	MCL_OutboundRelay().acknowledgeUpdate(
+		updateId=guid
+	)
+
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={
+			"status": "success"
+		}
 	)
