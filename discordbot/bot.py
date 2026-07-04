@@ -3,7 +3,7 @@ MCLabs Wiki GPT - Discord Bot
 
 Author: Chris Hinkson @cmh02
 '''
-
+s
 '''
 MODULE IMPORTS
 '''
@@ -25,8 +25,6 @@ from fastapi import FastAPI, Request, HTTPException
 from typing import Dict
 from pydantic import BaseModel
 
-from src.network.security import verifyRequest
-from src.utils.enum import TicketAction
 from discordbot.logger import MCL_Logger
 from discordbot.components import AdminHelpPanel, AdminHelpEmbed
 from discordbot.threadmanager import MCL_ThreadManager
@@ -45,9 +43,6 @@ def wakeup(request: Request):
 
 	This endpoint is used solely for waking up the API when asleep on Railway. It still needs authentication.
 	'''
-	
-	# Verify request
-	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Log wakeup attempt
 	app.state.logger.debug(f"Discord bot wakeup request received!")
@@ -60,7 +55,7 @@ def wakeup(request: Request):
 
 class UpdateRequest(BaseModel):
 	update_id: UUID
-	ticket_action: TicketAction
+	ticket_action: str
 	ticket_id: int
 
 @app.post("/update")
@@ -70,9 +65,6 @@ def update(request: Request, updateRequest: UpdateRequest):
 
 	This endpoint receives relay notifications from the backend.
 	'''
-
-	# Verify request
-	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
 
 	# Validate and extract request data
 	data = updateRequest.model_dump()
