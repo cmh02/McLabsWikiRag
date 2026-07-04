@@ -9,10 +9,10 @@ MODULE IMPORTS
 '''
 
 import os
+import asyncio
 import time
 import uuid
 import logging
-import threading
 from typing import List, Dict
 
 from src.utils.enum import TicketAction, RelayDestination
@@ -100,9 +100,9 @@ class MCL_OutboundRelay():
 
 		# Relay outbound queue
 		self.queue: List[uuid.UUID] = []
-		self._lock: threading.Lock = threading.Lock()
-		self._thread: threading.Thread | None = None
-		self._stopEvent: threading.Event = threading.Event()
+		self._loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+		self._task: asyncio.Task[None] | None = None
+		self._stopEvent: asyncio.Event = asyncio.Event()
 
 		# Dictionaries for update information
 		self.data: Dict[uuid.UUID, MCL_RelayQueueData] = {}
@@ -119,40 +119,31 @@ class MCL_OutboundRelay():
 		'''
 
 		# Grab lock so we don't add to queue while loop is processing
-		with self._lock:
 
-			# Create update for minecraft
-			updateId_Minecraft: uuid.UUID = uuid.uuid4()
-			self.data[updateId_Minecraft] = MCL_RelayQueueData(
-				ticketId = ticketId, 
-				action = action, 
-				destination = RelayDestination.MINECRAFT,
-				originTime = time.time(),
-				lastAttemptTime = None
-			)
-			self.queue.append(updateId_Minecraft)
+		# Create update for minecraft
+		updateId_Minecraft: uuid.UUID = uuid.uuid4()
+		self.data[updateId_Minecraft] = MCL_RelayQueueData(
+			ticketId = ticketId,
+			action = action,
+			destination = RelayDestination.MINECRAFT,
+			originTime = time.time(),
+			lastAttemptTime = None
+		)
+		self.queue.append(updateId_Minecraft)
 
-			# Create update for discord
-			updateId_Discord: uuid.UUID = uuid.uuid4()
-			self.data[updateId_Discord] = MCL_RelayQueueData(
-				ticketId = ticketId, 
-				action = action, 
-				destination = RelayDestination.DISCORD,
-				originTime = time.time(),
-				lastAttemptTime = None
-			)
-			self.queue.append(updateId_Discord)
+		# Create update for discord
+		updateId_Discord: uuid.UUID = uuid.uuid4()
+		self.data[updateId_Discord] = MCL_RelayQueueData(
+			ticketId = ticketId,
+			action = action,
+			destination = RelayDestination.DISCORD,
+			originTime = time.time(),
+			lastAttemptTime = None
+		)
+		self.queue.append(updateId_Discord)
 
-			# Check if we need to start a new thread for the relay update loop
-			if self._thread is None or not self._thread.is_alive() or self._stopEvent.is_set():
-				self._stopEvent.clear()
-				self._thread = threading.Thread(
-					target=self.beginRelayUpdateLoop,
-					daemon=True,
-					name="RelayUpdateLoopThread"
-				)
-				self._thread.start()
-				self.logger.info("Started new thread for relay update loop.")
+		# Start the async relay loop if needed
+		self._ensureRelayTask()
 
 	def acknowledge(self, updateId: uuid.UUID):
 		'''
@@ -164,59 +155,67 @@ class MCL_OutboundRelay():
 		- `updateId` (uuid.UUID): The unique ID of the update to acknowledge.
 		'''
 
-		# Grab lock so we don't remove from queue while loop is processing
-		with self._lock:
+		# Update queue
+		if updateId not in self.data:
+			self.logger.warning(f"Attempted to acknowledge unknown update {updateId}.")
+			return
+		self.queue.remove(updateId)
+		data = self.data.pop(updateId, None)
+		self.logger.info(f"Acknowledged update {updateId} and removed update from queue: {data}.")
 
-			# Update queue
-			if updateId not in self.data:
-				self.logger.warning(f"Attempted to acknowledge unknown update {updateId}.")
-				return
-			self.queue.remove(updateId)
-			data = self.data.pop(updateId, None)
-			self.logger.info(f"Acknowledged update {updateId} and removed update from queue: {data}.")
+		# Stop the background task once the queue is empty
+		if (not self.queue) or (not self.data) or (len(self.queue) == 0) or (len(self.data) == 0):
+			self._stopEvent.set()
+			self.logger.info("No more updates in queue. Stopping relay update loop.")
 
-			# Check if we need to stop the relay update loop
-			if not self.queue:
-				self._stopEvent.set()
-				self.logger.info("No more updates in queue. Stopping relay update loop.")
+	def _ensureRelayTask(self):
+		'''
+		# Ensure Relay Task
 
-	def beginRelayUpdateLoop(self):
+		Starts the background relay task when there is queued work and no active task.
+		'''
+		self._stopEvent.clear()
+		if self._task is None or self._task.done():
+			self._task = self._loop.create_task(
+				self.beginRelayUpdateLoop(),
+				name="RelayUpdateLoopTask"
+			)
+			self.logger.info("Started new task for relay update loop.")
+
+	async def beginRelayUpdateLoop(self):
 		'''
 		# Begin Relay Update Loop
 
 		Handles entire lifecycle for sending queued updates.
 		Continues sending updates until acknowledged.
-		Works with threading to prevent blocking main thread.
+		Runs as an asyncio background task.
 		'''
-		
-		# Loop until stop event is set
-		while not self._stopEvent.is_set():
-			with self._lock:
+		while True:
+			
+			# Process a snapshot of the queue each cycle
+			for updateId in list(self.queue):
 
-				# Process each update in the queue
-				for updateId in list(self.queue):
+				# Make sure data still valid
+				data = self.data.get(updateId)
+				if not data:
+					self.logger.warning(f"Update {updateId} not found in data dictionary. Removing from queue.")
+					self.queue.remove(updateId)
+					continue
 
-					# Validate that data is still valid
-					data = self.data.get(updateId)
-					if not data:
-						self.logger.warning(f"Update {updateId} not found in data dictionary. Removing from queue.")
-						self.queue.remove(updateId)
-						continue
+				# Check if we should attempt to send the update
+				if data.lastAttemptTime is None or (time.time() - data.lastAttemptTime) >= self.relayQueueRetryInterval:
+					data.lastAttemptTime = time.time()
+					self.logger.info(f"Attempting to notify {data.destination} of update {updateId}: {data}.")
+					await self.notify(data)
 
-					# Check if we should retry the update
-					if data.lastAttemptTime is None or (time.time() - data.lastAttemptTime) >= self.relayQueueRetryInterval:
-					
-						# Update last attempt time
-						data.lastAttemptTime = time.time()
+			# Wait for the next cycle or stop event
+			try:
+				await asyncio.wait_for(self._stopEvent.wait(), timeout=self.relayQueuePollInterval)
+				break
+			except asyncio.TimeoutError:
+				continue
 
-						# Notify the appropriate external system
-						self.logger.info(f"Attempting to notify {data.destination} of update {updateId}: {data}.")
-						self.notify(data)
-
-			# Sleep for the poll interval before checking the queue again
-			time.sleep(self.relayQueuePollInterval)
-
-	def notify(self, data: MCL_RelayQueueData):
+	async def notify(self, data: MCL_RelayQueueData):
 		'''
 		# Notify
 
@@ -226,13 +225,13 @@ class MCL_OutboundRelay():
 		- `data` (MCL_RelayQueueData): The data associated with the update.
 		'''
 		if data.destination == RelayDestination.MINECRAFT:
-			self.notifyMinecraft(data)
+			await self.notifyMinecraft(data)
 		elif data.destination == RelayDestination.DISCORD:
-			self.notifyDiscord(data)
+			await self.notifyDiscord(data)
 		else:
 			self.logger.error(f"Unknown destination {data.destination} for update {data}.")
 
-	def notifyMinecraft(self, data: MCL_RelayQueueData):
+	async def notifyMinecraft(self, data: MCL_RelayQueueData):
 		'''
 		# Notify Minecraft
 
@@ -243,7 +242,7 @@ class MCL_OutboundRelay():
 		'''
 		pass
 
-	def notifyDiscord(self, data: MCL_RelayQueueData):
+	async def notifyDiscord(self, data: MCL_RelayQueueData):
 		'''
 		# Notify Discord
 
