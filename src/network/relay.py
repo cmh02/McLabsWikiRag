@@ -154,7 +154,7 @@ class MCL_OutboundRelay():
 				self._thread.start()
 				self.logger.info("Started new thread for relay update loop.")
 
-	def acknowledgeUpdate(self, updateId: uuid.UUID):
+	def acknowledge(self, updateId: uuid.UUID):
 		'''
 		# Acknowledge Update
 
