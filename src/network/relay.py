@@ -9,6 +9,7 @@ MODULE IMPORTS
 '''
 
 import os
+import time
 import uuid
 import logging
 from typing import List, Dict
@@ -18,6 +19,17 @@ from src.utils.enum import TicketAction
 '''
 OUTBOUND RELAY
 '''
+
+class MCL_RelayQueueData():
+	'''
+	MCL Relay Queue Data
+
+	Class to manage the data associated with a queued outbound relay call.
+	'''
+	def __init__(self, ticketId: int, action: TicketAction, time: float):
+		self.ticketId = ticketId
+		self.action = action
+		self.timestamp = time
 
 class MCL_OutboundRelay():
 	'''
@@ -36,7 +48,7 @@ class MCL_OutboundRelay():
 
 	def initialize(self):
 		'''
-		# Class Initialization
+		# Relay Initialization
 
 		Initializes the outbound relay for queuing updates.
 		We queue updates to prevent update loss.
@@ -45,10 +57,14 @@ class MCL_OutboundRelay():
 
 		# Initialize logger for singleton
 		self.logger = logging.getLogger("MCL_API_Logger")
+		self.logger.info(f"Initialized MCL Outbound Relay on PID {os.getpid()}.")
 
 		# Make two outbound queues for Minecraft server and Discord bot
 		self.queue_Minecraft: List[uuid.UUID] = []
 		self.queue_Discord: List[uuid.UUID] = []
+
+		# Dictionaries for update information
+		self.data: Dict[uuid.UUID, MCL_RelayQueueData] = {}
 
 	def notifyAll(self, ticketId: int, action: TicketAction):
 		'''
@@ -81,6 +97,11 @@ class MCL_OutboundRelay():
 
 		# Generate a unique update ID for queueing / tracking
 		updateId: uuid.UUID = uuid.uuid4()
+		self.data[updateId] = MCL_RelayQueueData(
+			ticketId = ticketId, 
+			action = action, 
+			time = time.time()
+		)
 
 	def notifyDiscordBot(self, ticketId: int, action: TicketAction):
 		'''
@@ -99,3 +120,8 @@ class MCL_OutboundRelay():
 
 		# Generate a unique update ID for queueing / tracking
 		updateId: uuid.UUID = uuid.uuid4()
+		self.data[updateId] = MCL_RelayQueueData(
+			ticketId = ticketId, 
+			action = action, 
+			time = time.time()
+		)
