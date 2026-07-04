@@ -17,6 +17,7 @@ import asyncio
 import discord
 import requests
 import datetime
+from uuid import UUID
 from discord import app_commands
 from discord.ext import commands, tasks
 from fastapi.responses import JSONResponse
@@ -25,6 +26,7 @@ from typing import Dict
 from pydantic import BaseModel
 
 from src.network.security import verifyRequest
+from src.utils.enum import TicketAction
 from discordbot.logger import MCL_Logger
 from discordbot.components import AdminHelpPanel, AdminHelpEmbed
 from discordbot.threadmanager import MCL_ThreadManager
@@ -54,6 +56,41 @@ def wakeup(request: Request):
 	return JSONResponse(
 		status_code=200,
 		content={"status": "awake"}
+	)
+
+class UpdateRequest(BaseModel):
+	update_id: UUID
+	ticket_action: TicketAction
+	ticket_id: int
+
+@app.post("/update")
+def update(request: Request, updateRequest: UpdateRequest):
+	'''
+	# UPDATE ENDPOINT
+
+	This endpoint receives relay notifications from the backend.
+	'''
+
+	# Verify request
+	verifyRequest(request=request, verifyToken=True, verifyIpAddress=False)
+
+	# Validate and extract request data
+	data = updateRequest.model_dump()
+	updateId = data.get("update_id")
+	ticketAction = data.get("ticket_action")
+	ticketId = data.get("ticket_id")
+
+	# Placeholder for follow-up bot logic
+	app.state.logger.info(
+		f"Received relay update {updateId} for ticket {ticketId} with action {ticketAction}."
+	)
+
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={
+			"status": "success"
+		}
 	)
 	
 '''
