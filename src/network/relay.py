@@ -12,6 +12,7 @@ import os
 import time
 import uuid
 import logging
+import threading
 from typing import List, Dict
 
 from src.utils.enum import TicketAction, RelayDestination
@@ -99,6 +100,9 @@ class MCL_OutboundRelay():
 
 		# Relay outbound queue
 		self.queue: List[uuid.UUID] = []
+		self._lock: threading.Lock = threading.Lock()
+		self._thread: threading.Thread | None = None
+		self._stopEvent: threading.Event = threading.Event()
 
 		# Dictionaries for update information
 		self.data: Dict[uuid.UUID, MCL_RelayQueueData] = {}
@@ -151,3 +155,19 @@ class MCL_OutboundRelay():
 		self.queue.remove(updateId)
 		data = self.data.pop(updateId, None)
 		self.logger.info(f"Acknowledged update {updateId} and removed update from queue: {data}.")
+
+	def startRelayUpdateLoop(self):
+		'''
+		# Start Relay Thread
+
+		Start the relay thread to process the outbound relay queue.
+		'''
+		pass
+
+	def stopRelayUpdateLoop(self):
+		'''
+		# Stop Relay Thread
+
+		Stops the relay thread to process the outbound relay queue.
+		'''
+		pass
