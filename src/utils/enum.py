@@ -29,3 +29,12 @@ class TicketAction(Enum):
 	UNCLAIM = "UNCLAIM"
 	FEEDBACK = "FEEDBACK"
 	NEWMESSAGE = "NEW_MESSAGE"
+
+class MCL_RelayDestination():
+	'''
+	MCL Relay Destination
+
+	Enum to define the possible destinations for outbound relay calls.
+	'''
+	MINECRAFT = "MINECRAFT"
+	DISCORD = "DISCORD"
