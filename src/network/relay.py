@@ -156,19 +156,13 @@ class MCL_OutboundRelay():
 		data = self.data.pop(updateId, None)
 		self.logger.info(f"Acknowledged update {updateId} and removed update from queue: {data}.")
 
-	def startRelayUpdateLoop(self):
+	def beginRelayUpdateLoop(self):
 		'''
-		# Start Relay Thread
+		# Begin Relay Update Loop
 
-		Start the relay thread to process the outbound relay queue.
-		'''
-		pass
-
-	def stopRelayUpdateLoop(self):
-		'''
-		# Stop Relay Thread
-
-		Stops the relay thread to process the outbound relay queue.
+		Handles entire lifecycle for sending queued updates.
+		Continues sending updates until acknowledged.
+		Works with threading to prevent blocking main thread.
 		'''
 		pass
 
