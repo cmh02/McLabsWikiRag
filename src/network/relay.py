@@ -9,7 +9,9 @@ MODULE IMPORTS
 '''
 
 import os
+import uuid
 import logging
+from typing import List, Dict
 
 from src.utils.enum import TicketAction
 
@@ -45,10 +47,9 @@ class MCL_OutboundRelay():
 		self.logger = logging.getLogger("MCL_API_Logger")
 
 		# Make two outbound queues for Minecraft server and Discord bot
-		self.minecraft_queue = []
-		self.discord_queue = []
+		self.queue_Minecraft: List[uuid.UUID] = []
+		self.queue_Discord: List[uuid.UUID] = []
 
-	@staticmethod
 	def notifyAll(self, ticketId: int, action: TicketAction):
 		'''
 		# Notify All
@@ -60,10 +61,9 @@ class MCL_OutboundRelay():
 		- `action` (TicketAction): The action that was taken on the ticket.
 		'''
 
-		MCL_OutboundRelay.notifyMinecraftServer(ticketId, action)
-		MCL_OutboundRelay.notifyDiscordBot(ticketId, action)
+		self.notifyMinecraftServer(ticketId, action)
+		self.notifyDiscordBot(ticketId, action)
 
-	@staticmethod
 	def notifyMinecraftServer(self, ticketId: int, action: TicketAction):
 		'''
 		# Notify Minecraft Server
@@ -79,7 +79,9 @@ class MCL_OutboundRelay():
 		logger = logging.getLogger("MCL_API_Logger")
 		logger.info(f"Notifying Minecraft server of ticket {ticketId} update with action {action.value}.")
 
-	@staticmethod
+		# Generate a unique update ID for queueing / tracking
+		updateId: uuid.UUID = uuid.uuid4()
+
 	def notifyDiscordBot(self, ticketId: int, action: TicketAction):
 		'''
 		# Notify Discord Bot
@@ -94,3 +96,6 @@ class MCL_OutboundRelay():
 		# Log the outbound API call
 		logger = logging.getLogger("MCL_API_Logger")
 		logger.info(f"Notifying Discord bot of ticket {ticketId} update with action {action.value}.")
+
+		# Generate a unique update ID for queueing / tracking
+		updateId: uuid.UUID = uuid.uuid4()
