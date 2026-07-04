@@ -43,8 +43,14 @@ class MCL_MongoManager():
 
 		# Load mongo connection details from environment variables
 		self.mongoConnectionString = os.getenv("MCL_MONGO_CONNECTION_STRING")
+		if not self.mongoConnectionString:
+			raise ValueError("MCL_MONGO_CONNECTION_STRING environment variable is not set.")
 		self.mongoDatabaseName = os.getenv("MCL_MONGO_DATABASE_NAME")
+		if not self.mongoDatabaseName:
+			raise ValueError("MCL_MONGO_DATABASE_NAME environment variable is not set.")
 		self.mongoCollectionName = os.getenv("MCL_MONGO_COLLECTION_NAME")
+		if not self.mongoCollectionName:
+			raise ValueError("MCL_MONGO_COLLECTION_NAME environment variable is not set.")
 
 		# Create connection with pymongo
 		self.client = MongoClient(self.mongoConnectionString)

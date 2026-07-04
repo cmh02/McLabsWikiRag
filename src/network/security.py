@@ -89,7 +89,14 @@ def verifyApiToken(request: Request) -> None:
 		)
 
 	# Check if token is invalid
-	if token != os.getenv("API_TOKEN"):
+	matchToken = os.getenv("API_TOKEN")
+	if not matchToken:
+		logger.error("API_TOKEN environment variable is not set.")
+		raise HTTPException(
+			status_code=500, 
+			detail="Server configuration error ATNS!"
+		)
+	if token != matchToken:
 			
 		# Print for debugging
 		logger.warning("Invalid API token attempt.")
@@ -118,6 +125,12 @@ def verifyIp(request: Request) -> None:
 
 	# Get allowed IPs from environment variable
 	allowed_ips = os.getenv("ALLOWED_IPS", "").split(",")
+	if not allowed_ips or allowed_ips == [""]:
+		logger.error("ALLOWED_IPS environment variable is not set or empty.")
+		raise HTTPException(
+			status_code=500,
+			detail="Server configuration error AIPNS!"
+		)
 
 	# Check if client IP is in allowed list
 	if client_ip not in allowed_ips:

@@ -59,6 +59,9 @@ async def lifespan(app: FastAPI):
 	app.state.logger = MCL_Logger.setup_logger()
 
 	# Gemini client
+	if not os.getenv("GOOGLE_GEMINI_API_KEY"):
+		app.state.logger.error("GOOGLE_GEMINI_API_KEY environment variable is not set.")
+		raise ValueError("GOOGLE_GEMINI_API_KEY environment variable is not set.")
 	app.state.InstanceClient = genai.Client(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
 
 	# Load the index and documents
