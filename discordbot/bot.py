@@ -9,13 +9,8 @@ MODULE IMPORTS
 '''
 
 import os
-import time
-import logging
-import uvicorn
 import aiohttp
-import asyncio
 import discord
-import datetime
 from uuid import UUID
 from discord import app_commands
 from discord.ext import commands, tasks
