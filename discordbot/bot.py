@@ -25,7 +25,7 @@ from typing import Dict
 from pydantic import BaseModel
 
 from discordbot.logger import MCL_Logger
-from discordbot.components import AdminHelpPanel, AdminHelpEmbed
+from discordbot.components.components import AdminHelpPanel, AdminHelpEmbed
 from discordbot.threadmanager import MCL_ThreadManager
 
 '''

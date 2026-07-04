@@ -23,7 +23,7 @@ from discord import guild
 from discord.ext.commands import Bot
 
 # Local
-from discordbot.components import HelpQuestionPanel, HelpQuestionEmbed
+from discordbot.components.components import HelpQuestionPanel, HelpQuestionEmbed
 
 '''
 THREAD MANAGER
