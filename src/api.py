@@ -42,6 +42,7 @@ from src.utils.datatypes import Message
 from src.network.schemas import BaseHelpQuestionSchema, QuestionSchema
 from src.utils.enum import TicketType, TicketStatus, TicketFeedback, UpdateSource
 from src.network.limiter import limiter
+from src.network.relay import MCL_OutboundRelay
 from src.network.endpoints import router as InternalEndpointsRouter
 
 '''
@@ -76,6 +77,9 @@ async def lifespan(app: FastAPI):
 
 	# Initialize Mongo Manager
 	MCL_MongoManager().initialize()
+
+	# Initialize Outbound Relay
+	MCL_OutboundRelay().initialize()
 
 	# Log startup
 	app.state.logger.info(f"MCL RAG API started with PID {os.getpid()}!")
