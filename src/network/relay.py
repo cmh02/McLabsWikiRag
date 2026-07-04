@@ -15,6 +15,8 @@ import uuid
 import logging
 from typing import List, Dict
 
+import aiohttp
+
 from src.utils.enum import TicketAction, RelayDestination
 
 '''
@@ -27,7 +29,9 @@ class MCL_RelayQueueData():
 
 	Class to manage the data associated with a queued outbound relay call.
 	'''
-	def __init__(self, ticketId: int, action: TicketAction, destination: RelayDestination, originTime: float, lastAttemptTime: float | None):
+	def __init__(self, updateId: uuid.UUID, ticketId: int, action: TicketAction, destination: RelayDestination, originTime: float, lastAttemptTime: float | None):
+		# ID of the queued relay update
+		self.updateId: uuid.UUID = updateId
 		
 		# ID of the ticket that was updated
 		self.ticketId: int = ticketId
@@ -107,6 +111,18 @@ class MCL_OutboundRelay():
 		# Dictionaries for update information
 		self.data: Dict[uuid.UUID, MCL_RelayQueueData] = {}
 
+		# Minecraft relay configuration
+		self.minecraftApiDomain = os.getenv("RAILWAY_MINECRAFT_API_DOMAIN")
+		if not self.minecraftApiDomain:
+			self.logger.error("RAILWAY_MINECRAFT_API_DOMAIN environment variable is not set.")
+			raise ValueError("RAILWAY_MINECRAFT_API_DOMAIN environment variable is not set.")
+
+		# Discord relay configuration
+		self.discordBotApiDomain = os.getenv("RAILWAY_DISCORD_API_DOMAIN")
+		if not self.discordBotApiDomain:
+			self.logger.error("RAILWAY_DISCORD_API_DOMAIN environment variable is not set.")
+			raise ValueError("RAILWAY_DISCORD_API_DOMAIN environment variable is not set.")
+
 	def relay(self, ticketId: int, action: TicketAction):
 		'''
 		# Master Relay
@@ -123,6 +139,7 @@ class MCL_OutboundRelay():
 		# Create update for minecraft
 		updateId_Minecraft: uuid.UUID = uuid.uuid4()
 		self.data[updateId_Minecraft] = MCL_RelayQueueData(
+			updateId = updateId_Minecraft,
 			ticketId = ticketId,
 			action = action,
 			destination = RelayDestination.MINECRAFT,
@@ -134,6 +151,7 @@ class MCL_OutboundRelay():
 		# Create update for discord
 		updateId_Discord: uuid.UUID = uuid.uuid4()
 		self.data[updateId_Discord] = MCL_RelayQueueData(
+			updateId = updateId_Discord,
 			ticketId = ticketId,
 			action = action,
 			destination = RelayDestination.DISCORD,
@@ -251,4 +269,26 @@ class MCL_OutboundRelay():
 		## Parameters
 		- `data` (MCL_RelayQueueData): The data associated with the update.
 		'''
-		pass
+		payload = {
+			"update_id": str(data.updateId),
+			"ticket_action": data.action.value,
+			"ticket_id": data.ticketId,
+		}
+
+		async with aiohttp.ClientSession() as session:
+			async with session.post(
+				url=f"https://{self.discordBotApiDomain}/update",
+				headers={
+					"Content-Type": "application/json",
+					"Authorization": os.getenv("API_TOKEN"),
+					"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
+				},
+				json=payload
+			) as response:
+				if response.status == 200:
+					self.logger.info(f"Successfully notified Discord bot of update {payload['update_id']}.")
+				else:
+					responseText = await response.text()
+					self.logger.error(
+						f"Failed to notify Discord bot of update {payload['update_id']}. Status {response.status}: {responseText}"
+					)
