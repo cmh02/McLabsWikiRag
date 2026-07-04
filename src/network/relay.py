@@ -25,6 +25,28 @@ class MCL_OutboundRelay():
 	single point of management for all outbound API calls, including logging
 	and error handling.
 	'''
+	_instance = None
+
+	def __new__(cls):
+		if cls._instance is None:
+			cls._instance = super(MCL_OutboundRelay, cls).__new__(cls)
+		return cls._instance
+
+	def initialize(self):
+		'''
+		# Class Initialization
+
+		Initializes the outbound relay for queuing updates.
+		We queue updates to prevent update loss.
+		Updates will be retried until ACK'd by the receiving system.
+		'''
+
+		# Initialize logger for singleton
+		self.logger = logging.getLogger("MCL_API_Logger")
+
+		# Make two outbound queues for Minecraft server and Discord bot
+		self.minecraft_queue = []
+		self.discord_queue = []
 
 	@staticmethod
 	def notifyAll(self, ticketId: int, action: TicketAction):
