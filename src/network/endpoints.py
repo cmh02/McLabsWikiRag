@@ -551,7 +551,7 @@ def acknowledge_update(request: Request, body: AcknowledgeUpdateSchema):
 	guid: str = data.get("guid")
 
 	# Acknowledge update
-	MCL_OutboundRelay().acknowledgeUpdate(
+	MCL_OutboundRelay().acknowledge(
 		updateId=guid
 	)
 
