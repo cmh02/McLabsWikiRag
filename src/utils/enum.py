@@ -30,7 +30,7 @@ class TicketAction(Enum):
 	FEEDBACK = "FEEDBACK"
 	NEWMESSAGE = "NEW_MESSAGE"
 
-class MCL_RelayDestination():
+class RelayDestination(Enum):
 	'''
 	MCL Relay Destination
 
