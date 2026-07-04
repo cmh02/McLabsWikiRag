@@ -118,27 +118,41 @@ class MCL_OutboundRelay():
 		- `action` (TicketAction): The action that was taken on the ticket.
 		'''
 
-		# Create update for minecraft
-		updateId_Minecraft: uuid.UUID = uuid.uuid4()
-		self.data[updateId_Minecraft] = MCL_RelayQueueData(
-			ticketId = ticketId, 
-			action = action, 
-			destination = RelayDestination.MINECRAFT,
-			originTime = time.time(),
-			lastAttemptTime = None
-		)
-		self.queue.append(updateId_Minecraft)
+		# Grab lock so we don't add to queue while loop is processing
+		with self._lock:
 
-		# Create update for discord
-		updateId_Discord: uuid.UUID = uuid.uuid4()
-		self.data[updateId_Discord] = MCL_RelayQueueData(
-			ticketId = ticketId, 
-			action = action, 
-			destination = RelayDestination.DISCORD,
-			originTime = time.time(),
-			lastAttemptTime = None
-		)
-		self.queue.append(updateId_Discord)
+			# Create update for minecraft
+			updateId_Minecraft: uuid.UUID = uuid.uuid4()
+			self.data[updateId_Minecraft] = MCL_RelayQueueData(
+				ticketId = ticketId, 
+				action = action, 
+				destination = RelayDestination.MINECRAFT,
+				originTime = time.time(),
+				lastAttemptTime = None
+			)
+			self.queue.append(updateId_Minecraft)
+
+			# Create update for discord
+			updateId_Discord: uuid.UUID = uuid.uuid4()
+			self.data[updateId_Discord] = MCL_RelayQueueData(
+				ticketId = ticketId, 
+				action = action, 
+				destination = RelayDestination.DISCORD,
+				originTime = time.time(),
+				lastAttemptTime = None
+			)
+			self.queue.append(updateId_Discord)
+
+			# Check if we need to start a new thread for the relay update loop
+			if self._thread is None or not self._thread.is_alive() or self._stopEvent.is_set():
+				self._stopEvent.clear()
+				self._thread = threading.Thread(
+					target=self.beginRelayUpdateLoop,
+					daemon=True,
+					name="RelayUpdateLoopThread"
+				)
+				self._thread.start()
+				self.logger.info("Started new thread for relay update loop.")
 
 	def acknowledgeUpdate(self, updateId: uuid.UUID):
 		'''
@@ -149,12 +163,22 @@ class MCL_OutboundRelay():
 		## Parameters
 		- `updateId` (uuid.UUID): The unique ID of the update to acknowledge.
 		'''
-		if updateId not in self.data:
-			self.logger.warning(f"Attempted to acknowledge unknown update {updateId}.")
-			return
-		self.queue.remove(updateId)
-		data = self.data.pop(updateId, None)
-		self.logger.info(f"Acknowledged update {updateId} and removed update from queue: {data}.")
+
+		# Grab lock so we don't remove from queue while loop is processing
+		with self._lock:
+
+			# Update queue
+			if updateId not in self.data:
+				self.logger.warning(f"Attempted to acknowledge unknown update {updateId}.")
+				return
+			self.queue.remove(updateId)
+			data = self.data.pop(updateId, None)
+			self.logger.info(f"Acknowledged update {updateId} and removed update from queue: {data}.")
+
+			# Check if we need to stop the relay update loop
+			if not self.queue:
+				self._stopEvent.set()
+				self.logger.info("No more updates in queue. Stopping relay update loop.")
 
 	def beginRelayUpdateLoop(self):
 		'''
@@ -164,7 +188,49 @@ class MCL_OutboundRelay():
 		Continues sending updates until acknowledged.
 		Works with threading to prevent blocking main thread.
 		'''
-		pass
+		
+		# Loop until stop event is set
+		while not self._stopEvent.is_set():
+			with self._lock:
+
+				# Process each update in the queue
+				for updateId in list(self.queue):
+
+					# Validate that data is still valid
+					data = self.data.get(updateId)
+					if not data:
+						self.logger.warning(f"Update {updateId} not found in data dictionary. Removing from queue.")
+						self.queue.remove(updateId)
+						continue
+
+					# Check if we should retry the update
+					if data.lastAttemptTime is None or (time.time() - data.lastAttemptTime) >= self.relayQueueRetryInterval:
+					
+						# Update last attempt time
+						data.lastAttemptTime = time.time()
+
+						# Notify the appropriate external system
+						self.logger.info(f"Attempting to notify {data.destination} of update {updateId}: {data}.")
+						self.notify(data)
+
+			# Sleep for the poll interval before checking the queue again
+			time.sleep(self.relayQueuePollInterval)
+
+	def notify(self, data: MCL_RelayQueueData):
+		'''
+		# Notify
+
+		Notifies the appropriate external system of an update.
+
+		## Parameters
+		- `data` (MCL_RelayQueueData): The data associated with the update.
+		'''
+		if data.destination == RelayDestination.MINECRAFT:
+			self.notifyMinecraft(data)
+		elif data.destination == RelayDestination.DISCORD:
+			self.notifyDiscord(data)
+		else:
+			self.logger.error(f"Unknown destination {data.destination} for update {data}.")
 
 	def notifyMinecraft(self, data: MCL_RelayQueueData):
 		'''
