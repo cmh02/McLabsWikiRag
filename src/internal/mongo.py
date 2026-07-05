@@ -14,8 +14,9 @@ MONGO MANAGER
 
 import os
 import logging
-from pymongo import MongoClient
+from typing import Optional
 from starlette import status
+from pymongo import MongoClient
 
 from src.utils.datatypes import HelpTicket, Conversation, Message
 from src.utils.enum import TicketType, TicketStatus, TicketFeedback
