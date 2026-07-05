@@ -33,13 +33,39 @@ class General(commands.Cog):
 		'''
 		# IP Command
 
-		Sends the server IP address to the user ephemerally.
+		Sends the server IP address to the user ephemerally in an embed.
 		'''
 		self.logger.info(f"IP command invoked by {ctx.author}!")
 		try:
-			await ctx.send("Server IP: play.labs-mc.com", ephemeral=True)
+			embed = discord.Embed(
+				title="MCLabs Server IP",
+				description="Connect to the server using the IP address below:",
+				color=discord.Color.blue()
+			)
+			embed.add_field(name="Server IP", value="`play.labs-mc.com`", inline=True)
+			await ctx.send(embed=embed, ephemeral=True)
 		except Exception as e:
 			self.logger.exception(f"Error executing /ip command: {e}")
+			raise e
+
+	@commands.hybrid_command(name="version", description="Get the server version.")
+	async def version(self, ctx: commands.Context):
+		'''
+		# Version Command
+
+		Sends the server version to the user ephemerally in an embed.
+		'''
+		self.logger.info(f"Version command invoked by {ctx.author}!")
+		try:
+			embed = discord.Embed(
+				title="MCLabs Server Version",
+				description="Here is the supported version for the server:",
+				color=discord.Color.blue()
+			)
+			embed.add_field(name="Version", value="`1.21.11`", inline=True)
+			await ctx.send(embed=embed, ephemeral=True)
+		except Exception as e:
+			self.logger.exception(f"Error executing /version command: {e}")
 			raise e
 
 	@commands.hybrid_command(name="info", description="Get general information about the server.")
@@ -60,8 +86,8 @@ class General(commands.Cog):
 			embed.add_field(name="Version", value="`1.21.11`", inline=True)
 			embed.add_field(name="Features & Gameplay", value=(
 				"🧪 **Sell Chems:** Build your chemical empire and sell for profits!\n"
-				"👥 **Find Community:** Join factions/towns and meet other players!\n"
-				"🏗️ **Claim & Build:** Secure your territory and build your dream base!"
+				"👥 **Find Community:** Join companies/towns and meet other players!\n"
+				"🏆 **Compete on Leaderboards:** Rise to the top of the server leaderboards!"
 			), inline=False)
 			
 			await ctx.send(embed=embed, ephemeral=True)
