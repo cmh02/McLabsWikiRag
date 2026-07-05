@@ -85,7 +85,8 @@ bot = MclBot(
 	command_prefix="/", 
 	intents=intents, 
 	activity=discord.Streaming(
-		name="MCLabs Wiki", 
+		name="MCLabs Help Assistant", 
+		description="Ranked #2 Helper",
 		url="https://labs-mc.com/wiki/Main_Page"
 	)
 )
