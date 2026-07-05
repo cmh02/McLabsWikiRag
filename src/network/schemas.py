@@ -12,8 +12,6 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 from fastapi import Header
 
-from src.utils.enum import UpdateSource
-
 '''
 MODEL DEFINITIONS
 '''
@@ -32,9 +30,6 @@ class BaseHelpQuestionSchema(BaseModel):
 		if isinstance(id, str):
 			return int(id)
 		return id
-	
-	# Source of the help question (either minecraft or discord)
-	question_source: UpdateSource = Field(description="The source of the help question.")
 	
 class QuestionSchema(BaseModel):
 	'''
