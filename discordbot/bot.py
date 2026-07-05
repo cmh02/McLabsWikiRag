@@ -77,6 +77,7 @@ async def lifespan(app: FastAPI):
 	
 	# Setup logging
 	app.state.logger = MCL_Logger.setup_logger()
+	app.state.logger.info(f"MCL Discord Bot API is starting up with PID {os.getpid()}!")
 
 	# Store bot reference in app state
 	app.state.bot = bot
@@ -98,7 +99,7 @@ async def lifespan(app: FastAPI):
 	yield
 
 	# Shutdown bot gracefully
-	app.state.logger.info(f"Attempting to shut down MCL Discord Bot API with PID {os.getpid()}!")
+	app.state.logger.info(f"MCL Discord Bot API is shutting down with PID {os.getpid()}!")
 	await bot.close()
 	try:
 		await app.state.bot_task
