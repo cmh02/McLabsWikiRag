@@ -37,6 +37,7 @@ class MclBot(commands.Bot):
 		super().__init__(*args, **kwargs)
 		self.logger = logging.getLogger("MCL_DISCORD_Logger")
 		self.logger.info("MCL Discord Bot has been initialized!")
+		self.has_sent_online = False
 
 	async def setup_hook(self):
 		self.session = aiohttp.ClientSession()
@@ -66,6 +67,19 @@ class MclBot(commands.Bot):
 		# Initialize Mongo Manager
 		mongo_manager = MCL_MongoManager()
 		mongo_manager.initialize()
+
+		# Track bot session ID to handle rolling restarts cleanly
+		import uuid
+		self.session_id = str(uuid.uuid4())
+		try:
+			mongo_manager.db["bot_status"].replace_one(
+				{"_id": "active_session"},
+				{"_id": "active_session", "session_id": self.session_id},
+				upsert=True
+			)
+			self.logger.info(f"Registered bot session: {self.session_id}")
+		except Exception as e:
+			self.logger.exception(f"Failed to register bot session in MongoDB: {e}")
 
 		# Register persistent views
 		self.add_view(HelpTicketThreadView())
@@ -101,16 +115,28 @@ class MclBot(commands.Bot):
 		admin_channel_id = os.getenv("DISCORD_ADMIN_CHANNEL_ID")
 		if admin_channel_id:
 			try:
-				channel = self.get_channel(int(admin_channel_id))
-				if not channel:
-					channel = await self.fetch_channel(int(admin_channel_id))
-				if not channel:
-					self.logger.error("MCL Discord Bot could not find admin channel!")
-					return
-				if not isinstance(channel, discord.TextChannel):
-					self.logger.error("MCL Discord Bot admin channel is not a text channel!")
-					return
-				await channel.send("🔴 MCL Discord Bot is shutting down!")
+				# Check if this instance is still the active session in MongoDB
+				mongo_manager = MCL_MongoManager()
+				is_active = hasattr(self, "session_id")
+				if is_active:
+					try:
+						status_doc = mongo_manager.db["bot_status"].find_one({"_id": "active_session"})
+						if status_doc and status_doc.get("session_id") != self.session_id:
+							is_active = False
+							self.logger.info(f"This session ({self.session_id}) is not active (current active: {status_doc.get('session_id')}). Skipping shutdown notification.")
+					except Exception as mongo_err:
+						self.logger.exception(f"Error checking active session in MongoDB during shutdown: {mongo_err}")
+
+				if is_active:
+					channel = self.get_channel(int(admin_channel_id))
+					if not channel:
+						channel = await self.fetch_channel(int(admin_channel_id))
+					if not channel:
+						self.logger.error("MCL Discord Bot could not find admin channel!")
+					elif not isinstance(channel, discord.TextChannel):
+						self.logger.error("MCL Discord Bot admin channel is not a text channel!")
+					else:
+						await channel.send("🔴 MCL Discord Bot is shutting down!")
 			except Exception as e:
 				self.logger.exception(f"Failed to send shutdown message to admin channel: {e}")
 		await self.session.close()
@@ -123,6 +149,10 @@ class MclBot(commands.Bot):
 
 	async def on_ready(self):
 		self.logger.info("MCL Discord Bot is ready!")
+		if self.has_sent_online:
+			self.logger.info("MCL Discord Bot online message already sent for this session. Skipping duplicate.")
+			return
+
 		admin_channel_id = os.getenv("DISCORD_ADMIN_CHANNEL_ID")
 		if admin_channel_id:
 			try:
@@ -136,6 +166,7 @@ class MclBot(commands.Bot):
 					self.logger.error("MCL Discord Bot admin channel is not a text channel!")
 					return
 				await channel.send("🟢 MCL Discord Bot is online!")
+				self.has_sent_online = True
 			except Exception as e:
 				self.logger.exception(f"Failed to send online message to admin channel: {e}")
 
