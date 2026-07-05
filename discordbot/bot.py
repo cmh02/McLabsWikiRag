@@ -24,6 +24,8 @@ from discordbot.utils.logger import MCL_Logger
 from discordbot.network.limiter import limiter
 from discordbot.network.endpoints import router as InternalEndpointsRouter
 from discordbot.network.relay import MCL_OutboundRelay
+from discordbot.internal.mongo import MCL_MongoManager
+from discordbot.components.ticket_view import HelpTicketThreadView
 
 '''
 BOT DEFINITION
@@ -38,6 +40,24 @@ class MclBot(commands.Bot):
 
 	async def setup_hook(self):
 		self.session = aiohttp.ClientSession()
+
+		# Validate TICKET_CHANNEL_ID environment variable
+		ticket_channel_id = os.getenv("TICKET_CHANNEL_ID")
+		if not ticket_channel_id:
+			self.logger.error("TICKET_CHANNEL_ID environment variable is not set. Bot shutting down.")
+			raise RuntimeError("TICKET_CHANNEL_ID environment variable is not set.")
+		try:
+			int(ticket_channel_id)
+		except ValueError:
+			self.logger.error("TICKET_CHANNEL_ID environment variable is not a valid integer. Bot shutting down.")
+			raise RuntimeError("TICKET_CHANNEL_ID environment variable is not a valid integer.")
+
+		# Initialize Mongo Manager
+		mongo_manager = MCL_MongoManager()
+		mongo_manager.initialize()
+
+		# Register persistent views
+		self.add_view(HelpTicketThreadView())
 
 		# Dynamically load all cogs/extensions in the cogs directory
 		cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")
@@ -68,6 +88,10 @@ class MclBot(commands.Bot):
 	async def close(self):
 		self.logger.info("MCL Discord Bot is shutting down!")
 		await self.session.close()
+		try:
+			MCL_MongoManager().shutdown()
+		except Exception as e:
+			self.logger.exception(f"Error shutting down Mongo Manager: {e}")
 		await super().close()
 		self.logger.info("MCL Discord Bot has shut down!")
 

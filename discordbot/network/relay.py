@@ -124,3 +124,59 @@ class MCL_OutboundRelay:
 				"closedBy": closed_by
 			}
 		)
+
+	async def acknowledge_update(self, update_id: str) -> bool:
+		'''
+		# Acknowledge Update
+
+		Sends a request to the backend RAG API to acknowledge a received relay update.
+		'''
+		return await self._post_with_retry(
+			endpoint="/acknowledge_update",
+			json_data={
+				"guid": update_id
+			}
+		)
+
+	async def update_ticket_thread(self, ticket_id: int, thread_id: int) -> bool:
+		'''
+		# Update Ticket Thread
+
+		Sends a request to the backend RAG API to set/update a ticket's thread ID.
+		'''
+		return await self._post_with_retry(
+			endpoint="/update_ticket_thread",
+			json_data={
+				"ticketId": ticket_id,
+				"threadId": thread_id
+			}
+		)
+
+	async def set_ticket_feedback(self, ticket_id: int, feedback: str) -> bool:
+		'''
+		# Set Ticket Feedback
+
+		Sends a request to the backend RAG API to set feedback for a ticket.
+		'''
+		return await self._post_with_retry(
+			endpoint="/set_ticket_feedback",
+			json_data={
+				"ticketId": ticket_id,
+				"feedback": feedback
+			}
+		)
+
+	async def append_ticket_message(self, ticket_id: int, content: str, sent_by: str) -> bool:
+		'''
+		# Append Ticket Message
+
+		Sends a request to the backend RAG API to append a message to a ticket conversation.
+		'''
+		return await self._post_with_retry(
+			endpoint="/append_ticket_message",
+			json_data={
+				"ticketId": ticket_id,
+				"content": content,
+				"sentBy": sent_by
+			}
+		)

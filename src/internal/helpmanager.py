@@ -99,6 +99,28 @@ class MCL_HelpManager():
 		)
 		return ticketId
 
+	def updateTicketThread(self, ticketId: int, threadId: int):
+		'''
+		# Update Ticket Thread ID
+
+		Updates the Discord thread ID for an existing help ticket.
+		'''
+		# Check if the ticket exists in memory, otherwise retrieve from MongoDB
+		if ticketId not in self.tickets:
+			ticket = self.mongoManager.getTicket(ticketId)
+			if not ticket or ticket.player == "Unknown":
+				self.logger.error(f"Attempted to update thread for non-existent ticket with ID {ticketId}.")
+				return
+			self.tickets[ticketId] = ticket
+
+		# Update the thread ID
+		self.tickets[ticketId].threadId = threadId
+
+		# Save to mongo
+		self.mongoManager.saveTicket(
+			ticket=self.tickets[ticketId]
+		)
+
 	def closeTicket(self, ticketId: int, closedBy: str):
 		'''
 		# Close Ticket

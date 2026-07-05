@@ -193,6 +193,37 @@ def create_ticket(request: Request, body: CreateTicketSchema):
 		}
 	)
 
+class UpdateTicketThreadSchema(BaseModel):
+	'''
+	# UpdateTicketThreadSchema
+
+	Model for updating a ticket with its Discord thread ID.
+	'''
+	ticketId: int = Field(description="The ID of the ticket to update.")
+	threadId: int = Field(description="The Discord thread ID to link to the ticket.")
+
+@router.post("/update_ticket_thread")
+@limiter.limit("100/minute")
+def update_ticket_thread(request: Request, body: UpdateTicketThreadSchema):
+
+	# Extract data from request body
+	data: Dict = body.model_dump()
+	ticketId: int = data.get("ticketId")
+	threadId: int = data.get("threadId")
+
+	# Update ticket thread
+	MCL_HelpManager().updateTicketThread(
+		ticketId=ticketId,
+		threadId=threadId
+	)
+
+	return JSONResponse(
+		status_code=200,
+		content={
+			"status": "success"
+		}
+	)
+
 
 
 '''

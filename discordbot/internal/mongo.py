@@ -10,6 +10,7 @@ MODULE IMPORTS
 
 import os
 import logging
+from typing import Optional
 from pymongo import MongoClient
 from starlette import status
 
@@ -95,12 +96,27 @@ class MCL_MongoManager():
 				type=TicketType.SUPPORT
 			)
 			
+		return self._deserializeTicket(ticket_data)
+
+	def getTicketByThreadId(self, threadId: int) -> Optional[HelpTicket]:
+		"""
+		## Get Ticket By Thread ID
+
+		Retrieves a help ticket by its linked Discord thread ID.
+		"""
+		ticket_data = self.collection.find_one({"threadId": threadId})
+		if not ticket_data:
+			return None
+		return self._deserializeTicket(ticket_data)
+
+	def _deserializeTicket(self, ticket_data: dict) -> HelpTicket:
 		# If ticket does exist, then repop fields
 		ticket = HelpTicket(
 			ticketId=ticket_data["ticketId"],
 			player=ticket_data["player"],
 			type=TicketType(ticket_data["type"]),
-			conversation=Conversation.fromDict(ticket_data["conversation"]) if "conversation" in ticket_data else None
+			conversation=Conversation.fromDict(ticket_data["conversation"]) if "conversation" in ticket_data else None,
+			threadId=ticket_data.get("threadId")
 		)
 		ticket.status = TicketStatus(ticket_data["status"])
 		ticket.feedback = TicketFeedback(ticket_data["feedback"])
