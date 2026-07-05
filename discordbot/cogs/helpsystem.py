@@ -33,9 +33,11 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 		max_length=1000
 	)
 
-	def __init__(self, logger: logging.Logger):
+	def __init__(self, logger: logging.Logger, default_question: str | None = None):
 		super().__init__()
 		self.logger = logger
+		if default_question:
+			self.question_input.default = default_question[:1000]
 
 	async def on_submit(self, interaction: discord.Interaction):
 		'''
@@ -139,15 +141,16 @@ class HelpSystem(commands.Cog):
 		self.logger.info("Helpsystem Cog initialized!")
 
 	@app_commands.command(name="ask", description="Submit a question to the help system.")
-	async def ask(self, interaction: discord.Interaction):
+	@app_commands.describe(question="An optional question to pre-populate the form")
+	async def ask(self, interaction: discord.Interaction, question: str | None = None):
 		'''
 		# Ask Command
 
 		Opens a modal asking the user to input a question.
 		'''
-		self.logger.info(f"Ask slash command invoked by {interaction.user} ({interaction.user.id})")
+		self.logger.info(f"Ask slash command invoked by {interaction.user} ({interaction.user.id}) with question parameter: {question}")
 		try:
-			modal = HelpSystemModal(self.logger)
+			modal = HelpSystemModal(self.logger, default_question=question)
 			await interaction.response.send_modal(modal)
 		except Exception as e:
 			self.logger.exception(f"Error showing /ask modal: {e}")
