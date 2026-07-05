@@ -10,6 +10,7 @@ MODULE IMPORTS
 
 import logging
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 '''
@@ -43,17 +44,11 @@ class Developer(commands.Cog):
 		if not isinstance(ctx.author, discord.Member):
 			raise commands.CheckFailure("This command cannot be used by non-guild members!")
 
-		# Define role IDs that are allowed to run developer commands
-		allowed_roles = {
-			1447520265113174066, # DEV ADMIN
-			384788021876359179,  # SERVER OWNER
-			384804758407479296,  # SERVER ADMIN
-			939667997402992670,  # SERVER TRIAL ADMIN
-		}
+		# If it's a traditional prefix command (not a slash command/interaction), enforce administrator permission
+		if ctx.interaction is None:
+			if not ctx.author.guild_permissions.administrator:
+				raise commands.CheckFailure("You do not have permission to use developer commands!")
 		
-		# Check that member has one of the above roles
-		if allowed_roles.isdisjoint({role.id for role in ctx.author.roles}):
-			raise commands.CheckFailure("You do not have permission to use developer commands!")
 		return True
 
 	async def cog_command_error(self, ctx: commands.Context, error: Exception):
@@ -68,6 +63,7 @@ class Developer(commands.Cog):
 			raise error
 
 	@commands.hybrid_command(name="ping", description="Ping the bot to check latency and status.")
+	@app_commands.default_permissions(administrator=True)
 	async def ping(self, ctx: commands.Context):
 		'''
 		# Ping Command
@@ -83,6 +79,7 @@ class Developer(commands.Cog):
 			raise e
 
 	@commands.hybrid_command(name="mirror", description="Mirror user details back in an ephemeral embed.")
+	@app_commands.default_permissions(administrator=True)
 	async def mirror(self, ctx: commands.Context):
 		'''
 		# Mirror Command
