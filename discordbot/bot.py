@@ -56,7 +56,7 @@ class MclBot(commands.Bot):
 
 		# Sync application commands with Discord
 		try:
-			self.logger.info("Syncing Discord command tree...")
+			self.logger.info("Syncing Discord command tree!")
 			synced = await self.tree.sync()
 			self.logger.info(f"Successfully synced {len(synced)} command(s) globally.")
 		except Exception as e:
