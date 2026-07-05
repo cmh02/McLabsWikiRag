@@ -71,9 +71,9 @@ async def update(request: Request, updateRequest: UpdateRequest):
 			from src.utils.enum import TicketAction
 			if ticketAction == TicketAction.CREATE.value:
 				# 1. Resolve configured ticket creation channel
-				channel_id = os.getenv("TICKET_CHANNEL_ID")
+				channel_id = os.getenv("DISCORD_TICKET_CHANNEL_ID")
 				if not channel_id:
-					raise ValueError("TICKET_CHANNEL_ID environment variable is not set.")
+					raise ValueError("DISCORD_TICKET_CHANNEL_ID environment variable is not set.")
 				
 				channel = bot.get_channel(int(channel_id))
 				if not channel:

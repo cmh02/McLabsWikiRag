@@ -41,16 +41,16 @@ class MclBot(commands.Bot):
 	async def setup_hook(self):
 		self.session = aiohttp.ClientSession()
 
-		# Validate TICKET_CHANNEL_ID environment variable
-		ticket_channel_id = os.getenv("TICKET_CHANNEL_ID")
+		# Validate DISCORD_TICKET_CHANNEL_ID environment variable
+		ticket_channel_id = os.getenv("DISCORD_TICKET_CHANNEL_ID")
 		if not ticket_channel_id:
-			self.logger.error("TICKET_CHANNEL_ID environment variable is not set. Bot shutting down.")
-			raise RuntimeError("TICKET_CHANNEL_ID environment variable is not set.")
+			self.logger.error("DISCORD_TICKET_CHANNEL_ID environment variable is not set. Bot shutting down.")
+			raise RuntimeError("DISCORD_TICKET_CHANNEL_ID environment variable is not set.")
 		try:
 			int(ticket_channel_id)
 		except ValueError:
-			self.logger.error("TICKET_CHANNEL_ID environment variable is not a valid integer. Bot shutting down.")
-			raise RuntimeError("TICKET_CHANNEL_ID environment variable is not a valid integer.")
+			self.logger.error("DISCORD_TICKET_CHANNEL_ID environment variable is not a valid integer. Bot shutting down.")
+			raise RuntimeError("DISCORD_TICKET_CHANNEL_ID environment variable is not a valid integer.")
 
 		# Initialize Mongo Manager
 		mongo_manager = MCL_MongoManager()
