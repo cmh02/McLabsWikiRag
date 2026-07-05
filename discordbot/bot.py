@@ -38,6 +38,31 @@ class MclBot(commands.Bot):
 
 	async def setup_hook(self):
 		self.session = aiohttp.ClientSession()
+
+		# Dynamically load all cogs/extensions in the cogs directory
+		cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")
+		if os.path.exists(cogs_dir):
+			for filename in os.listdir(cogs_dir):
+				if filename.endswith(".py") and not filename.startswith("_"):
+					extension_name = f"discordbot.cogs.{filename[:-3]}"
+					try:
+						await self.load_extension(extension_name)
+						self.logger.info(f"Loaded extension: {extension_name}")
+					except Exception as e:
+						self.logger.exception(f"Failed to load extension {extension_name}: {e}")
+						raise e
+		else:
+			self.logger.warning(f"Cogs directory not found at: {cogs_dir}")
+
+		# Sync application commands with Discord
+		try:
+			self.logger.info("Syncing Discord command tree...")
+			synced = await self.tree.sync()
+			self.logger.info(f"Successfully synced {len(synced)} command(s) globally.")
+		except Exception as e:
+			self.logger.exception(f"Failed to sync command tree: {e}")
+			raise e
+
 		self.logger.info("MCL Discord Bot has completed setup!")
 
 	async def close(self):
