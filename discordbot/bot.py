@@ -34,16 +34,20 @@ class MclBot(commands.Bot):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.logger = logging.getLogger("MCL_DISCORD_Logger")
+		self.logger.info("MCL Discord Bot has been initialized!")
 
 	async def setup_hook(self):
 		self.session = aiohttp.ClientSession()
+		self.logger.info("MCL Discord Bot has completed setup!")
 
 	async def close(self):
+		self.logger.info("MCL Discord Bot is shutting down!")
 		await self.session.close()
 		await super().close()
+		self.logger.info("MCL Discord Bot has shut down!")
 
 	async def on_ready(self):
-		self.logger.info("MCL Discord Bot is online and ready!")
+		self.logger.info("MCL Discord Bot is ready!")
 
 # Configure Discord intents
 intents = discord.Intents.default()
