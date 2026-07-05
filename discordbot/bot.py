@@ -52,6 +52,17 @@ class MclBot(commands.Bot):
 			self.logger.error("DISCORD_TICKET_CHANNEL_ID environment variable is not a valid integer. Bot shutting down.")
 			raise RuntimeError("DISCORD_TICKET_CHANNEL_ID environment variable is not a valid integer.")
 
+		# Validate DISCORD_ADMIN_CHANNEL_ID environment variable
+		admin_channel_id = os.getenv("DISCORD_ADMIN_CHANNEL_ID")
+		if not admin_channel_id:
+			self.logger.error("DISCORD_ADMIN_CHANNEL_ID environment variable is not set. Bot shutting down.")
+			raise RuntimeError("DISCORD_ADMIN_CHANNEL_ID environment variable is not set.")
+		try:
+			int(admin_channel_id)
+		except ValueError:
+			self.logger.error("DISCORD_ADMIN_CHANNEL_ID environment variable is not a valid integer. Bot shutting down.")
+			raise RuntimeError("DISCORD_ADMIN_CHANNEL_ID environment variable is not a valid integer.")
+
 		# Initialize Mongo Manager
 		mongo_manager = MCL_MongoManager()
 		mongo_manager.initialize()
@@ -87,6 +98,21 @@ class MclBot(commands.Bot):
 
 	async def close(self):
 		self.logger.info("MCL Discord Bot is shutting down!")
+		admin_channel_id = os.getenv("DISCORD_ADMIN_CHANNEL_ID")
+		if admin_channel_id:
+			try:
+				channel = self.get_channel(int(admin_channel_id))
+				if not channel:
+					channel = await self.fetch_channel(int(admin_channel_id))
+				if not channel:
+					self.logger.error("MCL Discord Bot could not find admin channel!")
+					return
+				if not isinstance(channel, discord.TextChannel):
+					self.logger.error("MCL Discord Bot admin channel is not a text channel!")
+					return
+				await channel.send("🔴 MCL Discord Bot is shutting down!")
+			except Exception as e:
+				self.logger.exception(f"Failed to send shutdown message to admin channel: {e}")
 		await self.session.close()
 		try:
 			MCL_MongoManager().shutdown()
@@ -97,6 +123,21 @@ class MclBot(commands.Bot):
 
 	async def on_ready(self):
 		self.logger.info("MCL Discord Bot is ready!")
+		admin_channel_id = os.getenv("DISCORD_ADMIN_CHANNEL_ID")
+		if admin_channel_id:
+			try:
+				channel = self.get_channel(int(admin_channel_id))
+				if not channel:
+					channel = await self.fetch_channel(int(admin_channel_id))
+				if not channel:
+					self.logger.error("MCL Discord Bot could not find admin channel!")
+					return
+				if not isinstance(channel, discord.TextChannel):
+					self.logger.error("MCL Discord Bot admin channel is not a text channel!")
+					return
+				await channel.send("🟢 MCL Discord Bot is online!")
+			except Exception as e:
+				self.logger.exception(f"Failed to send online message to admin channel: {e}")
 
 # Configure Discord intents
 intents = discord.Intents.default()
