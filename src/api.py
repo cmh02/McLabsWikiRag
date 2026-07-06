@@ -66,16 +66,20 @@ async def lifespan(app: FastAPI):
 	MCL_OutboundRelay().initialize()
 
 	# Log startup
-	app.state.logger.info(f"MCL RAG API started with PID {os.getpid()}!")
+	startupMessage: str = f"MCL Backend API started with PID {os.getpid()}!"
+	app.state.logger.info(startupMessage)
+	await MCL_OutboundRelay().messageDiscordAdminChannel(startupMessage)
 
 	# Yield back for app lifetime
 	yield
 
+	# Log shutdown
+	shutdownMessage: str = f"MCL Backend API shutting down with PID {os.getpid()}!"
+	app.state.logger.info(shutdownMessage)
+	await MCL_OutboundRelay().messageDiscordAdminChannel(shutdownMessage)
+
 	# Shutdown Mongo Manager
 	MCL_MongoManager().shutdown()
-
-	# Log shutdown
-	app.state.logger.info(f"MCL RAG API shutting down with PID {os.getpid()}!")
 
 '''
 FASTAPI APP DEFINITION
@@ -85,5 +89,5 @@ FASTAPI APP DEFINITION
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(SlowAPIMiddleware)
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler) # type: ignore[arg-type]
 app.include_router(InternalEndpointsRouter)

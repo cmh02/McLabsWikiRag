@@ -275,10 +275,10 @@ class MCL_OutboundRelay():
 		if not env_apiToken:
 			self.logger.error("API_TOKEN environment variable is not set.")
 			raise ValueError("API_TOKEN environment variable is not set.")
-		env_userAgent: str | None = os.getenv("USER-AGENT-DISCORDBOT")
+		env_userAgent: str | None = os.getenv("USER_AGENT_DISCORDBOT")
 		if not env_userAgent:
-			self.logger.error("USER-AGENT-DISCORDBOT environment variable is not set.")
-			raise ValueError("USER-AGENT-DISCORDBOT environment variable is not set.")
+			self.logger.error("USER_AGENT_DISCORDBOT environment variable is not set.")
+			raise ValueError("USER_AGENT_DISCORDBOT environment variable is not set.")
 
 		payload = {
 			"update_id": str(data.updateId),
@@ -304,7 +304,7 @@ class MCL_OutboundRelay():
 						f"Failed to notify Discord bot of update {payload['update_id']}. Status {response.status}: {responseText}"
 					)
 
-	async def messageDiscordAdminChannel(self, message: str) -> bool:
+	async def messageDiscordAdminChannel(self, message: str) -> None:
 		'''
 		# messageDiscordAdminChannel
 
@@ -325,16 +325,16 @@ class MCL_OutboundRelay():
 		env_apiToken = os.getenv("API_TOKEN")
 		if not env_apiToken:
 			self.logger.error("API_TOKEN environment variable is not set.")
-			return False
+			raise ValueError("API_TOKEN environment variable is not set.")
 
-		env_userAgent = os.getenv("USER-AGENT-DISCORDBOT")
+		env_userAgent = os.getenv("USER_AGENT_DISCORDBOT")
 		if not env_userAgent:
-			self.logger.error("USER-AGENT-DISCORDBOT environment variable is not set.")
-			return False
+			self.logger.error("USER_AGENT_DISCORDBOT environment variable is not set.")
+			raise ValueError("USER_AGENT_DISCORDBOT environment variable is not set.")
 
 		if not self.domain_discordBotApi:
 			self.logger.error("DOMAIN_DISCORDBOT_API environment variable is not set.")
-			return False
+			raise ValueError("DOMAIN_DISCORDBOT_API environment variable is not set.")
 
 		payload = {
 			"message": message
@@ -353,13 +353,10 @@ class MCL_OutboundRelay():
 				) as response:
 					if response.status == 200:
 						self.logger.info("Successfully sent message to Discord admin channel.")
-						return True
 					else:
 						response_text = await response.text()
 						self.logger.error(
 							f"Failed to send message to Discord admin channel. Status {response.status}: {response_text}"
 						)
-						return False
 		except Exception as e:
 			self.logger.exception(f"Unexpected error when sending message to Discord admin channel: {e}")
-			return False
