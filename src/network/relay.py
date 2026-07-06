@@ -112,16 +112,16 @@ class MCL_OutboundRelay():
 		self.data: Dict[uuid.UUID, MCL_RelayQueueData] = {}
 
 		# Minecraft relay configuration
-		self.minecraftApiDomain = os.getenv("RAILWAY_MINECRAFT_API_DOMAIN")
-		if not self.minecraftApiDomain:
-			self.logger.error("RAILWAY_MINECRAFT_API_DOMAIN environment variable is not set.")
-			raise ValueError("RAILWAY_MINECRAFT_API_DOMAIN environment variable is not set.")
+		self.domain_minecraftWebsocket = os.getenv("DOMAIN_MINECRAFT_WEBSOCKET")
+		if not self.domain_minecraftWebsocket:
+			self.logger.error("DOMAIN_MINECRAFT_WEBSOCKET environment variable is not set.")
+			raise ValueError("DOMAIN_MINECRAFT_WEBSOCKET environment variable is not set.")
 
 		# Discord relay configuration
-		self.discordBotApiDomain = os.getenv("RAILWAY_DISCORD_API_DOMAIN")
-		if not self.discordBotApiDomain:
-			self.logger.error("RAILWAY_DISCORD_API_DOMAIN environment variable is not set.")
-			raise ValueError("RAILWAY_DISCORD_API_DOMAIN environment variable is not set.")
+		self.domain_discordBotApi = os.getenv("DOMAIN_DISCORDBOT_API")
+		if not self.domain_discordBotApi:
+			self.logger.error("DOMAIN_DISCORDBOT_API environment variable is not set.")
+			raise ValueError("DOMAIN_DISCORDBOT_API environment variable is not set.")
 
 	def relay(self, ticketId: int, action: TicketAction):
 		'''
@@ -277,7 +277,7 @@ class MCL_OutboundRelay():
 
 		async with aiohttp.ClientSession() as session:
 			async with session.post(
-				url=f"https://{self.discordBotApiDomain}/update",
+				url=f"https://{self.domain_discordBotApi}/update",
 				headers={
 					"Content-Type": "application/json",
 					"Authorization": os.getenv("API_TOKEN"),
