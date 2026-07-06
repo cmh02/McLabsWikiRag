@@ -239,12 +239,3 @@ app.add_middleware(SlowAPIMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.include_router(InternalEndpointsRouter)
-
-'''
-BOT RUN
-'''
-
-if __name__ == "__main__":
-	import uvicorn
-	port = int(os.getenv("PORT", 5000))
-	uvicorn.run("discordbot.bot:app", host="0.0.0.0", port=port, log_level="info")
