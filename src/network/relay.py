@@ -269,6 +269,17 @@ class MCL_OutboundRelay():
 		## Parameters
 		- `data` (MCL_RelayQueueData): The data associated with the update.
 		'''
+
+		# Validate env variables are available
+		env_apiToken: str | None = os.getenv("API_TOKEN")
+		if not env_apiToken:
+			self.logger.error("API_TOKEN environment variable is not set.")
+			raise ValueError("API_TOKEN environment variable is not set.")
+		env_userAgent: str | None = os.getenv("USER-AGENT-DISCORDBOT")
+		if not env_userAgent:
+			self.logger.error("USER-AGENT-DISCORDBOT environment variable is not set.")
+			raise ValueError("USER-AGENT-DISCORDBOT environment variable is not set.")
+
 		payload = {
 			"update_id": str(data.updateId),
 			"ticket_action": data.action.value,
@@ -280,8 +291,8 @@ class MCL_OutboundRelay():
 				url=f"https://{self.domain_discordBotApi}/update",
 				headers={
 					"Content-Type": "application/json",
-					"Authorization": os.getenv("API_TOKEN"),
-					"User-Agent": os.getenv("USER-AGENT-DISCORD-BOT")
+					"Authorization": env_apiToken,
+					"User-Agent": env_userAgent
 				},
 				json=payload
 			) as response:
