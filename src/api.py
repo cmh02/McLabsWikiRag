@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
 	# Log startup
 	startupMessage: str = f"MCL Backend API started with PID {os.getpid()}!"
 	app.state.logger.info(startupMessage)
-	await MCL_OutboundRelay().messageDiscordAdminChannel(startupMessage)
+	await MCL_OutboundRelay().messageDiscordAdminChannel(f"🟢 {startupMessage}")
 
 	# Yield back for app lifetime
 	yield
@@ -76,7 +76,7 @@ async def lifespan(app: FastAPI):
 	# Log shutdown
 	shutdownMessage: str = f"MCL Backend API shutting down with PID {os.getpid()}!"
 	app.state.logger.info(shutdownMessage)
-	await MCL_OutboundRelay().messageDiscordAdminChannel(shutdownMessage)
+	await MCL_OutboundRelay().messageDiscordAdminChannel(f"🔴 {shutdownMessage}")
 
 	# Shutdown Mongo Manager
 	MCL_MongoManager().shutdown()
