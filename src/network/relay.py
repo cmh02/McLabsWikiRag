@@ -303,3 +303,63 @@ class MCL_OutboundRelay():
 					self.logger.error(
 						f"Failed to notify Discord bot of update {payload['update_id']}. Status {response.status}: {responseText}"
 					)
+
+	async def messageDiscordAdminChannel(self, message: str) -> bool:
+		'''
+		# messageDiscordAdminChannel
+
+		Asynchronously sends a message directly to the Discord bot's administration channel
+		via the bot's API endpoint.
+
+		## Parameters
+		- `message` (str): The content of the message to send to the admin channel.
+
+		## Returns
+		- `bool`: True if the message was sent successfully, False otherwise.
+
+		## Why/When to use:
+		Use this helper when any backend component needs to immediately alert/notify
+		administrators of critical occurrences, errors, or significant lifecycle events
+		via the Discord bot's API without queueing or standard outbound relay mechanics.
+		'''
+		env_apiToken = os.getenv("API_TOKEN")
+		if not env_apiToken:
+			self.logger.error("API_TOKEN environment variable is not set.")
+			return False
+
+		env_userAgent = os.getenv("USER-AGENT-DISCORDBOT")
+		if not env_userAgent:
+			self.logger.error("USER-AGENT-DISCORDBOT environment variable is not set.")
+			return False
+
+		if not self.domain_discordBotApi:
+			self.logger.error("DOMAIN_DISCORDBOT_API environment variable is not set.")
+			return False
+
+		payload = {
+			"message": message
+		}
+
+		try:
+			async with aiohttp.ClientSession() as session:
+				async with session.post(
+					url=f"https://{self.domain_discordBotApi}/send_admin_message",
+					headers={
+						"Content-Type": "application/json",
+						"Authorization": env_apiToken,
+						"User-Agent": env_userAgent
+					},
+					json=payload
+				) as response:
+					if response.status == 200:
+						self.logger.info("Successfully sent message to Discord admin channel.")
+						return True
+					else:
+						response_text = await response.text()
+						self.logger.error(
+							f"Failed to send message to Discord admin channel. Status {response.status}: {response_text}"
+						)
+						return False
+		except Exception as e:
+			self.logger.exception(f"Unexpected error when sending message to Discord admin channel: {e}")
+			return False
