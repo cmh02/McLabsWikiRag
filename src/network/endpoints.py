@@ -7,13 +7,13 @@ Author: Chris Hinkson @cmh02
 '''
 MODULE IMPORTS
 '''
-
-from fastapi import APIRouter, Request, HTTPException
+import uuid
+from typing import Dict
+from pydantic import BaseModel, Field
+from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel, Field
-from datetime import datetime
-from typing import Dict
+from fastapi import APIRouter, Request, HTTPException
 
 from src.network.relay import MCL_OutboundRelay
 from src.network.security import verifyRequest
@@ -175,8 +175,20 @@ def create_ticket(request: Request, body: CreateTicketSchema):
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
-	ticketType: TicketType = data.get("type")
-	player: str = data.get("player")
+	ticketType: TicketType | None = data.get("type")
+	player: str | None = data.get("player")
+
+	# Validate that we got a ticket type and player
+	if not ticketType:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'ticketType'"
+		)
+	if not player:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'pla	yer'"
+		)
 
 	# Create ticket
 	ticketId = MCL_HelpManager().createTicket(
@@ -208,8 +220,20 @@ def update_ticket_thread(request: Request, body: UpdateTicketThreadSchema):
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
-	ticketId: int = data.get("ticketId")
-	threadId: int = data.get("threadId")
+	ticketId: int | None = data.get("ticketId")
+	threadId: int | None = data.get("threadId")
+
+	# Validate that we got a ticketId and threadId
+	if not ticketId:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'ticketId'"
+		)
+	if not threadId:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'threadId'"
+		)
 
 	# Update ticket thread
 	MCL_HelpManager().updateTicketThread(
@@ -259,8 +283,20 @@ def close_ticket(request: Request, body: CloseTicketSchema):
 	
 	# Extract data from request body
 	data: Dict = body.model_dump()
-	ticketId: int = data.get("ticketId")
-	closedBy: str = data.get("closedBy")
+	ticketId: int | None = data.get("ticketId")
+	closedBy: str | None = data.get("closedBy")
+
+	# Validate that we got a ticketId and closedBy
+	if not ticketId:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'ticketId'"
+		)
+	if not closedBy:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'closedBy'"
+		)
 
 	# Close ticket
 	MCL_HelpManager().closeTicket(
@@ -311,8 +347,20 @@ def claim_ticket(request: Request, body: ClaimTicketSchema):
 	
 	# Extract data from request body
 	data: Dict = body.model_dump()
-	ticketId: int = data.get("ticketId")
-	claimedBy: str = data.get("claimedBy")
+	ticketId: int | None = data.get("ticketId")
+	claimedBy: str | None = data.get("claimedBy")
+
+	# Validate that we got a ticketId and claimedBy
+	if not ticketId:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'ticketId'"
+		)
+	if not claimedBy:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'claimedBy'"
+		)
 
 	# Claim ticket
 	MCL_HelpManager().claimTicket(
@@ -359,7 +407,14 @@ def unclaim_ticket(request: Request, body: UnclaimTicketSchema):
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
-	ticketId: int = data.get("ticketId")
+	ticketId: int | None = data.get("ticketId")
+
+	# Validate that we got a ticketId
+	if not ticketId:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'ticketId'"
+		)
 
 	# Unclaim ticket
 	MCL_HelpManager().unclaimTicket(
@@ -409,8 +464,20 @@ def set_ticket_feedback(request: Request, body: SetTicketFeedbackSchema):
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
-	ticketId: int = data.get("ticketId")
-	feedback: TicketFeedback = data.get("feedback")
+	ticketId: int | None = data.get("ticketId")
+	feedback: TicketFeedback | None = data.get("feedback")
+
+	# Validate that we got a ticketId and feedback
+	if not ticketId:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'ticketId'"
+		)
+	if not feedback:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'feedback'"
+		)
 
 	# Set ticket feedback
 	MCL_HelpManager().setTicketFeedback(
@@ -465,13 +532,30 @@ def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
 	
 	# Extract data from request body
 	data: Dict = body.model_dump()
-	ticketId: int = data.get("ticketId")
-	content: str = data.get("content")
-	sentBy: str = data.get("sentBy")
+	ticketId: int | None = data.get("ticketId")
+	content: str | None = data.get("content")
+	sentBy: str | None = data.get("sentBy")
+
+	# Validate that we got a ticketId, content, and sentBy
+	if not ticketId:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'ticketId'"
+		)
+	if not content:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'content'"
+		)
+	if not sentBy:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'sentBy'"
+		)
 
 	# Create message object
 	message = Message(
-		timestamp=datetime.utcnow().isoformat(),
+		timestamp=datetime.now(timezone.utc).timestamp(),
 		sender=sentBy,
 		content=content
 	)
@@ -521,7 +605,14 @@ def get_ticket(request: Request, body: GetTicketSchema):
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
-	ticketId: int = data.get("ticketId")
+	ticketId: int | None = data.get("ticketId")
+
+	# Validate that we got a ticketId
+	if not ticketId:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'ticketId'"
+		)
 
 	# Get ticket information
 	ticketInfo: Dict = MCL_HelpManager().getTicketInfo(
@@ -532,7 +623,7 @@ def get_ticket(request: Request, body: GetTicketSchema):
 	if ticketInfo is None:
 		
 		# Log ticket not found
-		app.state.logger.debug(f"Ticket with ID {ticketId} not found!")
+		request.app.state.logger.debug(f"Ticket with ID {ticketId} not found!")
 
 		# Return error
 		raise HTTPException(
@@ -579,11 +670,27 @@ def acknowledge_update(request: Request, body: AcknowledgeUpdateSchema):
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
-	guid: str = data.get("guid")
+	guid: str | None = data.get("guid")
+
+	# Validate that we got a guid
+	if not guid:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'guid'"
+		)
+
+	# Try parsing the guid into a uuid
+	try:
+		parsedGuid: uuid.UUID = uuid.UUID(guid)
+	except ValueError:
+		raise HTTPException(
+			status_code=400,
+			detail="Invalid 'guid' format"
+		)
 
 	# Acknowledge update
 	MCL_OutboundRelay().acknowledge(
-		updateId=guid
+		updateId=parsedGuid
 	)
 
 	# Return success message
