@@ -55,7 +55,7 @@ class Conversation:
 		self.messages: list[Message] = []
 
 	def appendMessage(self, message: Message):
-		self.messages.append(object=message)
+		self.messages.append(message)
 
 	def getLastMessage(self) -> Optional[Message]:
 		if len(self.messages) == 0:
@@ -92,7 +92,7 @@ class HelpTicket:
 		self.ticketId: int = ticketId
 		self.player: str = player
 		self.type: TicketType = type
-		self.conversation: Conversation = conversation if conversation else Conversation(conversationId=ticketId)
+		self.conversation: Conversation = conversation if conversation else Conversation()
 		self.status: TicketStatus = TicketStatus.OPEN
 		self.feedback: TicketFeedback = TicketFeedback.NONE
 		self.claimedBy: Optional[str] = None
