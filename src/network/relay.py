@@ -275,10 +275,10 @@ class MCL_OutboundRelay():
 		if not env_apiToken:
 			self.logger.error("API_TOKEN environment variable is not set.")
 			raise ValueError("API_TOKEN environment variable is not set.")
-		env_userAgent: str | None = os.getenv("USER_AGENT_DISCORDBOT")
+		env_userAgent: str | None = os.getenv("USER_AGENT_BACKEND")
 		if not env_userAgent:
-			self.logger.error("USER_AGENT_DISCORDBOT environment variable is not set.")
-			raise ValueError("USER_AGENT_DISCORDBOT environment variable is not set.")
+			self.logger.error("USER_AGENT_BACKEND environment variable is not set.")
+			raise ValueError("USER_AGENT_BACKEND environment variable is not set.")
 
 		payload = {
 			"update_id": str(data.updateId),
