@@ -129,7 +129,7 @@ class MCL_MongoManager():
 		ticket.time_close = ticket_data.get("time_close")
 		return ticket
 
-	def getAllTicketIds(self, type: TicketType=None, status: TicketStatus=None) -> list[int]:
+	def getAllTicketIds(self, type: Optional[TicketType] = None, status: Optional[TicketStatus] = None) -> list[int]:
 		"""
 		## Get All Ticket IDs
 
