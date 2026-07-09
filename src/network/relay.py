@@ -258,7 +258,8 @@ class MCL_OutboundRelay():
 		## Parameters
 		- `data` (MCL_RelayQueueData): The data associated with the update.
 		'''
-		pass
+		# Auto-acknowledge Minecraft updates immediately to prevent queue/loop leaks
+		self.acknowledge(data.updateId)
 
 	async def notifyDiscord(self, data: MCL_RelayQueueData):
 		'''

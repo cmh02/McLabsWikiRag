@@ -40,6 +40,48 @@ class MclBot(commands.Bot):
 		self.logger.info("MCL Discord Bot has been initialized!")
 		self.has_sent_online = False
 
+	async def ensureApiAwake(self, numberTries: int = 5, sleepInterval: int = 3) -> bool:
+		'''
+		# Ensure API Awake
+
+		Pings the backend /wakeup endpoint with standard headers and token authentication
+		to ensure the backend service is awake (since Railway can scale down / sleep).
+		Uses exponential backoff for retries.
+		'''
+		domain_backend = os.getenv("RAILWAY_API_DOMAIN")
+		token = os.getenv("API_TOKEN")
+		user_agent = os.getenv("USER_AGENT_DISCORD_BOT")
+		
+		if not domain_backend or not token or not user_agent:
+			self.logger.error("ensureApiAwake is missing required environment variables.")
+			return False
+
+		url = f"https://{domain_backend}/wakeup"
+		headers = {
+			"Authorization": token,
+			"User-Agent": user_agent
+		}
+
+		delay = sleepInterval
+		for attempt in range(numberTries):
+			try:
+				async with self.session.post(url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+					if resp.status == 200:
+						self.logger.info("Backend API is awake!")
+						return True
+					else:
+						self.logger.warning(f"Wakeup attempt {attempt + 1} returned status {resp.status}.")
+			except Exception as e:
+				self.logger.warning(f"Wakeup attempt {attempt + 1} failed with exception: {e}")
+			
+			if attempt < numberTries - 1:
+				self.logger.info(f"Sleeping for {delay} seconds before retrying wakeup...")
+				await asyncio.sleep(delay)
+				delay *= 1.5
+				
+		self.logger.error(f"Backend API failed to wake up after {numberTries} attempts.")
+		return False
+
 	async def setup_hook(self):
 		self.session = aiohttp.ClientSession()
 

@@ -101,6 +101,15 @@ async def update(request: Request, updateRequest: UpdateRequest):
 			if ticket.threadId:
 				bot.logger.info(f"Ticket {ticketId} already has thread {ticket.threadId}. Skipping thread creation.")
 			else:
+				# Wait up to 1.5s for the initial question message to be committed to MongoDB
+				import asyncio
+				for attempt in range(5):
+					if ticket.conversation and ticket.conversation.messages:
+						break
+					bot.logger.info(f"Ticket {ticketId} conversation is empty. Retrying fetch in 300ms (attempt {attempt + 1}/5)...")
+					await asyncio.sleep(0.3)
+					ticket = mongo.getTicket(ticketId)
+
 				# Create a new public thread on the ticket channel
 				thread = await channel.create_thread(
 					name=f"🎫-ticket-{ticketId}",

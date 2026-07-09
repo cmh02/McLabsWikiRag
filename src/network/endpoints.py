@@ -642,7 +642,7 @@ def get_ticket(request: Request, body: GetTicketSchema):
 		)
 
 	# Get ticket information
-	ticketInfo: Dict = MCL_HelpManager().getTicketInfo(
+	ticketInfo: Dict | None = MCL_HelpManager().getTicketInfo(
 		ticketId=ticketId
 	)
 

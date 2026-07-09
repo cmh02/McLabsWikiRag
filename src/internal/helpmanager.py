@@ -12,8 +12,7 @@ MODULE IMPORTS
 import os
 import json
 import logging
-import requests
-from typing import Dict
+from typing import Dict, Optional
 from src.network.schemas import QuestionSchema
 from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
@@ -62,6 +61,21 @@ class MCL_HelpManager():
 		self.logger = logging.getLogger("MCL_API_Logger")
 		self.logger.info(f"Help Manager initialized with PID {os.getpid()}.")
 
+	def _getOrLoadTicket(self, ticketId: int) -> Optional[HelpTicket]:
+		'''
+		# Get Or Load Ticket
+
+		Gets the ticket from the in-memory cache, or retrieves it from MongoDB and caches it if found.
+		'''
+		if ticketId in self.tickets:
+			return self.tickets[ticketId]
+
+		ticket = self.mongoManager.getTicket(ticketId)
+		if ticket and ticket.playerInfo.minecraftUUID != "Unknown":
+			self.tickets[ticketId] = ticket
+			return ticket
+		return None
+
 	def createTicket(self, type: TicketType, playerInfo: PlayerInfo) -> int:
 		'''
 		# Create Ticket
@@ -105,20 +119,17 @@ class MCL_HelpManager():
 
 		Updates the Discord thread ID for an existing help ticket.
 		'''
-		# Check if the ticket exists in memory, otherwise retrieve from MongoDB
-		if ticketId not in self.tickets:
-			ticket = self.mongoManager.getTicket(ticketId)
-			if not ticket or ticket.playerInfo.minecraftUUID == "Unknown":
-				self.logger.error(f"Attempted to update thread for non-existent ticket with ID {ticketId}.")
-				return
-			self.tickets[ticketId] = ticket
+		ticket = self._getOrLoadTicket(ticketId)
+		if not ticket:
+			self.logger.error(f"Attempted to update thread for non-existent ticket with ID {ticketId}.")
+			return
 
 		# Update the thread ID
-		self.tickets[ticketId].threadId = threadId
+		ticket.threadId = threadId
 
 		# Save to mongo
 		self.mongoManager.saveTicket(
-			ticket=self.tickets[ticketId]
+			ticket=ticket
 		)
 
 	def closeTicket(self, ticketId: int, closedBy: str):
@@ -127,22 +138,21 @@ class MCL_HelpManager():
 
 		Closes an existing help ticket and moves it to the closed tickets dictionary.
 		'''
-		
-		# Check if the ticket exists
-		if ticketId not in self.tickets:
+		ticket = self._getOrLoadTicket(ticketId)
+		if not ticket:
 			self.logger.error(f"Attempted to close non-existent ticket with ID {ticketId}.")
 			return
 		
 		# Close the ticket
-		self.tickets[ticketId].close(
+		ticket.close(
 			closedBy=closedBy
 		)
 
 		# Save to mongo, remove, and relay update
 		self.mongoManager.saveTicket(
-			ticket=self.tickets[ticketId]
+			ticket=ticket
 		)
-		self.tickets.pop(ticketId)
+		self.tickets.pop(ticketId, None)
 		MCL_OutboundRelay().relay(
 			ticketId=ticketId,
 			action=TicketAction.CLOSE
@@ -154,20 +164,19 @@ class MCL_HelpManager():
 
 		Claims an existing help ticket and moves it to the claimed tickets dictionary.
 		'''
-		
-		# Check if the ticket exists
-		if ticketId not in self.tickets:
+		ticket = self._getOrLoadTicket(ticketId)
+		if not ticket:
 			self.logger.error(f"Attempted to claim non-existent ticket with ID {ticketId}.")
 			return
 		
 		# Claim the ticket
-		self.tickets[ticketId].claim(
+		ticket.claim(
 			claimedBy=claimedBy
 		)
 
 		# Save to mongo
 		self.mongoManager.saveTicket(
-			ticket=self.tickets[ticketId]
+			ticket=ticket
 		)
 
 		# Relay update
@@ -188,17 +197,17 @@ class MCL_HelpManager():
 		## Returns
 			None
 		'''
-		# Check if the ticket exists
-		if ticketId not in self.tickets:
+		ticket = self._getOrLoadTicket(ticketId)
+		if not ticket:
 			self.logger.error(f"Attempted to unclaim non-existent ticket with ID {ticketId}.")
 			return
 
 		# Unclaim the ticket
-		self.tickets[ticketId].unclaim()
+		ticket.unclaim()
 
 		# Save to mongo
 		self.mongoManager.saveTicket(
-			ticket=self.tickets[ticketId]
+			ticket=ticket
 		)
 
 		# Relay update
@@ -220,20 +229,19 @@ class MCL_HelpManager():
 		## Returns
 			None
 		'''
-		
-		# Check if the ticket exists
-		if ticketId not in self.tickets:
+		ticket = self._getOrLoadTicket(ticketId)
+		if not ticket:
 			self.logger.error(f"Attempted to set feedback for non-existent ticket with ID {ticketId}.")
 			return
 		
 		# Set the feedback for the ticket
-		self.tickets[ticketId].setFeedback(
+		ticket.setFeedback(
 			feedback=feedback
 		)
 
 		# Save to mongo
 		self.mongoManager.saveTicket(
-			ticket=self.tickets[ticketId]
+			ticket=ticket
 		)
 
 		# Relay update
@@ -255,20 +263,19 @@ class MCL_HelpManager():
 		## Returns
 			None
 		'''
-		
-		# Check if the ticket exists
-		if ticketId not in self.tickets:
+		ticket = self._getOrLoadTicket(ticketId)
+		if not ticket:
 			self.logger.error(f"Attempted to add message to non-existent ticket with ID {ticketId}.")
 			return
 		
 		# Add the message to the conversation
-		self.tickets[ticketId].conversation.appendMessage(
+		ticket.conversation.appendMessage(
 			message=message
 		)
 
 		# Save to mongo
 		self.mongoManager.saveTicket(
-			ticket=self.tickets[ticketId]
+			ticket=ticket
 		)
 
 		# Relay update
@@ -277,7 +284,7 @@ class MCL_HelpManager():
 			action=TicketAction.NEWMESSAGE
 		)
 
-	def getTicketInfo(self, ticketId: int) -> dict:
+	def getTicketInfo(self, ticketId: int) -> Optional[dict]:
 		'''
 		# Get Ticket Info
 
@@ -289,9 +296,8 @@ class MCL_HelpManager():
 		## Returns
 			dict: The help ticket information.
 		'''
-		
-		# Check if the ticket exists
-		if ticketId not in self.tickets:
+		ticket = self._getOrLoadTicket(ticketId)
+		if not ticket:
 			self.logger.error(f"Attempted to get info for non-existent ticket with ID {ticketId}.")
 			return None
-		return self.tickets[ticketId].toDict()
+		return ticket.toDict()

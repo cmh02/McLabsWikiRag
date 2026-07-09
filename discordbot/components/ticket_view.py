@@ -128,7 +128,7 @@ class HelpTicketThreadView(discord.ui.View):
 		# Call claim API on backend
 		success = await MCL_OutboundRelay().claim_ticket(ticket.ticketId, str(interaction.user.id))
 		if success:
-			await interaction.response.send_message(f"Ticket has been claimed by {interaction.user.mention}.", ephemeral=False)
+			await interaction.response.send_message("Claiming ticket...", ephemeral=True)
 		else:
 			await interaction.response.send_message("Failed to claim ticket via API.", ephemeral=True)
 
@@ -160,7 +160,7 @@ class HelpTicketThreadView(discord.ui.View):
 		# Call unclaim API on backend
 		success = await MCL_OutboundRelay().unclaim_ticket(ticket.ticketId)
 		if success:
-			await interaction.response.send_message("Ticket has been unclaimed.", ephemeral=False)
+			await interaction.response.send_message("Unclaiming ticket...", ephemeral=True)
 		else:
 			await interaction.response.send_message("Failed to unclaim ticket via API.", ephemeral=True)
 
