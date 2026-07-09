@@ -59,6 +59,15 @@ class MCL_MongoManager():
 
 		# Log initialization
 		self.logger = logging.getLogger("MCL_API_Logger")
+
+		# Ping the database to verify the connection and authentication
+		try:
+			self.client.admin.command('ping')
+			self.logger.info("Successfully pinged MongoDB. Connection and auth are verified.")
+		except Exception as e:
+			self.logger.error(f"Failed to ping MongoDB: {e}")
+			raise e
+
 		self.logger.info(f"Mongo Manager initialized with PID {os.getpid()}.")
 
 	def shutdown(self):
