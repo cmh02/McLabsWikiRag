@@ -8,7 +8,7 @@ Author: Chris Hinkson @cmh02
 MODULE IMPORTS
 '''
 import uuid
-from typing import Dict
+from typing import Dict, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
