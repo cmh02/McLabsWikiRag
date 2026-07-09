@@ -19,6 +19,40 @@ from src.utils.enum import TicketType, TicketStatus, TicketFeedback
 DATA TYPE DEFINITIONS
 '''
 
+class PlayerInfo:
+	'''
+	# PlayerInfo
+
+	Represents identification details of a player (Minecraft & Discord).
+	'''
+
+	def __init__(self,
+				 minecraftUsername: Optional[str] = None,
+				 minecraftUUID: Optional[str] = None,
+				 discordUsername: Optional[str] = None,
+				 discordId: Optional[str] = None):
+		self.minecraftUsername: Optional[str] = minecraftUsername
+		self.minecraftUUID: Optional[str] = minecraftUUID
+		self.discordUsername: Optional[str] = discordUsername
+		self.discordId: Optional[str] = discordId
+
+	def toDict(self) -> dict:
+		return {
+			"minecraftUsername": self.minecraftUsername,
+			"minecraftUUID": self.minecraftUUID,
+			"discordUsername": self.discordUsername,
+			"discordId": self.discordId
+		}
+
+	@staticmethod
+	def fromDict(data: dict) -> 'PlayerInfo':
+		return PlayerInfo(
+			minecraftUsername=data.get("minecraftUsername"),
+			minecraftUUID=data.get("minecraftUUID"),
+			discordUsername=data.get("discordUsername"),
+			discordId=data.get("discordId")
+		)
+
 class Message:
 	'''
 	# Message
@@ -76,40 +110,6 @@ class Conversation:
 			message = Message.fromDict(message_data)
 			conv.appendMessage(message)
 		return conv
-
-class PlayerInfo:
-	'''
-	# PlayerInfo
-
-	Represents identification details of a player (Minecraft & Discord).
-	'''
-
-	def __init__(self,
-				 minecraftUsername: Optional[str] = None,
-				 minecraftUUID: Optional[str] = None,
-				 discordUsername: Optional[str] = None,
-				 discordId: Optional[str] = None):
-		self.minecraftUsername: Optional[str] = minecraftUsername
-		self.minecraftUUID: Optional[str] = minecraftUUID
-		self.discordUsername: Optional[str] = discordUsername
-		self.discordId: Optional[str] = discordId
-
-	def toDict(self) -> dict:
-		return {
-			"minecraftUsername": self.minecraftUsername,
-			"minecraftUUID": self.minecraftUUID,
-			"discordUsername": self.discordUsername,
-			"discordId": self.discordId
-		}
-
-	@staticmethod
-	def fromDict(data: dict) -> 'PlayerInfo':
-		return PlayerInfo(
-			minecraftUsername=data.get("minecraftUsername"),
-			minecraftUUID=data.get("minecraftUUID"),
-			discordUsername=data.get("discordUsername"),
-			discordId=data.get("discordId")
-		)
 	
 class HelpTicket:
 	'''
