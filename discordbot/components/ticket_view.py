@@ -58,12 +58,14 @@ def generate_ticket_embed(ticket: HelpTicket, creator: Optional[discord.Member] 
 		timestamp=datetime.fromtimestamp(ticket.time_create) if ticket.time_create else datetime.utcnow()
 	)
 
-	creator_mention = f"<@{creator.id}>" if creator else f"<@{ticket.player}>"
-	creator_tag = creator.name if creator else creator_name or "Unknown"
+	creator_mention = f"<@{creator.id}>" if creator else (f"<@{ticket.playerInfo.discordId}>" if ticket.playerInfo.discordId else "Unknown")
+	creator_tag = creator.name if creator else (ticket.playerInfo.discordUsername or creator_name or "Unknown")
 
 	embed.add_field(name="Ticket Creator", value=creator_mention, inline=True)
 	embed.add_field(name="Discord Username", value=f"`{creator_tag}`", inline=True)
-	embed.add_field(name="Minecraft Account", value="`Placeholder Minecraft` (Not Linked)", inline=True)
+	
+	minecraft_account = f"`{ticket.playerInfo.minecraftUsername}`" if ticket.playerInfo.minecraftUsername else "`Placeholder Minecraft` (Not Linked)"
+	embed.add_field(name="Minecraft Account", value=minecraft_account, inline=True)
 	embed.add_field(name="Status", value=status_str, inline=True)
 
 	# Feedback field
@@ -80,7 +82,7 @@ def generate_ticket_embed(ticket: HelpTicket, creator: Optional[discord.Member] 
 	if ticket.conversation and ticket.conversation.messages:
 		# The first message sent by the player
 		for msg in ticket.conversation.messages:
-			if msg.sender == ticket.player:
+			if msg.sender in (ticket.playerInfo.minecraftUUID, ticket.playerInfo.discordId):
 				question = msg.content
 				break
 	embed.add_field(name="Question Asked", value=question, inline=False)
@@ -171,7 +173,7 @@ class HelpTicketThreadView(discord.ui.View):
 			return
 
 		# Check if clicking user is helper+ OR the ticket creator
-		is_creator = str(interaction.user.id) == ticket.player
+		is_creator = str(interaction.user.id) == ticket.playerInfo.discordId
 		if not (is_creator or is_helper_plus(interaction.user)):
 			await interaction.response.send_message("Only the ticket creator or Helper+ can close this ticket.", ephemeral=True)
 			return
@@ -197,7 +199,7 @@ class HelpTicketThreadView(discord.ui.View):
 			return
 
 		# Check if clicking user is the ticket creator
-		is_creator = str(interaction.user.id) == ticket.player
+		is_creator = str(interaction.user.id) == ticket.playerInfo.discordId
 		if not is_creator:
 			await interaction.response.send_message("Only the ticket creator can submit feedback.", ephemeral=True)
 			return

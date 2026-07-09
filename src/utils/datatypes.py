@@ -74,6 +74,40 @@ class Conversation:
 			message = Message.fromDict(message_data)
 			conv.appendMessage(message)
 		return conv
+
+class PlayerInfo:
+	'''
+	# PlayerInfo
+
+	Represents identification details of a player (Minecraft & Discord).
+	'''
+
+	def __init__(self,
+				 minecraftUsername: Optional[str] = None,
+				 minecraftUUID: Optional[str] = None,
+				 discordUsername: Optional[str] = None,
+				 discordId: Optional[str] = None):
+		self.minecraftUsername: Optional[str] = minecraftUsername
+		self.minecraftUUID: Optional[str] = minecraftUUID
+		self.discordUsername: Optional[str] = discordUsername
+		self.discordId: Optional[str] = discordId
+
+	def toDict(self) -> dict:
+		return {
+			"minecraftUsername": self.minecraftUsername,
+			"minecraftUUID": self.minecraftUUID,
+			"discordUsername": self.discordUsername,
+			"discordId": self.discordId
+		}
+
+	@staticmethod
+	def fromDict(data: dict) -> 'PlayerInfo':
+		return PlayerInfo(
+			minecraftUsername=data.get("minecraftUsername"),
+			minecraftUUID=data.get("minecraftUUID"),
+			discordUsername=data.get("discordUsername"),
+			discordId=data.get("discordId")
+		)
 	
 class HelpTicket:
 	'''
@@ -84,13 +118,13 @@ class HelpTicket:
 
 	def __init__(self, 
 			  	 ticketId: int, 
-				 player: str,
+				 playerInfo: PlayerInfo,
 				 type: TicketType,
 				 conversation: Optional[Conversation] = None,
 				 threadId: Optional[int] = None
 				):
 		self.ticketId: int = ticketId
-		self.player: str = player
+		self.playerInfo: PlayerInfo = playerInfo
 		self.type: TicketType = type
 		self.conversation: Conversation = conversation if conversation else Conversation()
 		self.status: TicketStatus = TicketStatus.OPEN
@@ -115,7 +149,7 @@ class HelpTicket:
 		"""
 		return {
 			"ticketId": self.ticketId,
-			"player": self.player,
+			"playerInfo": self.playerInfo.toDict(),
 			"type": self.type.value,
 			"conversation": self.conversation.toDict(),
 			"status": self.status.value,

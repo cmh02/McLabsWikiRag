@@ -21,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 from src.network.relay import MCL_OutboundRelay
 from src.internal.mongo import MCL_MongoManager
 from src.utils.enum import TicketType, TicketStatus, TicketFeedback, TicketAction
-from src.utils.datatypes import Message, Conversation, HelpTicket
+from src.utils.datatypes import Message, Conversation, HelpTicket, PlayerInfo
 
 
 '''
@@ -62,7 +62,7 @@ class MCL_HelpManager():
 		self.logger = logging.getLogger("MCL_API_Logger")
 		self.logger.info(f"Help Manager initialized with PID {os.getpid()}.")
 
-	def createTicket(self, type: TicketType, player: str) -> int:
+	def createTicket(self, type: TicketType, playerInfo: PlayerInfo) -> int:
 		'''
 		# Create Ticket
 
@@ -70,7 +70,7 @@ class MCL_HelpManager():
 
 		## Parameters
 			type (TicketType): The type of the help ticket.
-			player (str): The UUID of the player creating the ticket.
+			playerInfo (PlayerInfo): The identification details of the player.
 
 		## Returns
 			int: The ID of the newly created help ticket.
@@ -82,7 +82,7 @@ class MCL_HelpManager():
 		# Create new help ticket
 		newTicket = HelpTicket(
 			ticketId=ticketId,
-			player=player,
+			playerInfo=playerInfo,
 			type=type
 		)
 
@@ -108,7 +108,7 @@ class MCL_HelpManager():
 		# Check if the ticket exists in memory, otherwise retrieve from MongoDB
 		if ticketId not in self.tickets:
 			ticket = self.mongoManager.getTicket(ticketId)
-			if not ticket or ticket.player == "Unknown":
+			if not ticket or ticket.playerInfo.minecraftUUID == "Unknown":
 				self.logger.error(f"Attempted to update thread for non-existent ticket with ID {ticketId}.")
 				return
 			self.tickets[ticketId] = ticket

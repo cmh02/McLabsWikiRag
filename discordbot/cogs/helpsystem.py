@@ -54,9 +54,6 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 		# Defer the interaction immediately
 		await interaction.response.defer(ephemeral=True)
 
-		# Placeholder for ticket creation
-		await interaction.followup.send("Thanks for your question! A staff member will help you out shortly.", ephemeral=True)
-
 		# Config for API requests
 		domain_backend = os.getenv("RAILWAY_API_DOMAIN")
 		if not domain_backend:
@@ -72,6 +69,55 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 			"Authorization": token,
 			"User-Agent": user_agent
 		}
+
+		try:
+			# 1. Create ticket on backend
+			async with interaction.client.session.post(
+				f"https://{domain_backend}/create_ticket",
+				headers=headers,
+				json={
+					"type": "SUPPORT",
+					"playerInfo": {
+						"discordId": str(user.id),
+						"discordUsername": username
+					}
+				},
+				timeout=10
+			) as resp:
+				if resp.status != 200:
+					raise RuntimeError(f"Backend API create_ticket returned status {resp.status}")
+				resp_json = await resp.json()
+				ticket_id = resp_json.get("ticketId")
+
+			if not ticket_id:
+				raise RuntimeError("No ticketId returned by backend API.")
+
+			# 2. Append the user's question to the ticket conversation
+			async with interaction.client.session.post(
+				f"https://{domain_backend}/append_ticket_message",
+				headers=headers,
+				json={
+					"ticketId": ticket_id,
+					"content": question,
+					"sentBy": str(user.id)
+				},
+				timeout=10
+			) as resp:
+				if resp.status != 200:
+					self.logger.error(f"Failed to append message to ticket {ticket_id}. Status: {resp.status}")
+
+			# 3. Inform the user of successful creation
+			await interaction.followup.send(
+				f"Thank you! Your help ticket #{ticket_id} has been created successfully. A dedicated thread will be opened for you shortly.",
+				ephemeral=True
+			)
+
+		except Exception as e:
+			self.logger.exception(f"Error handling /ask modal submission: {e}")
+			await interaction.followup.send(
+				"An error occurred while creating your help ticket. Please try again later.",
+				ephemeral=True
+			)
 
 	async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
 		self.logger.exception(f"Error in HelpSystemModal: {error}")

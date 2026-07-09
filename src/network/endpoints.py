@@ -18,7 +18,7 @@ from fastapi import APIRouter, Request, HTTPException
 from src.network.relay import MCL_OutboundRelay
 from src.network.security import verifyRequest
 from src.internal.helpmanager import MCL_HelpManager
-from src.utils.datatypes import Message
+from src.utils.datatypes import Message, PlayerInfo
 from src.network.schemas import BaseHelpQuestionSchema, QuestionSchema
 from src.utils.enum import TicketType, TicketStatus, TicketFeedback
 from src.network.limiter import limiter
@@ -153,8 +153,19 @@ This endpoint can be used for making a new help ticket.
 
 ## JSON Body Parameters
 - "type": The type of ticket to be created. Must be one of TicketType enum.
-- "player": The UUID of the player creating the ticket.
+- "playerInfo": The identification details of the player creating the ticket.
 '''
+
+class PlayerInfoSchema(BaseModel):
+	'''
+	# PlayerInfoSchema
+
+	Model for player identification details.
+	'''
+	minecraftUsername: Optional[str] = Field(default=None, description="The Minecraft username of the player.")
+	minecraftUUID: Optional[str] = Field(default=None, description="The Minecraft UUID of the player.")
+	discordUsername: Optional[str] = Field(default=None, description="The Discord username of the player.")
+	discordId: Optional[str] = Field(default=None, description="The Discord ID of the player.")
 
 class CreateTicketSchema(BaseModel):
 	'''
@@ -166,8 +177,8 @@ class CreateTicketSchema(BaseModel):
 	# The type of ticket to be created
 	type: TicketType = Field(description="The type of ticket to be created.")
 
-	# The UUID of the player creating the ticket
-	player: str = Field(description="The UUID of the player creating the ticket.")
+	# The identification details of the player creating the ticket
+	playerInfo: PlayerInfoSchema = Field(description="The identification details of the player creating the ticket.")
 
 @router.post("/create_ticket")
 @limiter.limit("100/minute")
@@ -176,24 +187,32 @@ def create_ticket(request: Request, body: CreateTicketSchema):
 	# Extract data from request body
 	data: Dict = body.model_dump()
 	ticketType: TicketType | None = data.get("type")
-	player: str | None = data.get("player")
+	playerInfoData: Dict | None = data.get("playerInfo")
 
-	# Validate that we got a ticket type and player
+	# Validate that we got a ticket type and playerInfo
 	if not ticketType:
 		raise HTTPException(
 			status_code=400,
-			detail="Missing 'ticketType'"
+			detail="Missing 'type'"
 		)
-	if not player:
+	if not playerInfoData:
 		raise HTTPException(
 			status_code=400,
-			detail="Missing 'pla	yer'"
+			detail="Missing 'playerInfo'"
 		)
+
+	# Instantiate PlayerInfo datatype
+	playerInfo = PlayerInfo(
+		minecraftUsername=playerInfoData.get("minecraftUsername"),
+		minecraftUUID=playerInfoData.get("minecraftUUID"),
+		discordUsername=playerInfoData.get("discordUsername"),
+		discordId=playerInfoData.get("discordId")
+	)
 
 	# Create ticket
 	ticketId = MCL_HelpManager().createTicket(
 		type=ticketType,
-		player=player
+		playerInfo=playerInfo
 	)
 
 	# Return ticketId in response

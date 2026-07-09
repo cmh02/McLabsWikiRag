@@ -18,7 +18,7 @@ from typing import Optional
 from starlette import status
 from pymongo import MongoClient
 
-from src.utils.datatypes import HelpTicket, Conversation, Message
+from src.utils.datatypes import HelpTicket, Conversation, Message, PlayerInfo
 from src.utils.enum import TicketType, TicketStatus, TicketFeedback
 
 
@@ -93,7 +93,7 @@ class MCL_MongoManager():
 			self.logger.warning(f"Ticket with ID {ticketId} not found in MongoDB. Initializing blank ticket.")
 			return HelpTicket(
 				ticketId=ticketId, 
-				player="Unknown", 
+				playerInfo=PlayerInfo(minecraftUUID="Unknown"), 
 				type=TicketType.SUPPORT
 			)
 			
@@ -115,7 +115,7 @@ class MCL_MongoManager():
 		# If ticket does exist, then repop fields
 		ticket = HelpTicket(
 			ticketId=ticket_data["ticketId"],
-			player=ticket_data["player"],
+			playerInfo=PlayerInfo.fromDict(ticket_data["playerInfo"]),
 			type=TicketType(ticket_data["type"]),
 			conversation=Conversation.fromDict(ticket_data["conversation"]) if "conversation" in ticket_data else None,
 			threadId=ticket_data.get("threadId")
