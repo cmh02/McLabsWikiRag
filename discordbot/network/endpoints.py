@@ -12,6 +12,10 @@ from fastapi.responses import JSONResponse
 from discordbot.network.limiter import limiter
 from discordbot.network.router import MclRouter
 from discordbot.network.schemas import UpdateRequest, AdminMessageRequest
+from discordbot.internal.mongo import MCL_MongoManager
+from discordbot.network.relay import MCL_OutboundRelay
+from discordbot.components.ticket_view import HelpTicketThreadView, generate_ticket_embed
+from src.utils.enum import TicketAction
 
 '''
 # API ROUTER
@@ -55,8 +59,152 @@ async def update(request: Request, updateRequest: UpdateRequest):
 	ticketAction = data.get("ticket_action")
 	ticketId = data.get("ticket_id")
 
-	# For now, just log
-	request.app.state.logger.info(f"Received relay update {updateId} for ticket {ticketId} with action {ticketAction}.")
+	# Get bot instance from request app state
+	bot = request.app.state.bot
+	if not bot:
+		raise HTTPException(
+			status_code=500,
+			detail="Discord bot client not initialized"
+		)
+
+	bot.logger.info(f"Received relay update {updateId} for ticket {ticketId} with action {ticketAction}.")
+
+	try:
+		# Retrieve the latest ticket state from Mongo
+		mongo = MCL_MongoManager()
+		ticket = mongo.getTicket(ticketId)
+		if not ticket:
+			bot.logger.error(f"Ticket with ID {ticketId} not found in database for update {updateId}.")
+			raise HTTPException(status_code=404, detail=f"Ticket {ticketId} not found")
+
+		# Check the ticket channel
+		ticket_channel_id = os.getenv("DISCORD_TICKET_CHANNEL_ID")
+		if not ticket_channel_id:
+			bot.logger.error("DISCORD_TICKET_CHANNEL_ID environment variable is not set.")
+			raise HTTPException(status_code=500, detail="Ticket channel not configured")
+		
+		try:
+			channel_id = int(ticket_channel_id)
+		except ValueError:
+			bot.logger.error("DISCORD_TICKET_CHANNEL_ID is not a valid integer.")
+			raise HTTPException(status_code=500, detail="Invalid ticket channel ID")
+
+		channel = bot.get_channel(channel_id)
+		if not channel:
+			channel = await bot.fetch_channel(channel_id)
+
+		if not channel or not isinstance(channel, discord.TextChannel):
+			bot.logger.error(f"Ticket channel with ID {channel_id} not found or is not a text channel.")
+			raise HTTPException(status_code=500, detail="Invalid ticket channel configured")
+
+		# 1. Handle CREATE action
+		if ticketAction == TicketAction.CREATE.value:
+			if ticket.threadId:
+				bot.logger.info(f"Ticket {ticketId} already has thread {ticket.threadId}. Skipping thread creation.")
+			else:
+				# Create a new public thread on the ticket channel
+				thread = await channel.create_thread(
+					name=f"🎫-ticket-{ticketId}",
+					type=discord.ChannelType.public_thread,
+					auto_archive_duration=10080  # 7 days
+				)
+				
+				# Generate initial embed
+				embed = generate_ticket_embed(ticket)
+				
+				# Send status card in thread with persistent view
+				view = HelpTicketThreadView()
+				await thread.send(embed=embed, view=view)
+				
+				bot.logger.info(f"Created Discord thread {thread.id} for ticket {ticketId}.")
+				
+				# Save thread ID to the backend
+				await MCL_OutboundRelay().update_ticket_thread(ticketId, thread.id)
+
+		# 2. Handle status updates (CLAIM, UNCLAIM, CLOSE, FEEDBACK, NEWMESSAGE)
+		else:
+			thread_id = ticket.threadId
+			if not thread_id:
+				bot.logger.warning(f"No threadId associated with ticket {ticketId} for action {ticketAction}. Cannot process.")
+				return JSONResponse(status_code=400, content={"status": "error", "message": "Ticket has no thread ID"})
+
+			thread = bot.get_channel(thread_id)
+			if not thread:
+				thread = await bot.fetch_channel(thread_id)
+
+			if not thread or not isinstance(thread, discord.Thread):
+				bot.logger.error(f"Thread with ID {thread_id} not found or is not a thread.")
+				raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
+
+			# Find status message in the thread
+			status_msg = None
+			async for message in thread.history(limit=20, oldest_first=True):
+				if message.author == bot.user and message.embeds:
+					status_msg = message
+					break
+
+			# Edit status card embed
+			if status_msg:
+				embed = generate_ticket_embed(ticket)
+				await status_msg.edit(embed=embed)
+				bot.logger.info(f"Updated status card embed for ticket {ticketId} thread.")
+
+			# Perform action-specific operations
+			if ticketAction == TicketAction.CLAIM.value:
+				# Notify the thread
+				claimed_by = ticket.claimedBy or "Unknown Staff"
+				await thread.send(f"🙋‍♂️ Ticket has been claimed by <@{claimed_by}>.")
+
+			elif ticketAction == TicketAction.UNCLAIM.value:
+				# Notify the thread
+				await thread.send("🚫 Ticket has been unclaimed.")
+
+			elif ticketAction == TicketAction.CLOSE.value:
+				# Notify the thread
+				closed_by = ticket.closedBy or "Unknown"
+				await thread.send(f"🔒 Ticket has been closed by <@{closed_by}>.")
+				# Archive and lock the thread
+				await thread.edit(archived=True, locked=True)
+				bot.logger.info(f"Archived and locked Discord thread {thread.id} for ticket {ticketId}.")
+
+			elif ticketAction == TicketAction.NEWMESSAGE.value:
+				# Send incoming message to the thread if not a duplicate
+				if ticket.conversation and ticket.conversation.messages:
+					last_msg = ticket.conversation.messages[-1]
+					
+					# Get last message in Discord thread to check for duplicate
+					last_discord_msg = None
+					async for msg in thread.history(limit=1):
+						last_discord_msg = msg
+
+					is_duplicate = False
+					if last_discord_msg and last_msg.sender.discordId:
+						# If author ID matches and content matches, it originated from Discord
+						if str(last_discord_msg.author.id) == str(last_msg.sender.discordId) and last_discord_msg.content == last_msg.content:
+							is_duplicate = True
+
+					if is_duplicate:
+						bot.logger.info(f"Skipping duplicate message relay for ticket {ticketId}: {last_msg.content}")
+					else:
+						# Format the message header depending on source
+						sender_name = last_msg.sender.minecraftUsername or last_msg.sender.discordUsername or "Unknown"
+						if last_msg.sender.minecraftUsername:
+							prefix = f"**[In-Game] {sender_name}**"
+						else:
+							prefix = f"**{sender_name}**"
+						
+						await thread.send(f"{prefix}: {last_msg.content}")
+						bot.logger.info(f"Relayed new message to Discord thread: {last_msg.content}")
+
+		# 3. Acknowledge the update back to the backend RAG API
+		# This clears it from the relay queue
+		relay_success = await MCL_OutboundRelay().acknowledge_update(str(updateId))
+		if not relay_success:
+			bot.logger.error(f"Failed to acknowledge update {updateId} to the backend.")
+
+	except Exception as e:
+		bot.logger.exception(f"Error processing bot update payload for ticket {ticketId}: {e}")
+		raise HTTPException(status_code=500, detail=str(e))
 
 	# Return success message
 	return JSONResponse(

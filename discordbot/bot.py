@@ -170,6 +170,38 @@ class MclBot(commands.Bot):
 			except Exception as e:
 				self.logger.exception(f"Failed to send online message to admin channel: {e}")
 
+	async def on_message(self, message: discord.Message):
+		# Skip bot messages
+		if message.author.bot:
+			return
+
+		# Check if it's in a thread
+		if isinstance(message.channel, discord.Thread):
+			try:
+				mongo = MCL_MongoManager()
+				ticket = mongo.getTicketByThreadId(message.channel.id)
+				if ticket:
+					self.logger.info(f"Relaying message from Discord user {message.author.name} in thread {message.channel.id} for ticket {ticket.ticketId}.")
+					
+					from src.utils.datatypes import PlayerInfo
+					sender = PlayerInfo(
+						discordUsername=message.author.name,
+						discordId=str(message.author.id)
+					)
+					
+					success = await MCL_OutboundRelay().append_ticket_message(
+						ticket_id=ticket.ticketId,
+						content=message.content,
+						sender=sender
+					)
+					if not success:
+						self.logger.error(f"Failed to relay message to backend for ticket {ticket.ticketId}.")
+			except Exception as e:
+				self.logger.exception(f"Error handling message relay in thread: {e}")
+
+		# Process commands if any
+		await self.process_commands(message)
+
 # Configure Discord intents
 intents = discord.Intents.default()
 intents.presences = True
