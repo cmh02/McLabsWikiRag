@@ -99,7 +99,10 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 				json={
 					"ticketId": ticket_id,
 					"content": question,
-					"sentBy": str(user.id)
+					"sender": {
+						"discordId": str(user.id),
+						"discordUsername": username
+					}
 				},
 				timeout=10
 			) as resp:

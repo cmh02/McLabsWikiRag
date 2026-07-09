@@ -9,6 +9,7 @@ import os
 import asyncio
 import logging
 from typing import Dict, Any
+from src.utils.datatypes import PlayerInfo
 
 logger = logging.getLogger("MCL_DISCORD_Logger")
 
@@ -166,7 +167,7 @@ class MCL_OutboundRelay:
 			}
 		)
 
-	async def append_ticket_message(self, ticket_id: int, content: str, sent_by: str) -> bool:
+	async def append_ticket_message(self, ticket_id: int, content: str, sender: PlayerInfo) -> bool:
 		'''
 		# Append Ticket Message
 
@@ -177,6 +178,6 @@ class MCL_OutboundRelay:
 			json_data={
 				"ticketId": ticket_id,
 				"content": content,
-				"sentBy": sent_by
+				"sender": sender.toDict()
 			}
 		)

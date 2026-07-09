@@ -82,7 +82,7 @@ def generate_ticket_embed(ticket: HelpTicket, creator: Optional[discord.Member] 
 	if ticket.conversation and ticket.conversation.messages:
 		# The first message sent by the player
 		for msg in ticket.conversation.messages:
-			if msg.sender in (ticket.playerInfo.minecraftUUID, ticket.playerInfo.discordId):
+			if msg.sender.minecraftUUID == ticket.playerInfo.minecraftUUID or msg.sender.discordId == ticket.playerInfo.discordId:
 				question = msg.content
 				break
 	embed.add_field(name="Question Asked", value=question, inline=False)

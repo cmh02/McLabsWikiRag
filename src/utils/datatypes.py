@@ -24,15 +24,15 @@ class Message:
 	Represents a message within a conversation.
 	'''
 
-	def __init__(self, timestamp: float, sender: str, content: str):
+	def __init__(self, timestamp: float, sender: PlayerInfo, content: str):
 		self.timestamp: float = timestamp
-		self.sender: str = sender
+		self.sender: PlayerInfo = sender
 		self.content: str = content
 
 	def toDict(self) -> dict:
 		return {
 			"timestamp": self.timestamp,
-			"sender": self.sender,
+			"sender": self.sender.toDict(),
 			"content": self.content
 		}
 	
@@ -40,7 +40,7 @@ class Message:
 	def fromDict(data: dict) -> 'Message':
 		return Message(
 			timestamp=data["timestamp"],
-			sender=data["sender"],
+			sender=PlayerInfo.fromDict(data["sender"]),
 			content=data["content"]
 		)
 	

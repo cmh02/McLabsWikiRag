@@ -542,8 +542,8 @@ class AppendTicketMessageSchema(BaseModel):
 	# The content of the message to append
 	content: str = Field(description="The content of the message to append.")
 
-	# The UUID of the player sending the message
-	sentBy: str = Field(description="The UUID of the player sending the message.")
+	# The player information of the sender
+	sender: PlayerInfoSchema = Field(description="The identification details of the sender.")
 
 @router.post("/append_ticket_message")
 @limiter.limit("500/minute")
@@ -553,9 +553,9 @@ def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
 	data: Dict = body.model_dump()
 	ticketId: int | None = data.get("ticketId")
 	content: str | None = data.get("content")
-	sentBy: str | None = data.get("sentBy")
+	senderData: Dict | None = data.get("sender")
 
-	# Validate that we got a ticketId, content, and sentBy
+	# Validate that we got a ticketId, content, and sender
 	if not ticketId:
 		raise HTTPException(
 			status_code=400,
@@ -566,16 +566,24 @@ def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
 			status_code=400,
 			detail="Missing 'content'"
 		)
-	if not sentBy:
+	if not senderData:
 		raise HTTPException(
 			status_code=400,
-			detail="Missing 'sentBy'"
+			detail="Missing 'sender'"
 		)
+
+	# Instantiate PlayerInfo datatype
+	playerInfo = PlayerInfo(
+		minecraftUsername=senderData.get("minecraftUsername"),
+		minecraftUUID=senderData.get("minecraftUUID"),
+		discordUsername=senderData.get("discordUsername"),
+		discordId=senderData.get("discordId")
+	)
 
 	# Create message object
 	message = Message(
 		timestamp=datetime.now(timezone.utc).timestamp(),
-		sender=sentBy,
+		sender=playerInfo,
 		content=content
 	)
 
