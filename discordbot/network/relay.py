@@ -8,6 +8,7 @@ from discord import sticker
 import os
 import asyncio
 import logging
+import aiohttp
 from typing import Dict, Any
 from src.utils.datatypes import PlayerInfo
 
@@ -70,7 +71,7 @@ class MCL_OutboundRelay:
 		delay = initial_delay
 		for attempt in range(max_tries):
 			try:
-				async with self.bot.session.post(url, headers=headers, json=json_data, timeout=10) as response:
+				async with self.bot.session.post(url, headers=headers, json=json_data, timeout=aiohttp.ClientTimeout(total=10)) as response:
 					if response.status == 200:
 						logger.info(f"Successfully posted to {endpoint} on attempt {attempt + 1}")
 						return True

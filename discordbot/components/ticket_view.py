@@ -7,7 +7,7 @@ Author: Chris Hinkson @cmh02
 import logging
 import discord
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.utils.datatypes import HelpTicket
 from src.utils.enum import TicketStatus, TicketFeedback
@@ -55,7 +55,7 @@ def generate_ticket_embed(ticket: HelpTicket, creator: Optional[discord.Member] 
 		title=f"🎫 Help Ticket #{ticket.ticketId}",
 		description="Welcome to your help ticket thread! Staff members have been notified and will assist you shortly.",
 		color=color,
-		timestamp=datetime.fromtimestamp(ticket.time_create) if ticket.time_create else datetime.utcnow()
+		timestamp=datetime.fromtimestamp(ticket.time_create, tz=timezone.utc) if ticket.time_create else datetime.now(timezone.utc)
 	)
 
 	creator_mention = f"<@{creator.id}>" if creator else (f"<@{ticket.playerInfo.discordId}>" if ticket.playerInfo.discordId else "Unknown")
@@ -115,6 +115,10 @@ class HelpTicketThreadView(discord.ui.View):
 			return
 
 		# Get ticket by thread ID
+		if interaction.channel_id is None:
+			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
+			return
+
 		mongo = MCL_MongoManager()
 		ticket = mongo.getTicketByThreadId(interaction.channel_id)
 		if not ticket:
@@ -143,6 +147,10 @@ class HelpTicketThreadView(discord.ui.View):
 			return
 
 		# Get ticket by thread ID
+		if interaction.channel_id is None:
+			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
+			return
+
 		mongo = MCL_MongoManager()
 		ticket = mongo.getTicketByThreadId(interaction.channel_id)
 		if not ticket:
@@ -166,6 +174,10 @@ class HelpTicketThreadView(discord.ui.View):
 			return
 
 		# Get ticket by thread ID
+		if interaction.channel_id is None:
+			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
+			return
+
 		mongo = MCL_MongoManager()
 		ticket = mongo.getTicketByThreadId(interaction.channel_id)
 		if not ticket:
@@ -192,6 +204,10 @@ class HelpTicketThreadView(discord.ui.View):
 			return
 
 		# Get ticket by thread ID
+		if interaction.channel_id is None:
+			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
+			return
+
 		mongo = MCL_MongoManager()
 		ticket = mongo.getTicketByThreadId(interaction.channel_id)
 		if not ticket:
@@ -224,7 +240,8 @@ class CloseConfirmationView(discord.ui.View):
 	async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
 		# Disable buttons
 		for item in self.children:
-			item.disabled = True
+			if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+				item.disabled = True
 		await interaction.response.edit_message(content="Closing ticket...", view=self)
 
 		success = await MCL_OutboundRelay().close_ticket(self.ticket_id, self.closed_by)
@@ -234,7 +251,8 @@ class CloseConfirmationView(discord.ui.View):
 	@discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
 	async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
 		for item in self.children:
-			item.disabled = True
+			if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+				item.disabled = True
 		await interaction.response.edit_message(content="Cancelled ticket closure.", view=self)
 
 
@@ -251,7 +269,8 @@ class FeedbackSelectionView(discord.ui.View):
 	@discord.ui.button(label="Helpful 👍", style=discord.ButtonStyle.success)
 	async def helpful(self, interaction: discord.Interaction, button: discord.ui.Button):
 		for item in self.children:
-			item.disabled = True
+			if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+				item.disabled = True
 		await interaction.response.edit_message(content="Submitting feedback...", view=self)
 
 		success = await MCL_OutboundRelay().set_ticket_feedback(self.ticket_id, "HELPFUL")
@@ -263,7 +282,8 @@ class FeedbackSelectionView(discord.ui.View):
 	@discord.ui.button(label="Unhelpful 👎", style=discord.ButtonStyle.danger)
 	async def unhelpful(self, interaction: discord.Interaction, button: discord.ui.Button):
 		for item in self.children:
-			item.disabled = True
+			if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+				item.disabled = True
 		await interaction.response.edit_message(content="Submitting feedback...", view=self)
 
 		success = await MCL_OutboundRelay().set_ticket_feedback(self.ticket_id, "UNHELPFUL")

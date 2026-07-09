@@ -54,10 +54,9 @@ This endpoint receives relay notifications from the backend.
 async def update(request: Request, updateRequest: UpdateRequest):
 	
 	# Validate and extract request data
-	data = updateRequest.model_dump()
-	updateId = data.get("update_id")
-	ticketAction = data.get("ticket_action")
-	ticketId = data.get("ticket_id")
+	updateId = updateRequest.update_id
+	ticketAction = updateRequest.ticket_action
+	ticketId = updateRequest.ticket_id
 
 	# Get bot instance from request app state
 	bot = request.app.state.bot
@@ -180,7 +179,7 @@ async def update(request: Request, updateRequest: UpdateRequest):
 					is_duplicate = False
 					if last_discord_msg and last_msg.sender.discordId:
 						# If author ID matches and content matches, it originated from Discord
-						if str(last_discord_msg.author.id) == str(last_msg.sender.discordId) and last_discord_msg.content == last_msg.content:
+						if str(last_discord_msg.author.id) == last_msg.sender.discordId and last_discord_msg.content == last_msg.content:
 							is_duplicate = True
 
 					if is_duplicate:

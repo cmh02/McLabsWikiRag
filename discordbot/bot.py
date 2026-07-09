@@ -32,6 +32,7 @@ BOT DEFINITION
 '''
 
 class MclBot(commands.Bot):
+	session: aiohttp.ClientSession
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)

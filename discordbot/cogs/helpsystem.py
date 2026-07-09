@@ -10,9 +10,14 @@ MODULE IMPORTS
 
 import os
 import logging
+import aiohttp
 import discord
 from discord import app_commands
 from discord.ext import commands
+from typing import cast, TYPE_CHECKING
+
+if TYPE_CHECKING:
+	from discordbot.bot import MclBot
 
 '''
 MODAL DEFINITION
@@ -48,6 +53,7 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 		user = interaction.user
 		username = user.name
 		question = self.question_input.value
+		bot = cast("MclBot", interaction.client)
 
 		self.logger.info(f"HelpSystem Ask: User ID: {user.id}, Username: {username}, Question: {question}")
 
@@ -72,7 +78,7 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 
 		try:
 			# 1. Create ticket on backend
-			async with interaction.client.session.post(
+			async with bot.session.post(
 				f"https://{domain_backend}/create_ticket",
 				headers=headers,
 				json={
@@ -82,7 +88,7 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 						"discordUsername": username
 					}
 				},
-				timeout=10
+				timeout=aiohttp.ClientTimeout(total=10)
 			) as resp:
 				if resp.status != 200:
 					raise RuntimeError(f"Backend API create_ticket returned status {resp.status}")
@@ -93,7 +99,7 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 				raise RuntimeError("No ticketId returned by backend API.")
 
 			# 2. Append the user's question to the ticket conversation
-			async with interaction.client.session.post(
+			async with bot.session.post(
 				f"https://{domain_backend}/append_ticket_message",
 				headers=headers,
 				json={
@@ -104,7 +110,7 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 						"discordUsername": username
 					}
 				},
-				timeout=10
+				timeout=aiohttp.ClientTimeout(total=10)
 			) as resp:
 				if resp.status != 200:
 					self.logger.error(f"Failed to append message to ticket {ticket_id}. Status: {resp.status}")
