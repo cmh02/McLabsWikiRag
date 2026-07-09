@@ -4,6 +4,8 @@ MCLabs Common Datatypes
 Author: Chris Hinkson @cmh02
 '''
 
+from __future__ import annotations
+
 '''
 MODULE IMPORTS
 '''
