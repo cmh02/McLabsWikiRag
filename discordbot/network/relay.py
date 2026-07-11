@@ -10,7 +10,7 @@ import asyncio
 import logging
 import aiohttp
 from typing import Dict, Any
-from src.utils.datatypes import PlayerInfo
+from mcl_common.datatypes import PlayerInfo
 
 logger = logging.getLogger("MCL_DISCORD_Logger")
 

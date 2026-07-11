@@ -1,25 +1,16 @@
 '''
-MCLabs Backend - Mongo Manager
+MCLabs Common - Mongo Manager
 
 Author: Chris Hinkson @cmh02
-'''
-
-'''
-MODULE IMPORTS
-'''
-
-'''
-MONGO MANAGER
 '''
 
 import os
 import logging
 from typing import Optional
-from starlette import status
 from pymongo import MongoClient
 
-from src.utils.datatypes import HelpTicket, Conversation, Message, PlayerInfo
-from src.utils.enum import TicketType, TicketStatus, TicketFeedback
+from mcl_common.datatypes import HelpTicket, Conversation, Message, PlayerInfo
+from mcl_common.enum import TicketType, TicketStatus, TicketFeedback
 
 
 class MCL_MongoManager():

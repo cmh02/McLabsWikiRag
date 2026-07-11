@@ -9,13 +9,13 @@ import discord
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
 
-from discordbot.network.limiter import limiter
-from discordbot.network.router import MclRouter
+from mcl_common.limiter import limiter
+from mcl_common.router import MclRouter
 from discordbot.network.schemas import UpdateRequest, AdminMessageRequest
-from discordbot.internal.mongo import MCL_MongoManager
+from mcl_common.mongo import MCL_MongoManager
 from discordbot.network.relay import MCL_OutboundRelay
 from discordbot.components.ticket_view import HelpTicketThreadView, generate_ticket_embed
-from src.utils.enum import TicketAction
+from mcl_common.enum import TicketAction
 
 '''
 # API ROUTER

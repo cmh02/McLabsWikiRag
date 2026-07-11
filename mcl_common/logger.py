@@ -1,29 +1,21 @@
 '''
-MCLabs Wiki RAG - Discord Logging
-
-Author: Chris Hinkson @cmh02
+MCLabs Common - Logging
 '''
 
-'''
-MODULE IMPORTS
-'''
 import os
 import logging
 
-'''
-LOGGER SETUP
-'''
 class MCL_Logger():
 
 	@staticmethod
-	def setup_logger():
+	def setup_logger(logger_name: str):
 		'''
 		# Logger Setup
 
-		Sets up the logger for the API module.
+		Sets up the logger for a given module/service name.
 		'''
 
-		api_logger = logging.getLogger("MCL_DISCORD_Logger")
+		api_logger = logging.getLogger(logger_name)
 		api_logger.setLevel(logging.DEBUG)
 
 		# Create console handler with environmental variable level

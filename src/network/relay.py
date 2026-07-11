@@ -17,7 +17,7 @@ from typing import List, Dict
 
 import aiohttp
 
-from src.utils.enum import TicketAction, RelayDestination
+from mcl_common.enum import TicketAction, RelayDestination
 
 '''
 OUTBOUND RELAY

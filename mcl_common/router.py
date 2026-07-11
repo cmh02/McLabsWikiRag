@@ -1,24 +1,9 @@
 '''
-MCLabs Wiki RAG - API Router
-
-Author: Chris Hinkson @cmh02
-'''
-
-'''
-MODULE IMPORTS
+MCLabs Common - API Router
 '''
 
 from fastapi import APIRouter, Request, HTTPException, Header, Depends
-
-from src.network.security import verifyRequest
-
-'''
-API ROUTER
-
-Creation of the API router for all endpoints. 
-This will be included in the main FastAPI app in api.py.
-The router also handles global header requirements.
-'''
+from mcl_common.security import verifyRequest
 
 class MclRouter():
 
@@ -42,7 +27,7 @@ class MclRouter():
 			),
 			user_agent: str = Header(
 				...,
-				description="User agent string to identify discord versus minecraft requests",
+				description="User agent string to identify requests",
 				alias="User-Agent"
 			)
 		):

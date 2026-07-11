@@ -9,9 +9,9 @@ import discord
 from typing import Optional
 from datetime import datetime, timezone
 
-from src.utils.datatypes import HelpTicket
-from src.utils.enum import TicketStatus, TicketFeedback
-from discordbot.internal.mongo import MCL_MongoManager
+from mcl_common.datatypes import HelpTicket
+from mcl_common.enum import TicketStatus, TicketFeedback
+from mcl_common.mongo import MCL_MongoManager
 from discordbot.network.relay import MCL_OutboundRelay
 
 logger = logging.getLogger("MCL_DISCORD_Logger")

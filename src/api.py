@@ -22,10 +22,10 @@ from slowapi import _rate_limit_exceeded_handler
 from google import genai
 
 # MCL Packages
-from src.utils.logger import MCL_Logger
+from mcl_common.logger import MCL_Logger
 from src.internal.helpmanager import MCL_HelpManager
-from src.internal.mongo import MCL_MongoManager
-from src.network.limiter import limiter
+from mcl_common.mongo import MCL_MongoManager
+from mcl_common.limiter import limiter
 from src.network.relay import MCL_OutboundRelay
 from src.network.endpoints import router as InternalEndpointsRouter
 
@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 		load_dotenv()
 
 	# Setup logging
-	app.state.logger = MCL_Logger.setup_logger()
+	app.state.logger = MCL_Logger.setup_logger("MCL_API_Logger")
 
 	# Gemini client
 	# if not os.getenv("GOOGLE_GEMINI_API_KEY"):

@@ -20,11 +20,12 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
-from discordbot.utils.logger import MCL_Logger
-from discordbot.network.limiter import limiter
+from mcl_common.logger import MCL_Logger
+from mcl_common.limiter import limiter
+from mcl_common.datatypes import PlayerInfo
 from discordbot.network.endpoints import router as InternalEndpointsRouter
 from discordbot.network.relay import MCL_OutboundRelay
-from discordbot.internal.mongo import MCL_MongoManager
+from mcl_common.mongo import MCL_MongoManager
 from discordbot.components.ticket_view import HelpTicketThreadView
 
 '''
@@ -226,7 +227,6 @@ class MclBot(commands.Bot):
 				if ticket:
 					self.logger.info(f"Relaying message from Discord user {message.author.name} in thread {message.channel.id} for ticket {ticket.ticketId}.")
 					
-					from src.utils.datatypes import PlayerInfo
 					sender = PlayerInfo(
 						discordUsername=message.author.name,
 						discordId=str(message.author.id)
@@ -273,7 +273,7 @@ async def lifespan(app: FastAPI):
 		raise RuntimeError("RAILWAY_ENVIRONMENT_ID environment variable is not set.")
 	
 	# Setup logging
-	app.state.logger = MCL_Logger.setup_logger()
+	app.state.logger = MCL_Logger.setup_logger("MCL_DISCORD_Logger")
 	app.state.logger.info(f"MCL Discord Bot API is starting up with PID {os.getpid()}!")
 
 	# Store bot reference in app state
