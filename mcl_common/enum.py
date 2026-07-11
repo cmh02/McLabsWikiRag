@@ -48,3 +48,4 @@ class MongoCollection(Enum):
 	TICKETS = "tickets"
 	PLAYERS = "players"
 	SYSTEM_STATUS = "system_status"
+	SERVER_STATUS = "server_status"

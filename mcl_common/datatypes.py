@@ -262,3 +262,46 @@ class HelpTicket:
 			None
 		"""
 		self.feedback = feedback
+
+
+class ServerStatus:
+	'''
+	# ServerStatus
+
+	Represents the current status of the Minecraft server.
+	'''
+
+	def __init__(self,
+				 online: bool = False,
+				 player_count: int = 0,
+				 max_players: int = 0,
+				 uptime: str = "Unknown",
+				 tps: float = 20.0,
+				 last_updated: Optional[float] = None):
+		self.online: bool = online
+		self.player_count: int = player_count
+		self.max_players: int = max_players
+		self.uptime: str = uptime
+		self.tps: float = tps
+		self.last_updated: float = last_updated if last_updated is not None else datetime.now().timestamp()
+
+	def toDict(self) -> dict:
+		return {
+			"online": self.online,
+			"player_count": self.player_count,
+			"max_players": self.max_players,
+			"uptime": self.uptime,
+			"tps": self.tps,
+			"last_updated": self.last_updated
+		}
+
+	@staticmethod
+	def fromDict(data: dict) -> 'ServerStatus':
+		return ServerStatus(
+			online=data.get("online", False),
+			player_count=data.get("player_count", 0),
+			max_players=data.get("max_players", 0),
+			uptime=data.get("uptime", "Unknown"),
+			tps=data.get("tps", 20.0),
+			last_updated=data.get("last_updated")
+		)

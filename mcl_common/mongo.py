@@ -11,7 +11,7 @@ from typing import Any, Optional
 from pymongo import MongoClient
 
 from src.network.relay import MCL_OutboundRelay
-from mcl_common.datatypes import HelpTicket, Conversation, Message, PlayerInfo
+from mcl_common.datatypes import HelpTicket, Conversation, Message, PlayerInfo, ServerStatus
 from mcl_common.enum import TicketType, TicketStatus, TicketFeedback, MongoDatabase, MongoCollection, TicketAction
 
 
@@ -58,6 +58,9 @@ class MCL_MongoManager():
 		system_status_col_name = os.getenv("MCL_MONGO_COLLECTION_SYSTEM_STATUS")
 		if not system_status_col_name:
 			raise ValueError("MCL_MONGO_COLLECTION_SYSTEM_STATUS environment variable is not set.")
+		server_status_col_name = os.getenv("MCL_MONGO_COLLECTION_SERVER_STATUS")
+		if not server_status_col_name:
+			raise ValueError("MCL_MONGO_COLLECTION_SERVER_STATUS environment variable is not set.")
 
 		# Create connection with pymongo
 		self.client = MongoClient(self.mongoConnectionString)
@@ -74,7 +77,8 @@ class MCL_MongoManager():
 			},
 			MongoDatabase.BOT: {
 				MongoCollection.PLAYERS: self.databases[MongoDatabase.BOT][players_col_name],
-				MongoCollection.SYSTEM_STATUS: self.databases[MongoDatabase.BOT][system_status_col_name]
+				MongoCollection.SYSTEM_STATUS: self.databases[MongoDatabase.BOT][system_status_col_name],
+				MongoCollection.SERVER_STATUS: self.databases[MongoDatabase.BOT][server_status_col_name]
 			}
 		}
 
@@ -476,3 +480,32 @@ class MCL_MongoManager():
 		if not allTicketIds:
 			return 1
 		return max(allTicketIds) + 1
+
+	def getServerStatus(self) -> Optional[ServerStatus]:
+		"""
+		## Get Server Status
+
+		Retrieves the latest Minecraft server status from the database.
+		"""
+		doc = self.collections[MongoDatabase.BOT][MongoCollection.SERVER_STATUS].find_one({"_id": "current_status"})
+		if not doc:
+			# Fallback if no specific doc is found, get the most recently updated one
+			doc = self.collections[MongoDatabase.BOT][MongoCollection.SERVER_STATUS].find_one(sort=[("last_updated", -1)])
+		if doc:
+			return ServerStatus.fromDict(doc)
+		return None
+
+	def saveServerStatus(self, status: ServerStatus) -> Any:
+		"""
+		## Save Server Status
+
+		Saves or updates the Minecraft server status in the database.
+		"""
+		status_dict = status.toDict()
+		status_dict["_id"] = "current_status"
+		result = self.collections[MongoDatabase.BOT][MongoCollection.SERVER_STATUS].replace_one(
+			{"_id": "current_status"},
+			status_dict,
+			upsert=True
+		)
+		return result
