@@ -10,6 +10,11 @@ class UserInfoLookup:
 	Common helper module to query external systems (Mojang and Discord) for user information using asyncio/aiohttp.
 	"""
 
+	# Static System Endpoints
+	API_UUID_BY_NAME: str = "https://api.mojang.com/users/profiles/minecraft/"
+	API_NAME_BY_UUID: str = "https://sessionserver.mojang.com/session/minecraft/profile/"
+	API_DISCORD_USER_BY_ID: str = "https://discord.com/api/v10/users/"
+
 	@staticmethod
 	async def getMinecraftUuidByName(username: str) -> Optional[str]:
 		"""
@@ -17,22 +22,27 @@ class UserInfoLookup:
 
 		Queries Mojang's API to get the dashed UUID for a player username.
 		"""
+
+		# Validate that username was given
 		if not username:
 			return None
 
-		url = f"https://api.mojang.com/users/profiles/minecraft/{username}"
+		# Make request to Mojang API to get UUID
+		rawUuid: str | None = None
+		url: str = f"{UserInfoLookup.API_UUID_BY_NAME}{username}"
 		try:
 			async with aiohttp.ClientSession() as session:
 				async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
 					if response.status == 200:
 						data = await response.json()
 						rawUuid = data.get("id")
-						if rawUuid:
-							# Convert undashed UUID to standard dashed UUID format
-							return str(uuid.UUID(rawUuid))
 		except Exception:
 			pass
-		return None
+		
+		# Convert raw UUID to dashed format and return if successful
+		if rawUuid:
+			rawUuid = str(uuid.UUID(rawUuid))
+		return rawUuid
 
 	@staticmethod
 	async def getMinecraftNameByUuid(uuidStr: str) -> Optional[str]:
@@ -42,21 +52,24 @@ class UserInfoLookup:
 		Queries Mojang's API to get the username for a player UUID.
 		Supports both dashed and undashed UUID formats.
 		"""
+
+		# Validate that uuidStr was given
 		if not uuidStr:
 			return None
 
 		# Clean UUID if it is dashed for the API endpoint
 		cleanUuid = uuidStr.replace("-", "")
-		url = f"https://sessionserver.mojang.com/session/minecraft/profile/{cleanUuid}"
+		url: str = f"{UserInfoLookup.API_NAME_BY_UUID}{cleanUuid}"
+		name: str | None = None
 		try:
 			async with aiohttp.ClientSession() as session:
 				async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
 					if response.status == 200:
 						data = await response.json()
-						return data.get("name")
+						name = data.get("name")
 		except Exception:
 			pass
-		return None
+		return name
 
 	@staticmethod
 	async def getDiscordUserById(discordId: str) -> Optional[Dict[str, Any]]:
@@ -65,24 +78,34 @@ class UserInfoLookup:
 
 		Queries Discord's REST API using the bot token in the environment to get user details.
 		"""
+
+		# Validate that discordId was given
 		if not discordId:
 			return None
 
-		botToken = os.getenv("DISCORD_BOT_TOKEN")
+		# We use bot token here to auth to Discord API
+		botToken: str | None = os.getenv("DISCORD_BOT_TOKEN")
 		if not botToken:
-			return None
+			raise EnvironmentError("DISCORD_BOT_TOKEN is not set")
 
-		url = f"https://discord.com/api/v10/users/{discordId}"
-		headers = {
+		# We use backend user agent for sending request
+		userAgent: str | None = os.getenv("USER_AGENT_BACKEND")
+		if not userAgent:
+			raise EnvironmentError("USER_AGENT_BACKEND is not set")
+
+		# Make request for Discord user
+		url: str = f"{UserInfoLookup.API_DISCORD_USER_BY_ID}{discordId}"
+		headers: Dict[str, str] = {
 			"Authorization": f"Bot {botToken}",
-			"User-Agent": "MCLabsWikiGpt (https://github.com/cmh02, v1.0.0)"
+			"User-Agent": userAgent
 		}
+		user: Dict[str, Any] | None = None
 		try:
 			async with aiohttp.ClientSession() as session:
 				async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as response:
 					if response.status == 200:
-						return await response.json()
+						user = await response.json()
 		except Exception:
 			pass
-		return None
+		return user
 
