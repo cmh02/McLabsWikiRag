@@ -177,7 +177,8 @@ class MCL_OutboundRelay():
 		if updateId not in self.data:
 			self.logger.warning(f"Attempted to acknowledge unknown update {updateId}.")
 			return
-		self.queue.remove(updateId)
+		if updateId in self.queue:
+			self.queue.remove(updateId)
 		data = self.data.pop(updateId, None)
 		self.logger.info(f"Acknowledged update {updateId} and removed update from queue: {data}.")
 
@@ -217,7 +218,8 @@ class MCL_OutboundRelay():
 				data = self.data.get(updateId)
 				if not data:
 					self.logger.warning(f"Update {updateId} not found in data dictionary. Removing from queue.")
-					self.queue.remove(updateId)
+					if updateId in self.queue:
+						self.queue.remove(updateId)
 					continue
 
 				# Check if we should attempt to send the update
