@@ -110,7 +110,7 @@ class MclBot(commands.Bot):
 
 		# Initialize Mongo Manager
 		mongo_manager = MCL_MongoManager()
-		mongo_manager.initialize()
+		mongo_manager.initialize(logger=self.logger)
 
 		# Track bot session ID to handle rolling restarts cleanly
 		import uuid

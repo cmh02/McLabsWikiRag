@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
 	MCL_HelpManager().initialize()
 
 	# Initialize Mongo Manager
-	MCL_MongoManager().initialize()
+	MCL_MongoManager().initialize(logger=app.state.logger)
 
 	# Initialize Outbound Relay
 	MCL_OutboundRelay().initialize()

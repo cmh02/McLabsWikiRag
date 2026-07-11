@@ -26,7 +26,7 @@ class MCL_MongoManager():
 			cls._instance = super(MCL_MongoManager, cls).__new__(cls)
 		return cls._instance
 
-	def initialize(self):
+	def initialize(self, logger: Optional[logging.Logger | str] = None):
 		'''
 		# Class Initialization
 
@@ -50,7 +50,12 @@ class MCL_MongoManager():
 		self.collection = self.db[self.mongoCollectionName]
 
 		# Log initialization
-		self.logger = logging.getLogger("MCL_API_Logger")
+		if logger is None:
+			self.logger = logging.getLogger("MCL_API_Logger")
+		elif isinstance(logger, str):
+			self.logger = logging.getLogger(logger)
+		else:
+			self.logger = logger
 
 		# Ping the database to verify the connection and authentication
 		try:

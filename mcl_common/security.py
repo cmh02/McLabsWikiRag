@@ -6,13 +6,16 @@ import os
 import logging
 from fastapi import HTTPException, Request
 
-def verifyRequest(request: Request, verifyToken: bool = True, verifyIpAddress: bool = True) -> None:
+from typing import Optional
+
+def verifyRequest(request: Request, verifyToken: bool = True, verifyIpAddress: bool = True, logger: Optional[logging.Logger] = None) -> None:
 	'''
 	# verifyRequest
 
 	Verifies both the API token and IP address of the incoming request.
 	'''
-	logger = getattr(request.app.state, "logger", logging.getLogger("MCL_API_Logger"))
+	if logger is None:
+		logger = getattr(request.app.state, "logger", logging.getLogger("MCL_Common"))
 	client_ip = request.client.host if request.client else "unknown"
 
 	logger.debug(
@@ -21,10 +24,10 @@ def verifyRequest(request: Request, verifyToken: bool = True, verifyIpAddress: b
 
 	try:
 		if verifyToken:
-			verifyApiToken(request=request)
+			verifyApiToken(request=request, logger=logger)
 
 		if verifyIpAddress:
-			verifyIp(request=request)
+			verifyIp(request=request, logger=logger)
 
 		logger.info(f"API request has been successfully verified for new request from IP `{client_ip}`!")
 
@@ -34,13 +37,14 @@ def verifyRequest(request: Request, verifyToken: bool = True, verifyIpAddress: b
 		)
 		raise
 
-def verifyApiToken(request: Request) -> None:
+def verifyApiToken(request: Request, logger: Optional[logging.Logger] = None) -> None:
 	'''
 	# verifyApiToken
 
 	Verifies that the API token provided in the request headers matches the expected token.
 	'''
-	logger = getattr(request.app.state, "logger", logging.getLogger("MCL_API_Logger"))
+	if logger is None:
+		logger = getattr(request.app.state, "logger", logging.getLogger("MCL_Common"))
 	token = request.headers.get("Authorization")
 
 	if not token:
@@ -65,13 +69,14 @@ def verifyApiToken(request: Request) -> None:
 			detail="Invalid API token"
 		)
 	
-def verifyIp(request: Request) -> None:
+def verifyIp(request: Request, logger: Optional[logging.Logger] = None) -> None:
 	'''
 	# verifyIp
 
 	Verifies that the IP address of the incoming request is in the allowed list.
 	'''
-	logger = getattr(request.app.state, "logger", logging.getLogger("MCL_API_Logger"))
+	if logger is None:
+		logger = getattr(request.app.state, "logger", logging.getLogger("MCL_Common"))
 
 	if not request.client:
 		raise HTTPException(
