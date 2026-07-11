@@ -29,6 +29,8 @@ from mcl_common.mongo import MCL_MongoManager
 from mcl_common.limiter import limiter
 from src.network.relay import MCL_OutboundRelay
 from src.network.endpoints import router as InternalEndpointsRouter
+from src.rag.docfetch import MCL_WikiEmbedder
+from src.rag.rag import MCL_WikiRag
 
 '''
 FASTAPI APP STARTUP / SHUTDOWN
@@ -44,21 +46,30 @@ async def lifespan(app: FastAPI):
 	# Setup logging
 	app.state.logger = MCL_Logger.setup_logger("MCL_API_Logger")
 
+	# Validate Gemini environment variables
+	gemini_api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+	gemini_model = os.getenv("GOOGLE_GEMINI_MODEL")
+
+	if not gemini_api_key:
+		app.state.logger.error("GOOGLE_GEMINI_API_KEY environment variable is not set.")
+		raise RuntimeError("GOOGLE_GEMINI_API_KEY environment variable is not set.")
+	if not gemini_model:
+		app.state.logger.error("GOOGLE_GEMINI_MODEL environment variable is not set.")
+		raise RuntimeError("GOOGLE_GEMINI_MODEL environment variable is not set.")
+
 	# Gemini client
-	# if not os.getenv("GOOGLE_GEMINI_API_KEY"):
-	# 	app.state.logger.error("GOOGLE_GEMINI_API_KEY environment variable is not set.")
-	# 	raise ValueError("GOOGLE_GEMINI_API_KEY environment variable is not set.")
-	# app.state.InstanceClient = genai.Client(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
+	app.state.InstanceClient = genai.Client(api_key=gemini_api_key)
 
 	# Load the index and documents
-	# app.state.InstanceWikiEmbedder = MCL_WikiEmbedder(client=app.state.InstanceClient)
-	# app.state.InstanceWikiEmbedder.loadIndexAndDocuments()
+	app.state.InstanceWikiEmbedder = MCL_WikiEmbedder(client=app.state.InstanceClient)
+	app.state.InstanceWikiEmbedder.loadIndexAndDocuments()
 
 	# RAG instance
-	# app.state.InstanceRag = MCL_WikiRag(client=app.state.InstanceClient, wikiEmbedder=app.state.InstanceWikiEmbedder)
+	app.state.InstanceRag = MCL_WikiRag(client=app.state.InstanceClient, wikiEmbedder=app.state.InstanceWikiEmbedder)
 
 	# Initialize Help Manager
 	MCL_HelpManager().initialize()
+	MCL_HelpManager().set_rag_instance(app.state.InstanceRag)
 
 	# Initialize Mongo Manager
 	MCL_MongoManager().initialize(logger=app.state.logger)

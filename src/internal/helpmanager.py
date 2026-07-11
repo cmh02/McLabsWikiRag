@@ -12,10 +12,13 @@ MODULE IMPORTS
 import os
 import json
 import logging
+import datetime
+from datetime import timezone
 from typing import Dict, Optional
 from src.network.schemas import QuestionSchema
 from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
+from fastapi import BackgroundTasks
 
 from src.network.relay import MCL_OutboundRelay
 from mcl_common.mongo import MCL_MongoManager
@@ -50,6 +53,9 @@ class MCL_HelpManager():
 
 		# Dict for holding help tickets
 		self.tickets: Dict[int, HelpTicket] = {}
+
+		# RAG instance for support ticket automated answering
+		self.rag = None
 
 		# Create executor for threading
 		# self.executor = ThreadPoolExecutor(max_workers=5)
@@ -250,7 +256,15 @@ class MCL_HelpManager():
 			action=TicketAction.FEEDBACK
 		)
 
-	def addMessageToConversation(self, ticketId: int, message: Message):
+	def set_rag_instance(self, rag):
+		'''
+		# Set RAG Instance
+
+		Registers the active RAG instance on the Help Manager.
+		'''
+		self.rag = rag
+
+	def addMessageToConversation(self, ticketId: int, message: Message, backgroundTasks: Optional[BackgroundTasks] = None):
 		'''
 		# Add Message to Conversation
 
@@ -259,6 +273,7 @@ class MCL_HelpManager():
 		## Parameters
 			ticketId (int): The ID of the help ticket to add the message to.
 			message (Message): The message to add to the conversation.
+			backgroundTasks (Optional[BackgroundTasks]): FastAPI background tasks for asynchronous handling.
 
 		## Returns
 			None
@@ -283,6 +298,72 @@ class MCL_HelpManager():
 			ticketId=ticketId,
 			action=TicketAction.NEWMESSAGE
 		)
+
+		# Asynchronous RAG + AI workflow execution check
+		if backgroundTasks and self.rag:
+			# Validate that the sender of the message is the ticket creator
+			is_creator = False
+			if message.sender.minecraftUUID and message.sender.minecraftUUID == ticket.playerInfo.minecraftUUID:
+				is_creator = True
+			elif message.sender.discordId and message.sender.discordId == ticket.playerInfo.discordId:
+				is_creator = True
+
+			if is_creator:
+				# Check if this is the very first message in the conversation.
+				# Since appendMessage has just run, if this was the first message, conversation length is exactly 1.
+				conv_len = len(ticket.conversation.messages)
+				if conv_len == 1:
+					self.logger.info(f"Message in ticket {ticketId} is from the creator and is the first message. Triggering RAG workflow background task.")
+					backgroundTasks.add_task(self._processRagResponseWorkflow, ticketId, message.content)
+				else:
+					self.logger.debug(f"Message in ticket {ticketId} is from the creator but conversation length is {conv_len}. Skipping RAG.")
+			else:
+				self.logger.debug(f"Message in ticket {ticketId} is not from the creator. Skipping RAG.")
+
+	def _processRagResponseWorkflow(self, ticketId: int, messageContent: str):
+		'''
+		# Process RAG Response Workflow
+
+		Performs RAG query against FAISS, queries Gemini, validates response, and appends AI response if valid.
+		'''
+		try:
+			if not self.rag:
+				self.logger.error(f"RAG instance is not configured on Help Manager. Skipping automated answer for ticket {ticketId}.")
+				return
+
+			self.logger.info(f"Running RAG query pipeline for ticket {ticketId}...")
+			# Query RAG ticket pipeline
+			answer = self.rag.queryTicketPipeline(messageContent)
+
+			if not answer:
+				self.logger.warning(f"RAG workflow generated empty answer for ticket {ticketId}. Skipping response.")
+				return
+
+			# Validate answer against fallback string
+			stripped_answer = answer.strip().upper()
+			if stripped_answer == "UNANSWERABLE":
+				self.logger.info(f"RAG workflow determined question in ticket {ticketId} is unanswerable from context. Skipping response.")
+				return
+
+			# Construct AI Message
+			ai_player = PlayerInfo(
+				minecraftUsername="WikiGPT",
+				minecraftUUID="00000000-0000-0000-0000-000000000000",
+				discordUsername="WikiGPT",
+				discordId="000000000000000000"
+			)
+			ai_message = Message(
+				timestamp=datetime.datetime.now(timezone.utc).timestamp(),
+				sender=ai_player,
+				content=answer.strip()
+			)
+
+			self.logger.info(f"Appending WikiGPT response to ticket {ticketId}: {ai_message.content[:50]}...")
+			# Append the AI response (this will save to Mongo and trigger outbound relay automatically)
+			self.addMessageToConversation(ticketId=ticketId, message=ai_message)
+
+		except Exception as e:
+			self.logger.exception(f"Error in RAG response workflow for ticket {ticketId}: {e}")
 
 	def getTicketInfo(self, ticketId: int) -> Optional[dict]:
 		'''

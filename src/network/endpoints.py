@@ -597,7 +597,8 @@ def append_ticket_message(request: Request, body: AppendTicketMessageSchema, bac
 	# Add message to ticket conversation
 	MCL_HelpManager().addMessageToConversation(
 		ticketId=ticketId,
-		message=message
+		message=message,
+		backgroundTasks=backgroundTasks
 	)
 
 	# Return success message

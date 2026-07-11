@@ -190,6 +190,8 @@ class MCL_WikiEmbedder():
 			contents=chunks,
 			config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
 		)
+		if not response.embeddings:
+			return []
 		return [np.array(documentEmbedding.values) for documentEmbedding in response.embeddings]
 
 	# Get a batch of page titles
