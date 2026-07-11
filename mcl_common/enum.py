@@ -38,3 +38,12 @@ class RelayDestination(Enum):
 	'''
 	MINECRAFT = "MINECRAFT"
 	DISCORD = "DISCORD"
+
+class MongoDatabase(Enum):
+	HELP = "help"
+	BOT = "bot"
+
+class MongoCollection(Enum):
+	TICKETS = "tickets"
+	PLAYER_INFO = "playerinfo"
+	SYSTEM_STATUS = "system_status"

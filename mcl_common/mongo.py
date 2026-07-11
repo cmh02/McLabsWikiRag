@@ -10,7 +10,7 @@ from typing import Optional
 from pymongo import MongoClient
 
 from mcl_common.datatypes import HelpTicket, Conversation, Message, PlayerInfo
-from mcl_common.enum import TicketType, TicketStatus, TicketFeedback
+from mcl_common.enum import TicketType, TicketStatus, TicketFeedback, MongoDatabase, MongoCollection
 
 
 class MCL_MongoManager():
@@ -37,17 +37,44 @@ class MCL_MongoManager():
 		self.mongoConnectionString = os.getenv("MCL_MONGO_CONNECTION_STRING")
 		if not self.mongoConnectionString:
 			raise ValueError("MCL_MONGO_CONNECTION_STRING environment variable is not set.")
-		self.mongoDatabaseName = os.getenv("MCL_MONGO_DATABASE_NAME")
-		if not self.mongoDatabaseName:
-			raise ValueError("MCL_MONGO_DATABASE_NAME environment variable is not set.")
-		self.mongoCollectionName = os.getenv("MCL_MONGO_COLLECTION_NAME")
-		if not self.mongoCollectionName:
-			raise ValueError("MCL_MONGO_COLLECTION_NAME environment variable is not set.")
+
+		# Database Names
+		help_db_name = os.getenv("MCL_MONGO_DATABASE_HELP")
+		if not help_db_name:
+			raise ValueError("MCL_MONGO_DATABASE_HELP environment variable is not set.")
+		bot_db_name = os.getenv("MCL_MONGO_DATABASE_BOT")
+		if not bot_db_name:
+			raise ValueError("MCL_MONGO_DATABASE_BOT environment variable is not set.")
+
+		# Collection Names
+		tickets_col_name = os.getenv("MCL_MONGO_COLLECTION_TICKETS")
+		if not tickets_col_name:
+			raise ValueError("MCL_MONGO_COLLECTION_TICKETS environment variable is not set.")
+		playerinfo_col_name = os.getenv("MCL_MONGO_COLLECTION_PLAYERINFO")
+		if not playerinfo_col_name:
+			raise ValueError("MCL_MONGO_COLLECTION_PLAYERINFO environment variable is not set.")
+		system_status_col_name = os.getenv("MCL_MONGO_COLLECTION_SYSTEM_STATUS")
+		if not system_status_col_name:
+			raise ValueError("MCL_MONGO_COLLECTION_SYSTEM_STATUS environment variable is not set.")
 
 		# Create connection with pymongo
 		self.client = MongoClient(self.mongoConnectionString)
-		self.db = self.client[self.mongoDatabaseName]
-		self.collection = self.db[self.mongoCollectionName]
+
+		# Store databases and collections in dictionaries
+		self.databases = {
+			MongoDatabase.HELP: self.client[help_db_name],
+			MongoDatabase.BOT: self.client[bot_db_name]
+		}
+
+		self.collections = {
+			MongoDatabase.HELP: {
+				MongoCollection.TICKETS: self.databases[MongoDatabase.HELP][tickets_col_name]
+			},
+			MongoDatabase.BOT: {
+				MongoCollection.PLAYER_INFO: self.databases[MongoDatabase.BOT][playerinfo_col_name],
+				MongoCollection.SYSTEM_STATUS: self.databases[MongoDatabase.BOT][system_status_col_name]
+			}
+		}
 
 		# Log initialization
 		if logger is None:
@@ -79,7 +106,7 @@ class MCL_MongoManager():
 
 		Registers the active session ID for a given system (e.g. "backend" or "discord") in the "system_status" collection.
 		"""
-		self.db["system_status"].replace_one(
+		self.collections[MongoDatabase.BOT][MongoCollection.SYSTEM_STATUS].replace_one(
 			{"_id": system_name},
 			{"_id": system_name, "session_id": session_id},
 			upsert=True
@@ -91,7 +118,7 @@ class MCL_MongoManager():
 
 		Retrieves the active session ID for a given system from the "system_status" collection.
 		"""
-		status_doc = self.db["system_status"].find_one({"_id": system_name})
+		status_doc = self.collections[MongoDatabase.BOT][MongoCollection.SYSTEM_STATUS].find_one({"_id": system_name})
 		if status_doc:
 			return status_doc.get("session_id")
 		return None
@@ -105,7 +132,7 @@ class MCL_MongoManager():
 
 		# Define filter and update for upsert
 		filter = {"ticketId": ticketId}
-		result = self.collection.replace_one(
+		result = self.collections[MongoDatabase.HELP][MongoCollection.TICKETS].replace_one(
 			filter=filter,
 			replacement=ticketDict,
 			upsert=True
@@ -115,7 +142,7 @@ class MCL_MongoManager():
 	def getTicket(self, ticketId: int) -> HelpTicket:
 
 		# Get the ticket data from mongo
-		ticket_data = self.collection.find_one({"ticketId": ticketId})
+		ticket_data = self.collections[MongoDatabase.HELP][MongoCollection.TICKETS].find_one({"ticketId": ticketId})
 			
 		# Check if ticket doesn't exist, if so init with blank ticket for id
 		if not ticket_data:
@@ -135,7 +162,7 @@ class MCL_MongoManager():
 
 		Retrieves a help ticket by its linked Discord thread ID.
 		"""
-		ticket_data = self.collection.find_one({"threadId": threadId})
+		ticket_data = self.collections[MongoDatabase.HELP][MongoCollection.TICKETS].find_one({"threadId": threadId})
 		if not ticket_data:
 			return None
 		return self._deserializeTicket(ticket_data)
@@ -174,7 +201,7 @@ class MCL_MongoManager():
 
 		# Project to only get ticketId
 		projection = {"ticketId": 1, "_id": 0}
-		cursor = self.collection.find(query_filter, projection)
+		cursor = self.collections[MongoDatabase.HELP][MongoCollection.TICKETS].find(query_filter, projection)
 
 		# Extract ticket IDs from cursor
 		ticket_ids = [doc["ticketId"] for doc in cursor]
