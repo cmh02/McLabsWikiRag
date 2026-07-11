@@ -192,6 +192,60 @@ class MCL_MongoManager():
 			return PlayerInfo.fromDict(doc)
 		return None
 
+	def resolveAndSyncPlayerInfo(self, playerInfo: PlayerInfo, backgroundTasks: Optional[Any] = None) -> PlayerInfo:
+		"""
+		## Resolve and Sync Player Info
+
+		Resolves any missing fields in the incoming PlayerInfo object by querying MongoDB.
+		If MongoDB is missing any fields that the incoming object has, or if the player
+		doesn't exist at all, it saves/updates the record. Database writes are performed
+		asynchronously if backgroundTasks is provided.
+		"""
+		playerDict = playerInfo.toDict()
+		# Build dict of non-None fields in the incoming data
+		incomingFields = {k: v for k, v in playerDict.items() if v is not None}
+
+		if not incomingFields:
+			return playerInfo
+
+		# Query database for an existing document using whatever is available
+		existingPlayer = self.getPlayerInfo(
+			minecraftUsername=playerInfo.minecraftUsername,
+			minecraftUUID=playerInfo.minecraftUUID,
+			discordUsername=playerInfo.discordUsername,
+			discordId=playerInfo.discordId
+		)
+
+		if existingPlayer:
+			existingDict = existingPlayer.toDict()
+			updatedInMemory = False
+			# Merge any fields that are in MongoDB but missing from the incoming request
+			for field, val in existingDict.items():
+				if getattr(playerInfo, field) is None and val is not None:
+					setattr(playerInfo, field, val)
+					updatedInMemory = True
+
+			# Check if we were given fields that MongoDB is missing
+			needsDbUpdate = False
+			for field, val in incomingFields.items():
+				if existingDict.get(field) is None:
+					needsDbUpdate = True
+					break
+
+			# If MongoDB is missing any field, save the updated PlayerInfo
+			if needsDbUpdate:
+				if backgroundTasks is not None:
+					backgroundTasks.add_task(self.savePlayerInfo, playerInfo)
+				else:
+					self.savePlayerInfo(playerInfo)
+		else:
+			# Player doesn't exist, create it in MongoDB
+			if backgroundTasks is not None:
+				backgroundTasks.add_task(self.savePlayerInfo, playerInfo)
+			else:
+				self.savePlayerInfo(playerInfo)
+
+		return playerInfo
 
 	def saveTicket(self, ticket: HelpTicket):
 		

@@ -13,12 +13,13 @@ from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
 
 from src.network.relay import MCL_OutboundRelay
 from mcl_common.security import verifyRequest
 from src.internal.helpmanager import MCL_HelpManager
 from mcl_common.datatypes import Message, PlayerInfo
+from mcl_common.mongo import MCL_MongoManager
 from src.network.schemas import BaseHelpQuestionSchema, QuestionSchema
 from mcl_common.enum import TicketType, TicketStatus, TicketFeedback
 from mcl_common.limiter import limiter
@@ -182,7 +183,7 @@ class CreateTicketSchema(BaseModel):
 
 @router.post("/create_ticket")
 @limiter.limit("100/minute")
-def create_ticket(request: Request, body: CreateTicketSchema):
+def create_ticket(request: Request, body: CreateTicketSchema, backgroundTasks: BackgroundTasks):
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
@@ -208,6 +209,9 @@ def create_ticket(request: Request, body: CreateTicketSchema):
 		discordUsername=playerInfoData.get("discordUsername"),
 		discordId=playerInfoData.get("discordId")
 	)
+
+	# Resolve and sync player info
+	playerInfo = MCL_MongoManager().resolveAndSyncPlayerInfo(playerInfo, backgroundTasks)
 
 	# Create ticket
 	ticketId = MCL_HelpManager().createTicket(
@@ -547,7 +551,7 @@ class AppendTicketMessageSchema(BaseModel):
 
 @router.post("/append_ticket_message")
 @limiter.limit("500/minute")
-def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
+def append_ticket_message(request: Request, body: AppendTicketMessageSchema, backgroundTasks: BackgroundTasks):
 	
 	# Extract data from request body
 	data: Dict = body.model_dump()
@@ -579,6 +583,9 @@ def append_ticket_message(request: Request, body: AppendTicketMessageSchema):
 		discordUsername=senderData.get("discordUsername"),
 		discordId=senderData.get("discordId")
 	)
+
+	# Resolve and sync player info
+	playerInfo = MCL_MongoManager().resolveAndSyncPlayerInfo(playerInfo, backgroundTasks)
 
 	# Create message object
 	message = Message(
