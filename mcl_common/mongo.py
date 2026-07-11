@@ -5,6 +5,7 @@ Author: Chris Hinkson @cmh02
 '''
 
 import os
+import asyncio
 import logging
 from typing import Any, Optional
 from pymongo import MongoClient
@@ -247,7 +248,15 @@ class MCL_MongoManager():
 			if backgroundTasks is not None:
 				backgroundTasks.add_task(self._backgroundResolveExternalAndSave, playerInfo)
 			else:
-				self._backgroundResolveExternalAndSave(playerInfo)
+				try:
+					loop = asyncio.get_running_loop()
+				except RuntimeError:
+					loop = None
+
+				if loop and loop.is_running():
+					loop.create_task(self._backgroundResolveExternalAndSave(playerInfo))
+				else:
+					asyncio.run(self._backgroundResolveExternalAndSave(playerInfo))
 		elif needsDbUpdate:
 			# No external resolution needed, but we need to save/update the DB record
 			if backgroundTasks is not None:
@@ -257,7 +266,7 @@ class MCL_MongoManager():
 
 		return playerInfo
 
-	def _backgroundResolveExternalAndSave(self, playerInfo: PlayerInfo) -> None:
+	async def _backgroundResolveExternalAndSave(self, playerInfo: PlayerInfo) -> None:
 		"""
 		## Background Resolve External and Save
 
@@ -274,7 +283,7 @@ class MCL_MongoManager():
 		# Resolve Minecraft Username if we have UUID but no name
 		if playerInfo.minecraftUUID and not playerInfo.minecraftUsername:
 			try:
-				name = UserInfoLookup.getMinecraftNameByUuid(playerInfo.minecraftUUID)
+				name = await UserInfoLookup.getMinecraftNameByUuid(playerInfo.minecraftUUID)
 				if name:
 					playerInfo.minecraftUsername = name
 			except Exception as e:
@@ -283,7 +292,7 @@ class MCL_MongoManager():
 		# Resolve Minecraft UUID if we have username but no UUID
 		if playerInfo.minecraftUsername and not playerInfo.minecraftUUID:
 			try:
-				uuid_str = UserInfoLookup.getMinecraftUuidByName(playerInfo.minecraftUsername)
+				uuid_str = await UserInfoLookup.getMinecraftUuidByName(playerInfo.minecraftUsername)
 				if uuid_str:
 					playerInfo.minecraftUUID = uuid_str
 			except Exception as e:
@@ -292,7 +301,7 @@ class MCL_MongoManager():
 		# Resolve Discord Username if we have Discord ID but no Discord Username
 		if playerInfo.discordId and not playerInfo.discordUsername:
 			try:
-				discord_data = UserInfoLookup.getDiscordUserById(playerInfo.discordId)
+				discord_data = await UserInfoLookup.getDiscordUserById(playerInfo.discordId)
 				if discord_data and "username" in discord_data:
 					playerInfo.discordUsername = discord_data["username"]
 			except Exception as e:
