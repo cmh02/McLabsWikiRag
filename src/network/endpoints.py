@@ -18,9 +18,9 @@ from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
 from src.network.relay import MCL_OutboundRelay
 from mcl_common.security import verifyRequest
 from src.internal.helpmanager import MCL_HelpManager
-from mcl_common.datatypes import Message, PlayerInfo
+from mcl_common.datatypes import Message, PlayerInfo, ServerStatus
 from mcl_common.mongo import MCL_MongoManager
-from src.network.schemas import BaseHelpQuestionSchema, QuestionSchema
+from src.network.schemas import BaseHelpQuestionSchema, QuestionSchema, ServerStatusUpdateSchema
 from mcl_common.enum import TicketType, TicketStatus, TicketFeedback
 from mcl_common.limiter import limiter
 from mcl_common.router import MclRouter
@@ -732,5 +732,43 @@ def acknowledge_update(request: Request, body: AcknowledgeUpdateSchema):
 		status_code=200,
 		content={
 			"status": "success"
+		}
+	)
+
+
+
+'''
+# UPDATE SERVER STATUS ENDPOINT
+
+This endpoint is used for updating the Minecraft server performance metrics.
+'''
+
+@router.post("/update_server_status")
+@limiter.limit("100/minute")
+def update_server_status(request: Request, body: ServerStatusUpdateSchema):
+
+	# Extract data from request body
+	data: Dict = body.model_dump()
+
+	# Create ServerStatus datatype
+	status = ServerStatus(
+		online=data.get("online", False),
+		player_count=data.get("player_count", 0),
+		max_players=data.get("max_players", 0),
+		uptime=data.get("uptime", "Unknown"),
+		tps=data.get("tps", 20.0)
+	)
+
+	# Save server status to MongoDB
+	MCL_MongoManager().saveServerStatus(status)
+
+	request.app.state.logger.info("Successfully updated Minecraft server status in MongoDB.")
+
+	# Return success message
+	return JSONResponse(
+		status_code=200,
+		content={
+			"status": "success",
+			"message": "Server status updated successfully"
 		}
 	)

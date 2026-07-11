@@ -44,3 +44,16 @@ class QuestionSchema(BaseModel):
 	claimedBy: Optional[str] = Field(default=None, description="The staff member who claimed the help question, if any.")
 	answeredBy: Optional[str] = Field(default=None, description="The staff member who answered the help question, if any.")
 	answer: Optional[str] = Field(default=None, description="The answer to the help question, if any.")
+
+
+class ServerStatusUpdateSchema(BaseModel):
+	'''
+	# ServerStatusUpdateSchema
+
+	Model for updating the Minecraft server status.
+	'''
+	online: bool = Field(description="Whether the Minecraft server is online.")
+	player_count: int = Field(description="The number of players currently online.", ge=0)
+	max_players: int = Field(description="The maximum number of players allowed on the server.", ge=0)
+	uptime: str = Field(description="The uptime duration string of the server.")
+	tps: float = Field(description="The current ticks per second (TPS) of the server.", ge=0.0, le=20.0)
