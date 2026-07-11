@@ -198,8 +198,8 @@ class MCL_MongoManager():
 
 		Resolves any missing fields in the incoming PlayerInfo object by querying MongoDB.
 		If MongoDB is missing any fields that the incoming object has, or if the player
-		doesn't exist at all, it saves/updates the record. Database writes are performed
-		asynchronously if backgroundTasks is provided.
+		doesn't exist at all, it saves/updates the record. Database writes and external api
+		lookups are performed asynchronously if backgroundTasks is provided.
 		"""
 		playerDict = playerInfo.toDict()
 		# Build dict of non-None fields in the incoming data
@@ -216,36 +216,84 @@ class MCL_MongoManager():
 			discordId=playerInfo.discordId
 		)
 
+		needsDbUpdate = False
+
 		if existingPlayer:
 			existingDict = existingPlayer.toDict()
-			updatedInMemory = False
 			# Merge any fields that are in MongoDB but missing from the incoming request
 			for field, val in existingDict.items():
 				if getattr(playerInfo, field) is None and val is not None:
 					setattr(playerInfo, field, val)
-					updatedInMemory = True
 
 			# Check if we were given fields that MongoDB is missing
-			needsDbUpdate = False
 			for field, val in incomingFields.items():
 				if existingDict.get(field) is None:
 					needsDbUpdate = True
 					break
-
-			# If MongoDB is missing any field, save the updated PlayerInfo
-			if needsDbUpdate:
-				if backgroundTasks is not None:
-					backgroundTasks.add_task(self.savePlayerInfo, playerInfo)
-				else:
-					self.savePlayerInfo(playerInfo)
 		else:
-			# Player doesn't exist, create it in MongoDB
+			# Player doesn't exist in DB at all, so we will need to save them
+			needsDbUpdate = True
+
+		# Check if there are still any missing fields that can be resolved externally
+		missingResolvable = (
+			(playerInfo.minecraftUUID and not playerInfo.minecraftUsername) or
+			(playerInfo.minecraftUsername and not playerInfo.minecraftUUID) or
+			(playerInfo.discordId and not playerInfo.discordUsername)
+		)
+
+		if missingResolvable:
+			# Query external resources and save in the background (or synchronously if no backgroundTasks)
+			if backgroundTasks is not None:
+				backgroundTasks.add_task(self._backgroundResolveExternalAndSave, playerInfo)
+			else:
+				self._backgroundResolveExternalAndSave(playerInfo)
+		elif needsDbUpdate:
+			# No external resolution needed, but we need to save/update the DB record
 			if backgroundTasks is not None:
 				backgroundTasks.add_task(self.savePlayerInfo, playerInfo)
 			else:
 				self.savePlayerInfo(playerInfo)
 
 		return playerInfo
+
+	def _backgroundResolveExternalAndSave(self, playerInfo: PlayerInfo) -> None:
+		"""
+		## Background Resolve External and Save
+
+		Queries Mojang and Discord APIs for any missing player fields,
+		and saves the fully merged PlayerInfo object to MongoDB.
+		"""
+		from mcl_common.user_lookup import UserInfoLookup
+
+		# Resolve Minecraft Username if we have UUID but no name
+		if playerInfo.minecraftUUID and not playerInfo.minecraftUsername:
+			try:
+				name = UserInfoLookup.getMinecraftNameByUuid(playerInfo.minecraftUUID)
+				if name:
+					playerInfo.minecraftUsername = name
+			except Exception as e:
+				self.logger.error(f"Error in background lookup of Minecraft name by UUID: {e}")
+
+		# Resolve Minecraft UUID if we have username but no UUID
+		if playerInfo.minecraftUsername and not playerInfo.minecraftUUID:
+			try:
+				uuid_str = UserInfoLookup.getMinecraftUuidByName(playerInfo.minecraftUsername)
+				if uuid_str:
+					playerInfo.minecraftUUID = uuid_str
+			except Exception as e:
+				self.logger.error(f"Error in background lookup of Minecraft UUID by name: {e}")
+
+		# Resolve Discord Username if we have Discord ID but no Discord Username
+		if playerInfo.discordId and not playerInfo.discordUsername:
+			try:
+				discord_data = UserInfoLookup.getDiscordUserById(playerInfo.discordId)
+				if discord_data and "username" in discord_data:
+					playerInfo.discordUsername = discord_data["username"]
+			except Exception as e:
+				self.logger.error(f"Error in background lookup of Discord user by ID: {e}")
+
+		# Save player info back to MongoDB (updates or creates)
+		self.savePlayerInfo(playerInfo)
 
 	def saveTicket(self, ticket: HelpTicket):
 		
