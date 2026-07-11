@@ -198,55 +198,30 @@ class MCL_MongoManager():
 		"""
 		## Resolve and Sync Player Info
 
-		Resolves any missing fields in the incoming PlayerInfo object by querying MongoDB.
-		If MongoDB is missing any fields that the incoming object has, or if the player
-		doesn't exist at all, it saves/updates the record. Database writes and external api
-		lookups are performed asynchronously if backgroundTasks is provided.
+		New refactored lookup process:
+		1. Take in a request from an endpoint.
+		2. Check if any of the data is missing (i.e. any of the 4 fields is None or empty/whitespace).
+		3. If NOT missing, skip any queries, and simply launch an async mongo update with this latest given information.
+		4. If data is missing, we launch a background task to get data from MongoDB, lookup authoritative names externally, update Mongo, and relay the update.
 		"""
-		playerDict = playerInfo.toDict()
-		# Build dict of non-None fields in the incoming data
-		incomingFields = {k: v for k, v in playerDict.items() if v is not None}
+		# Clean fields and handle empty strings as None
+		playerInfo.minecraftUsername = playerInfo.minecraftUsername.strip() if playerInfo.minecraftUsername else None
+		playerInfo.minecraftUUID = playerInfo.minecraftUUID.strip() if playerInfo.minecraftUUID else None
+		playerInfo.discordUsername = playerInfo.discordUsername.strip() if playerInfo.discordUsername else None
+		playerInfo.discordId = playerInfo.discordId.strip() if playerInfo.discordId else None
 
-		if not incomingFields:
-			return playerInfo
-
-		# Query database for an existing document using whatever is available
-		existingPlayer = self.getPlayerInfo(
-			minecraftUsername=playerInfo.minecraftUsername,
-			minecraftUUID=playerInfo.minecraftUUID,
-			discordUsername=playerInfo.discordUsername,
-			discordId=playerInfo.discordId
+		# Check if any of the data is missing
+		is_missing = not (
+			playerInfo.minecraftUsername and
+			playerInfo.minecraftUUID and
+			playerInfo.discordUsername and
+			playerInfo.discordId
 		)
 
-		needsDbUpdate = False
-
-		if existingPlayer:
-			existingDict = existingPlayer.toDict()
-			# Merge any fields that are in MongoDB but missing from the incoming request
-			for field, val in existingDict.items():
-				if getattr(playerInfo, field) is None and val is not None:
-					setattr(playerInfo, field, val)
-
-			# Check if we were given fields that MongoDB is missing
-			for field, val in incomingFields.items():
-				if existingDict.get(field) is None:
-					needsDbUpdate = True
-					break
-		else:
-			# Player doesn't exist in DB at all, so we will need to save them
-			needsDbUpdate = True
-
-		# Check if there are still any missing fields that can be resolved externally
-		missingResolvable = (
-			(playerInfo.minecraftUUID and not playerInfo.minecraftUsername) or
-			(playerInfo.minecraftUsername and not playerInfo.minecraftUUID) or
-			(playerInfo.discordId and not playerInfo.discordUsername)
-		)
-
-		if missingResolvable:
-			# Query external resources and save in the background (or synchronously if no backgroundTasks)
+		if not is_missing:
+			# Skip any kind of queries, simply launch an async mongo update
 			if backgroundTasks is not None:
-				backgroundTasks.add_task(self._backgroundResolveExternalAndSave, playerInfo)
+				backgroundTasks.add_task(self.savePlayerInfo, playerInfo)
 			else:
 				try:
 					loop = asyncio.get_running_loop()
@@ -254,78 +229,131 @@ class MCL_MongoManager():
 					loop = None
 
 				if loop and loop.is_running():
-					loop.create_task(self._backgroundResolveExternalAndSave(playerInfo))
+					loop.run_in_executor(None, self.savePlayerInfo, playerInfo)
 				else:
-					asyncio.run(self._backgroundResolveExternalAndSave(playerInfo))
-		elif needsDbUpdate:
-			# No external resolution needed, but we need to save/update the DB record
+					self.savePlayerInfo(playerInfo)
+		else:
+			# Launch background task to go get data from the mongo database using what was given,
+			# then lookup Minecraft and Discord names async, merge them, update MongoDB, and relay.
 			if backgroundTasks is not None:
-				backgroundTasks.add_task(self.savePlayerInfo, playerInfo)
+				backgroundTasks.add_task(self._runBackgroundResolve, playerInfo)
 			else:
-				self.savePlayerInfo(playerInfo)
+				try:
+					loop = asyncio.get_running_loop()
+				except RuntimeError:
+					loop = None
+
+				if loop and loop.is_running():
+					loop.create_task(self._runBackgroundResolve(playerInfo))
+				else:
+					asyncio.run(self._runBackgroundResolve(playerInfo))
 
 		return playerInfo
 
-	async def _backgroundResolveExternalAndSave(self, playerInfo: PlayerInfo) -> None:
+	async def _runBackgroundResolve(self, playerInfo: PlayerInfo) -> None:
 		"""
-		## Background Resolve External and Save
+		## Run Background Resolve
 
-		Queries Mojang and Discord APIs for any missing player fields,
-		and saves the fully merged PlayerInfo object to MongoDB.
+		Runs the background pipeline when some player data is missing:
+		1. Get data from MongoDB using the given fields.
+		2. Merge the retrieved database data into playerInfo.
+		3. Lookup Minecraft UUID and Discord ID to get authoritative names async.
+		4. Merge the updated names.
+		5. Save to MongoDB.
+		6. Send out update for new player info refresh.
 		"""
 		from mcl_common.user_lookup import UserInfoLookup
 
-		# Record initial values to check if they got updated/resolved
+		loop = asyncio.get_running_loop()
+
+		# Store initial values to compare at the end
 		initial_username = playerInfo.minecraftUsername
 		initial_uuid = playerInfo.minecraftUUID
-		initial_discord = playerInfo.discordUsername
+		initial_discord_username = playerInfo.discordUsername
+		initial_discord_id = playerInfo.discordId
 
-		# Resolve Minecraft Username if we have UUID but no name
-		if playerInfo.minecraftUUID and not playerInfo.minecraftUsername:
-			try:
-				name = await UserInfoLookup.getMinecraftNameByUuid(playerInfo.minecraftUUID)
-				if name:
-					playerInfo.minecraftUsername = name
-			except Exception as e:
-				self.logger.error(f"Error in background lookup of Minecraft name by UUID: {e}")
+		# 1. Get data from MongoDB using whatever was given.
+		existingPlayer = await loop.run_in_executor(
+			None,
+			self.getPlayerInfo,
+			playerInfo.minecraftUsername,
+			playerInfo.minecraftUUID,
+			playerInfo.discordUsername,
+			playerInfo.discordId
+		)
 
-		# Resolve Minecraft UUID if we have username but no UUID
+		# 2. Merge retrieved MongoDB data into the playerInfo object (if found)
+		if existingPlayer:
+			if not playerInfo.minecraftUsername:
+				playerInfo.minecraftUsername = existingPlayer.minecraftUsername
+			if not playerInfo.minecraftUUID:
+				playerInfo.minecraftUUID = existingPlayer.minecraftUUID
+			if not playerInfo.discordUsername:
+				playerInfo.discordUsername = existingPlayer.discordUsername
+			if not playerInfo.discordId:
+				playerInfo.discordId = existingPlayer.discordId
+
+		# If we have minecraftUsername but no minecraftUUID, Mojang API lookup by name is needed first.
 		if playerInfo.minecraftUsername and not playerInfo.minecraftUUID:
 			try:
-				uuid_str = await UserInfoLookup.getMinecraftUuidByName(playerInfo.minecraftUsername)
-				if uuid_str:
-					playerInfo.minecraftUUID = uuid_str
+				resolved_uuid = await UserInfoLookup.getMinecraftUuidByName(playerInfo.minecraftUsername)
+				if resolved_uuid:
+					playerInfo.minecraftUUID = resolved_uuid
 			except Exception as e:
 				self.logger.error(f"Error in background lookup of Minecraft UUID by name: {e}")
 
-		# Resolve Discord Username if we have Discord ID but no Discord Username
-		if playerInfo.discordId and not playerInfo.discordUsername:
-			try:
-				discord_data = await UserInfoLookup.getDiscordUserById(playerInfo.discordId)
-				if discord_data and "username" in discord_data:
-					playerInfo.discordUsername = discord_data["username"]
-			except Exception as e:
-				self.logger.error(f"Error in background lookup of Discord user by ID: {e}")
+		# 3. Use the minecraft UUID and discord ID to lookup the minecraft name and discord name async.
+		new_minecraft_username = None
+		new_discord_username = None
 
-		# Check if any missing info was resolved
+		async def lookup_minecraft():
+			nonlocal new_minecraft_username
+			if playerInfo.minecraftUUID:
+				try:
+					new_minecraft_username = await UserInfoLookup.getMinecraftNameByUuid(playerInfo.minecraftUUID)
+				except Exception as e:
+					self.logger.error(f"Error in background lookup of Minecraft name by UUID: {e}")
+
+		async def lookup_discord():
+			nonlocal new_discord_username
+			if playerInfo.discordId:
+				try:
+					discord_data = await UserInfoLookup.getDiscordUserById(playerInfo.discordId)
+					if discord_data and "username" in discord_data:
+						new_discord_username = discord_data["username"]
+				except Exception as e:
+					self.logger.error(f"Error in background lookup of Discord user by ID: {e}")
+
+		# Run lookups concurrently
+		await asyncio.gather(lookup_minecraft(), lookup_discord())
+
+		# 4. Combine the updated names into the playerInfo object
+		if new_minecraft_username:
+			playerInfo.minecraftUsername = new_minecraft_username
+		if new_discord_username:
+			playerInfo.discordUsername = new_discord_username
+
+		# 5. Save/update MongoDB
+		await loop.run_in_executor(None, self.savePlayerInfo, playerInfo)
+
+		# 6. Check if player info changed and send update relay
 		info_resolved = (
 			(playerInfo.minecraftUsername != initial_username) or
 			(playerInfo.minecraftUUID != initial_uuid) or
-			(playerInfo.discordUsername != initial_discord)
+			(playerInfo.discordUsername != initial_discord_username) or
+			(playerInfo.discordId != initial_discord_id)
 		)
 
-		# Save player info back to MongoDB (updates or creates)
-		self.savePlayerInfo(playerInfo)
-
-		# If info was resolved, notify external systems of the update
 		if info_resolved:
 			try:
-				open_ticket_ids = self.getOpenTicketIdsForPlayer(playerInfo)
+				open_ticket_ids = await loop.run_in_executor(None, self.getOpenTicketIdsForPlayer, playerInfo)
 				for ticket_id in open_ticket_ids:
-					MCL_OutboundRelay().relay(ticket_id, TicketAction.PLAYERINFOUPDATE)
-			except ImportError:
+					await loop.run_in_executor(None, MCL_OutboundRelay().relay, ticket_id, TicketAction.PLAYERINFOUPDATE)
+			except (ImportError, ModuleNotFoundError):
 				# Not running in backend context
 				pass
+			except Exception as e:
+				self.logger.error(f"Error sending player info update notification: {e}")
 
 	def getOpenTicketIdsForPlayer(self, playerInfo: PlayerInfo) -> list[int]:
 		"""
