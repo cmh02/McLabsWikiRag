@@ -29,6 +29,7 @@ class TicketAction(Enum):
 	UNCLAIM = "UNCLAIM"
 	FEEDBACK = "FEEDBACK"
 	NEWMESSAGE = "NEW_MESSAGE"
+	PLAYERINFOUPDATE = "PLAYER_INFO_UPDATE"
 
 class RelayDestination(Enum):
 	'''

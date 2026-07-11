@@ -9,8 +9,9 @@ import logging
 from typing import Any, Optional
 from pymongo import MongoClient
 
+from src.network.relay import MCL_OutboundRelay
 from mcl_common.datatypes import HelpTicket, Conversation, Message, PlayerInfo
-from mcl_common.enum import TicketType, TicketStatus, TicketFeedback, MongoDatabase, MongoCollection
+from mcl_common.enum import TicketType, TicketStatus, TicketFeedback, MongoDatabase, MongoCollection, TicketAction
 
 
 class MCL_MongoManager():
@@ -265,6 +266,11 @@ class MCL_MongoManager():
 		"""
 		from mcl_common.user_lookup import UserInfoLookup
 
+		# Record initial values to check if they got updated/resolved
+		initial_username = playerInfo.minecraftUsername
+		initial_uuid = playerInfo.minecraftUUID
+		initial_discord = playerInfo.discordUsername
+
 		# Resolve Minecraft Username if we have UUID but no name
 		if playerInfo.minecraftUUID and not playerInfo.minecraftUsername:
 			try:
@@ -292,8 +298,51 @@ class MCL_MongoManager():
 			except Exception as e:
 				self.logger.error(f"Error in background lookup of Discord user by ID: {e}")
 
+		# Check if any missing info was resolved
+		info_resolved = (
+			(playerInfo.minecraftUsername != initial_username) or
+			(playerInfo.minecraftUUID != initial_uuid) or
+			(playerInfo.discordUsername != initial_discord)
+		)
+
 		# Save player info back to MongoDB (updates or creates)
 		self.savePlayerInfo(playerInfo)
+
+		# If info was resolved, notify external systems of the update
+		if info_resolved:
+			try:
+				open_ticket_ids = self.getOpenTicketIdsForPlayer(playerInfo)
+				for ticket_id in open_ticket_ids:
+					MCL_OutboundRelay().relay(ticket_id, TicketAction.PLAYERINFOUPDATE)
+			except ImportError:
+				# Not running in backend context
+				pass
+
+	def getOpenTicketIdsForPlayer(self, playerInfo: PlayerInfo) -> list[int]:
+		"""
+		## Get Open Ticket IDs For Player
+
+		Retrieves a list of open or claimed ticket IDs associated with a player.
+		"""
+		query_clauses = []
+		if playerInfo.minecraftUUID:
+			query_clauses.append({"playerInfo.minecraftUUID": playerInfo.minecraftUUID})
+		if playerInfo.discordId:
+			query_clauses.append({"playerInfo.discordId": playerInfo.discordId})
+
+		if not query_clauses:
+			return []
+
+		# Only fetch open or claimed tickets
+		filter_query = {
+			"$and": [
+				{"$or": query_clauses},
+				{"status": {"$in": [TicketStatus.OPEN.value, TicketStatus.CLAIMED.value]}}
+			]
+		}
+		projection = {"ticketId": 1, "_id": 0}
+		cursor = self.collections[MongoDatabase.HELP][MongoCollection.TICKETS].find(filter_query, projection)
+		return [doc["ticketId"] for doc in cursor]
 
 	def saveTicket(self, ticket: HelpTicket):
 		
