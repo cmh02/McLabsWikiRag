@@ -1,17 +1,17 @@
 import os
 import uuid
-import requests
+import aiohttp
 from typing import Optional, Dict, Any
 
 class UserInfoLookup:
 	"""
 	# UserInfoLookup
 
-	Common helper module to query external systems (Mojang and Discord) for user information.
+	Common helper module to query external systems (Mojang and Discord) for user information using asyncio/aiohttp.
 	"""
 
 	@staticmethod
-	def getMinecraftUuidByName(username: str) -> Optional[str]:
+	async def getMinecraftUuidByName(username: str) -> Optional[str]:
 		"""
 		## Get Minecraft UUID By Name
 
@@ -22,19 +22,20 @@ class UserInfoLookup:
 
 		url = f"https://api.mojang.com/users/profiles/minecraft/{username}"
 		try:
-			response = requests.get(url, timeout=5)
-			if response.status_code == 200:
-				data = response.json()
-				rawUuid = data.get("id")
-				if rawUuid:
-					# Convert undashed UUID to standard dashed UUID format
-					return str(uuid.UUID(rawUuid))
+			async with aiohttp.ClientSession() as session:
+				async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
+					if response.status == 200:
+						data = await response.json()
+						rawUuid = data.get("id")
+						if rawUuid:
+							# Convert undashed UUID to standard dashed UUID format
+							return str(uuid.UUID(rawUuid))
 		except Exception:
 			pass
 		return None
 
 	@staticmethod
-	def getMinecraftNameByUuid(uuidStr: str) -> Optional[str]:
+	async def getMinecraftNameByUuid(uuidStr: str) -> Optional[str]:
 		"""
 		## Get Minecraft Name By UUID
 
@@ -48,16 +49,17 @@ class UserInfoLookup:
 		cleanUuid = uuidStr.replace("-", "")
 		url = f"https://sessionserver.mojang.com/session/minecraft/profile/{cleanUuid}"
 		try:
-			response = requests.get(url, timeout=5)
-			if response.status_code == 200:
-				data = response.json()
-				return data.get("name")
+			async with aiohttp.ClientSession() as session:
+				async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
+					if response.status == 200:
+						data = await response.json()
+						return data.get("name")
 		except Exception:
 			pass
 		return None
 
 	@staticmethod
-	def getDiscordUserById(discordId: str) -> Optional[Dict[str, Any]]:
+	async def getDiscordUserById(discordId: str) -> Optional[Dict[str, Any]]:
 		"""
 		## Get Discord User By ID
 
@@ -76,9 +78,11 @@ class UserInfoLookup:
 			"User-Agent": "MCLabsWikiGpt (https://github.com/cmh02, v1.0.0)"
 		}
 		try:
-			response = requests.get(url, headers=headers, timeout=5)
-			if response.status_code == 200:
-				return response.json()
+			async with aiohttp.ClientSession() as session:
+				async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as response:
+					if response.status == 200:
+						return await response.json()
 		except Exception:
 			pass
 		return None
+
