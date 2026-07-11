@@ -50,9 +50,9 @@ class MCL_MongoManager():
 		tickets_col_name = os.getenv("MCL_MONGO_COLLECTION_TICKETS")
 		if not tickets_col_name:
 			raise ValueError("MCL_MONGO_COLLECTION_TICKETS environment variable is not set.")
-		playerinfo_col_name = os.getenv("MCL_MONGO_COLLECTION_PLAYERINFO")
-		if not playerinfo_col_name:
-			raise ValueError("MCL_MONGO_COLLECTION_PLAYERINFO environment variable is not set.")
+		players_col_name = os.getenv("MCL_MONGO_COLLECTION_PLAYERS")
+		if not players_col_name:
+			raise ValueError("MCL_MONGO_COLLECTION_PLAYERS environment variable is not set.")
 		system_status_col_name = os.getenv("MCL_MONGO_COLLECTION_SYSTEM_STATUS")
 		if not system_status_col_name:
 			raise ValueError("MCL_MONGO_COLLECTION_SYSTEM_STATUS environment variable is not set.")
@@ -71,7 +71,7 @@ class MCL_MongoManager():
 				MongoCollection.TICKETS: self.databases[MongoDatabase.HELP][tickets_col_name]
 			},
 			MongoDatabase.BOT: {
-				MongoCollection.PLAYER_INFO: self.databases[MongoDatabase.BOT][playerinfo_col_name],
+				MongoCollection.PLAYERS: self.databases[MongoDatabase.BOT][players_col_name],
 				MongoCollection.SYSTEM_STATUS: self.databases[MongoDatabase.BOT][system_status_col_name]
 			}
 		}

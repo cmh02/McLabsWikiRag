@@ -45,5 +45,5 @@ class MongoDatabase(Enum):
 
 class MongoCollection(Enum):
 	TICKETS = "tickets"
-	PLAYER_INFO = "playerinfo"
+	PLAYERS = "players"
 	SYSTEM_STATUS = "system_status"
