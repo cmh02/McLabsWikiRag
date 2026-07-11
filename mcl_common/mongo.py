@@ -73,6 +73,30 @@ class MCL_MongoManager():
 		self.client.close()
 		self.logger.info(f"Mongo Manager connection closed for PID {os.getpid()}.")
 
+	def register_session(self, system_name: str, session_id: str) -> None:
+		"""
+		## Register Session
+
+		Registers the active session ID for a given system (e.g. "backend" or "discord") in the "system_status" collection.
+		"""
+		self.db["system_status"].replace_one(
+			{"_id": system_name},
+			{"_id": system_name, "session_id": session_id},
+			upsert=True
+		)
+
+	def get_active_session(self, system_name: str) -> Optional[str]:
+		"""
+		## Get Active Session
+
+		Retrieves the active session ID for a given system from the "system_status" collection.
+		"""
+		status_doc = self.db["system_status"].find_one({"_id": system_name})
+		if status_doc:
+			return status_doc.get("session_id")
+		return None
+
+
 	def saveTicket(self, ticket: HelpTicket):
 		
 		# Convert ticket to dict and save to mongo

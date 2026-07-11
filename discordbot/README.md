@@ -78,8 +78,8 @@ The FastAPI router exposes endpoints mapped to `/` for the backend to notify the
 ### Key Code Mechanisms
 
 #### **1. Rolling Restarts & Active Session Tracking**
-To handle rolling updates/restarts on Railway gracefully, the bot generates a unique session UUID on startup and saves it to MongoDB in the `bot_status` collection (`_id: "active_session"`). 
-When shutting down, the bot checks MongoDB: if another session has overtaken it, the shutting-down instance suppresses its `🔴 MCL Discord Bot is shutting down!` message, preventing duplicate or confusing notifications.
+To handle rolling updates/restarts on Railway gracefully, each system (Discord bot and backend API) generates a unique session UUID on startup and registers it via the MongoDB helper in the `system_status` collection (under `_id: "discord"` or `_id: "backend"`).
+When shutting down, the system checks if its session is still the active one: if another session has overtaken it, the shutting-down instance suppresses its shutdown notifications, preventing duplicate or confusing alerts.
 
 #### **2. Persistent UI Views**
 The buttons in the ticket thread are backed by `HelpTicketThreadView`, which overrides `timeout=None` and defines unique `custom_id` fields (e.g., `btn_claim_ticket`, `btn_close_ticket`). It is registered globally in `setup_hook` via `self.add_view(HelpTicketThreadView())` so that interactions continue to function even after a bot restart.

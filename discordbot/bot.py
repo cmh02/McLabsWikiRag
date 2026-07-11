@@ -116,11 +116,7 @@ class MclBot(commands.Bot):
 		import uuid
 		self.session_id = str(uuid.uuid4())
 		try:
-			mongo_manager.db["bot_status"].replace_one(
-				{"_id": "active_session"},
-				{"_id": "active_session", "session_id": self.session_id},
-				upsert=True
-			)
+			mongo_manager.register_session("discord", self.session_id)
 			self.logger.info(f"Registered bot session: {self.session_id}")
 		except Exception as e:
 			self.logger.exception(f"Failed to register bot session in MongoDB: {e}")
@@ -164,10 +160,10 @@ class MclBot(commands.Bot):
 				is_active = hasattr(self, "session_id")
 				if is_active:
 					try:
-						status_doc = mongo_manager.db["bot_status"].find_one({"_id": "active_session"})
-						if status_doc and status_doc.get("session_id") != self.session_id:
+						active_id = mongo_manager.get_active_session("discord")
+						if active_id and active_id != self.session_id:
 							is_active = False
-							self.logger.info(f"This session ({self.session_id}) is not active (current active: {status_doc.get('session_id')}). Skipping shutdown notification.")
+							self.logger.info(f"This session ({self.session_id}) is not active (current active: {active_id}). Skipping shutdown notification.")
 					except Exception as mongo_err:
 						self.logger.exception(f"Error checking active session in MongoDB during shutdown: {mongo_err}")
 

@@ -10,6 +10,7 @@ MODULE IMPORTS
 
 # System
 import os
+import uuid
 from contextlib import asynccontextmanager
 
 # API
@@ -62,6 +63,14 @@ async def lifespan(app: FastAPI):
 	# Initialize Mongo Manager
 	MCL_MongoManager().initialize(logger=app.state.logger)
 
+	# Track backend session ID to handle rolling restarts cleanly
+	app.state.session_id = str(uuid.uuid4())
+	try:
+		MCL_MongoManager().register_session("backend", app.state.session_id)
+		app.state.logger.info(f"Registered backend session: {app.state.session_id}")
+	except Exception as e:
+		app.state.logger.exception(f"Failed to register backend session in MongoDB: {e}")
+
 	# Initialize Outbound Relay
 	MCL_OutboundRelay().initialize()
 
@@ -73,10 +82,22 @@ async def lifespan(app: FastAPI):
 	# Yield back for app lifetime
 	yield
 
+	# Check if this instance is still the active session in MongoDB
+	is_active = hasattr(app.state, "session_id")
+	if is_active:
+		try:
+			active_id = MCL_MongoManager().get_active_session("backend")
+			if active_id and active_id != app.state.session_id:
+				is_active = False
+				app.state.logger.info(f"This session ({app.state.session_id}) is not active (current active: {active_id}). Skipping shutdown notification.")
+		except Exception as mongo_err:
+			app.state.logger.exception(f"Error checking active session in MongoDB during shutdown: {mongo_err}")
+
 	# Log shutdown
 	shutdownMessage: str = f"MCL Backend API shutting down with PID {os.getpid()}!"
 	app.state.logger.info(shutdownMessage)
-	await MCL_OutboundRelay().messageDiscordAdminChannel(f"🔴 {shutdownMessage}")
+	if is_active:
+		await MCL_OutboundRelay().messageDiscordAdminChannel(f"🔴 {shutdownMessage}")
 
 	# Shutdown Mongo Manager
 	MCL_MongoManager().shutdown()
