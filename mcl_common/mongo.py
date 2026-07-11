@@ -6,7 +6,7 @@ Author: Chris Hinkson @cmh02
 
 import os
 import logging
-from typing import Optional
+from typing import Any, Optional
 from pymongo import MongoClient
 
 from mcl_common.datatypes import HelpTicket, Conversation, Message, PlayerInfo
@@ -121,6 +121,75 @@ class MCL_MongoManager():
 		status_doc = self.collections[MongoDatabase.BOT][MongoCollection.SYSTEM_STATUS].find_one({"_id": system_name})
 		if status_doc:
 			return status_doc.get("session_id")
+		return None
+
+	def savePlayerInfo(self, playerInfo: PlayerInfo) -> Any:
+		"""
+		## Save Player Info
+
+		Saves or updates a PlayerInfo object in the "players" collection.
+		Finds an existing record if any non-None field matches, and updates/merges.
+		"""
+		playerDict = playerInfo.toDict()
+		# Build a query of all non-None fields to find an existing record
+		query_clauses = []
+		for key, val in playerDict.items():
+			if val is not None:
+				query_clauses.append({key: val})
+
+		# If all fields are None, insert as a new blank document
+		if not query_clauses:
+			result = self.collections[MongoDatabase.BOT][MongoCollection.PLAYERS].insert_one(playerDict)
+			return result
+
+		# Query to find if any of the fields already exist in the collection
+		filter_query = {"$or": query_clauses}
+
+		# Attempt to find an existing document
+		existing = self.collections[MongoDatabase.BOT][MongoCollection.PLAYERS].find_one(filter_query)
+
+		if existing:
+			# Merge existing document data with the new non-None values
+			updated_dict = {**existing, **{k: v for k, v in playerDict.items() if v is not None}}
+			# Perform replace using the _id from the existing document
+			result = self.collections[MongoDatabase.BOT][MongoCollection.PLAYERS].replace_one(
+				{"_id": existing["_id"]},
+				updated_dict
+			)
+			return result
+		else:
+			# Insert as a new document
+			result = self.collections[MongoDatabase.BOT][MongoCollection.PLAYERS].insert_one(playerDict)
+			return result
+
+	def getPlayerInfo(self, 
+					  minecraftUsername: Optional[str] = None,
+					  minecraftUUID: Optional[str] = None,
+					  discordUsername: Optional[str] = None,
+					  discordId: Optional[str] = None) -> Optional[PlayerInfo]:
+		"""
+		## Get Player Info
+
+		Retrieves a PlayerInfo object by querying any of the four fields.
+		Returns the first matching PlayerInfo object, or None if not found.
+		"""
+		query_clauses = []
+		if minecraftUsername is not None:
+			query_clauses.append({"minecraftUsername": minecraftUsername})
+		if minecraftUUID is not None:
+			query_clauses.append({"minecraftUUID": minecraftUUID})
+		if discordUsername is not None:
+			query_clauses.append({"discordUsername": discordUsername})
+		if discordId is not None:
+			query_clauses.append({"discordId": discordId})
+
+		if not query_clauses:
+			return None
+
+		filter_query = {"$or": query_clauses}
+		doc = self.collections[MongoDatabase.BOT][MongoCollection.PLAYERS].find_one(filter_query)
+		if doc:
+			return PlayerInfo.fromDict(doc)
 		return None
 
 
