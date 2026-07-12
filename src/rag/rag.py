@@ -24,7 +24,7 @@ from google.genai import types
 
 # MCL Packages
 from mcl_common.logger import MCL_Logger
-from src.rag.docfetch import MCL_WikiDocLoader
+from src.rag.docloader import MCL_WikiDocLoader
 
 '''
 RAG CLASS

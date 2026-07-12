@@ -124,7 +124,7 @@ To add a new data type (e.g., in-game command manuals, Discord announcements) to
 
 ## 3. Storage, Persistence & Runtime Loading (`MCL_WikiDocLoader`)
 
-To optimize production performance and ensure architectural decoupling, the RAG serving layer loads a pre-computed vector database from disk using [MCL_WikiDocLoader](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/rag/docfetch.py#L248).
+To optimize production performance and ensure architectural decoupling, the RAG serving layer loads a pre-computed vector database from disk using [MCL_WikiDocLoader](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/rag/docloader.py#L12).
 
 ### Persistence Files
 When the preprocessing stage finishes, it writes the vector store and document registry into the `embeddings/` directory:

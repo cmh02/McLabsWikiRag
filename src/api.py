@@ -29,7 +29,7 @@ from mcl_common.mongo import MCL_MongoManager
 from mcl_common.limiter import limiter
 from src.network.relay import MCL_OutboundRelay
 from src.network.endpoints import router as InternalEndpointsRouter
-from src.rag.docfetch import MCL_WikiDocLoader
+from src.rag.docloader import MCL_WikiDocLoader
 from src.rag.rag import MCL_WikiRag
 
 '''
