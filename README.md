@@ -1,97 +1,102 @@
-# MCLabs Wiki RAG
+# MCLabs Wiki RAG & Help System
 
-Welcome to the [MCLabs](https://labs-mc.com/) (often shortened to MCL) Wiki RAG!
+Welcome to the **MCLabs Wiki RAG & Help System**! 
 
-This tool will implement RAG (Retrieval-Augmented Generation) to support prompting [Google Gemini ](https://gemini.google.com/app)with specific context relative to our minecraft server from the [community wiki](https://labs-mc.com/wiki/Main_Page) and help ticket system. It will then offer an API for using the system via HTTP requests along with two interfaces for our community to interact with.
+This repository coordinates a multi-platform support ecosystem for the [MCLabs Minecraft Server](https://labs-mc.com/), integrating a custom FastAPI/Gunicorn backend service, a Retrieval-Augmented Generation (RAG) pipeline powered by Google Gemini, a cross-platform Discord ticket bot, and in-game Minecraft Skript integrations.
 
-## Feature Overview
+---
 
-* [Data Collection](#data-collection)
-  * Fetches and chunks [MediaWiki](https://www.mediawiki.org/wiki/API) articles automatically
-  * Loads dump logs from our [Mongo](https://www.mongodb.com/) database and chunks Q&A pairs
-* [Embedding and Indexing](#embedding-and-indexing)
-  * Embeds content using [Google Gemini embeddings](https://ai.google.dev/gemini-api/docs/embeddings)
-  * Stores vectors in a [FAISS index](https://github.com/facebookresearch/faiss/wiki/Faiss-indexes) for fast similarity search
-* [Query Handling](query-handling)
-  * Uses [k-top searching](https://github.com/facebookresearch/faiss/wiki/Getting-started#searching) to find the most relevant context material for a query
-  * Ranks matched context chunks based on specialized weighting for source and origin time
-  * Lightweight [Flask API](https://flask.palletsprojects.com/en/stable/) served with [Gunicorn](https://gunicorn.org/) for production-ready handling of RAG queries
-  * Rate-limited API calls to handle [Google Gemini API restrictions](https://ai.google.dev/gemini-api/docs/rate-limits)
-  * Uses [Google Gemini&#39;s 2.5 Flash Lite](https://ai.google.dev/gemini-api/docs/models) as the generative language model
-  * Offers both [Skript](https://github.com/SkriptLang/Skript) (via [Skript-Reflect](https://github.com/SkriptLang/skript-reflect) Java code) and [Discord Bot](https://discord.com/) interfaces for end users
+## 🗺️ Project Architecture Overview
 
-## Project Implementation
+The system is split into three main modules:
 
-This project has implemented several different modules to provide a complete and interactive system.
+1. **Backend Service ([src/](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src))**: Exposes REST endpoints for querying RAG, tracking active servers, managing help tickets, and synchronizing player chat states.
+2. **Discord Bot ([discordbot/](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/discordbot))**: A Discord application hosting slash commands, interactive buttons/modals, and real-time chat relays mapped to active in-game player tickets.
+3. **Common Utilities ([mcl_common/](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/mcl_common))**: A shared repository namespace providing standardized logging, database models, database handlers (MongoDB), utility classes, and a central Pydantic-powered settings system.
 
-### Data Collection
+For a detailed visual guide to the system's architecture and runtime query processes, refer to the [System Architecture Diagram](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/rag/RAG.md#1-system-architecture).
 
-For data collection, we consider two sources of information that should be stored in our context base for reference during RAG: the MC-Labs Official Wiki, which hosts various articles created by staff that contain detailed information about the server, and our custom Help Ticket System, where we have Question-And-Answer style questions, which are much simpler and more direct with the information they provide.
+---
 
-To obtain the articles from our Official Wiki, we make HTTP requests to the MediaWiki API, allowing us to retrieve article titles and all of the content present on an article page. You can view how we make these requests in [docfetch.py](src/docfetch.py).
+## 🤖 AI In the Help System
 
-To extract the Help Ticket System data, we use a skript module for interacting with our MongoDB database to pull the question-answer pairs from various collections, providing us with simple answers to common questions present throughout multiple seasons of the server's lifetime. While the internal skript to pull data from our database is not provided here, you can view how we parse dump files in [docfetch.py](src/docfetch.py).
+The core feature of this platform is the automated answering of help tickets using a highly targeted Retrieval-Augmented Generation (RAG) pipeline.
 
-### Chunking, Embedding, and Indexing
+### 1. Ingestion and Indexing (Prework)
+Data is harvested from two main sources:
+* **MCLabs Official Wiki**: Scraped using the MediaWiki API. Chunks are generated using a 500-word sliding window with a 50-word overlap.
+* **Help Ticket Q&A Dumps**: Parsed from database logs, where each question-answer pair is kept as a discrete semantic chunk.
 
-The first step after data is collected is to chunk it using the appropriate chunking method:
+These chunks are embedded using Google Gemini's `text-embedding-004` and loaded into a normalized **FAISS L2 flat vector index** (`wiki.index`) along with a JSON-serialized document lookup registry (`wiki_docs.json`).
 
-* For Wiki articles, we split articles into chunks of a constant size with a configurable overlap amount. Because our Wiki has a wide variety in the format, layout, and contents of article pages, there is not a good way to derive chunking from the pages themselves. By introducent constant-size chunking with overlap, this allows for contextually related information to be kept together while breaking the content down into small enough chunks for scoping.
-* For Q&A data, each question-answer pair is put into its own chunk. This allows for common questions to get very specific context since the similarity between query and chunk will be much higher.
+### 2. Retrieval and Scoring Heuristics
+When a player asks a question, the backend retrieves candidate chunks and modifies the raw Euclidean distance scores using custom weighting scales defined by RAG hyperparameters:
+* **Source Scale Boosts**: Elevates or reduces the relevance of a chunk depending on whether it originated from the Wiki or FAQ logs.
+* **Recency Decay**: Automatically decays the score of older Q&A entries exponentially based on a configured half-life (in days) to prevent outdated help information.
+* **Season Boost**: Prioritizes support questions from the current active map season.
 
-All chunks are stored as dict-like or JSON-like data with some identifying tags:
+For the math formulas and code implementation of these filters, read the [Retrieval & Scoring Modifiers Documentation](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/rag/RAG.md#5-retrieval--scoring-modifiers-mcl_wikirag).
 
-* `title`: Identifying title of the chunk (only available for Wiki).
-* `content`: The actual chunked content.
-* `source`: Whether the content came from the Wiki or Help System.
-* `date`: The original creation date of the included context (only available for Help System Q&A).
+### 3. Generative Replying & "UNANSWERABLE" Guardrails
+When a ticket is created, the system triggers the RAG query pipeline asynchronously via [_processRagResponseWorkflow](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/internal/helpmanager.py#L323).
+* **First Message Automated Answers**: The system only intercepts and replies automatically to the **first message** in a ticket. This ensures immediate feedback for common queries without interfering with ongoing human staff conversations.
+* **Strict Classification & Fallback ("UNANSWERABLE")**: The prompt instructions force the LLM to output exactly `UNANSWERABLE` if the query is a greeting, statement, thank-you, or if the retrieved RAG context has insufficient information.
+* **No Spam Routing**: If the RAG engine returns `UNANSWERABLE`, the backend silently drops the automatic reply, routing the ticket directly to manual staff queues without sending spam to the player.
 
-Next the chunks are embedded using Google Gemini's `text-embedding-004` embedding model. We use the `RETRIEVAL_DOCUMENT` task type when doing document embeddings since these chunks are being stored for later retrieval during query.
+---
 
-Finally we index and store our chunks using FAISS. We create a ``IndexFlatL2`` FAISS index (based on Euclidean distance) for the system at instance creation. We then insert each chunk's vector embedding into the index and store the un-embedded chunks themselves in a separate document storage for mapping during query time.
+## 🎮 User-Facing Features
 
-### Query Handling
+### 1. In-Game Ticket Support (Minecraft Server)
+Players on the Minecraft server can use `/ticket` or support commands configured through the Minecraft [skript/](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/skript) system. 
+* **Reflection-Based Requests**: Network communications are handled asynchronously via [mclwikirag.sk](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/skript/mclwikirag.sk) using `skript-reflect` to interface directly with Java HTTP libraries.
+* **AI Responses**: If the question matches indexed documentation, the AI (`WikiGPT`) directly answers the player in-game.
 
-Using Flask / Gunicorn, our implemented API handles all requests. For each request, the API first checks the requests limits to ensure that it is not being overloaded (based on minute/day request limits). Requests then get checked to see if they are carrying a valid API token. Assuming a request passes these checks, it is then passed on to the RAG pipeline:
+### 2. Discord Ticket Support System (`/ask`)
+Members can trigger support threads from Discord. The complete flow is documented in the [Discord Bot README](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/discordbot/README.md):
+* **Pop-Up Modals**: Running `/ask` prompts a modal for typing questions.
+* **Dedicated Support Threads**: Submitting the modal spawns a public channel thread named `🎫-ticket-[ID]`.
+* **Persistent Status Cards**: Includes dynamic buttons (`Claim`, `Unclaim`, `Feedback`, `Close`) that remain functional across bot restarts using persistent views.
+* **In-Game Chat Relay**: A real-time WebSocket/REST bridge relays Discord thread messages to the player if they are online in Minecraft, and relays the player's in-game messages back to the Discord thread.
 
-1. The query is first embedded using the same `text-embedding-004` model but with the `RETRIEVAL_QUERY` task type
-2. We then use L2 similarity search to find the `k*2=10` most similar vector embeddings in the FAISS index
-3. The corresponding documents for the found indices from our document collection are then collected
-4. Weightings are applied to the similarity scores for each document based on information source, map season, and time-since-creation
-5. The final `k=5` similar documents post-weighting are combined with the user's prompt along with various instructions to tune the responses of the language model
-6. We send the full prompt (instructions, context, question) to Google Gemini's 2.5-flash-lite model (via API) and wait for the response
-7. The answer to the query is then returned to the API caller directly
+---
 
-### Skript Integration
+## ⚙️ Configuration & Environment Variables
 
-The primary interface for players to use this tool is with the pre-existing Skript-based help ticket system. This sytem allows for users to create in-game help tickets, which previously required manual responses for all questions. Although the implementation of the help system is not given with this project, it directly uses the provided reflect section as discussed in [mclwikirag.sk](skript/mclwikirag.sk).
+Configuration is centralized in [mcl_common/config.py](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/mcl_common/config.py) using `pydantic-settings`. 
 
-> One of the large problems with sending HTTP requests and receiving HTTP responses in Skript is the lack of stable addons. Though there are a few different addons that attempt to accomplish this functionality, each has its own pros and cons. After testing some of the addons we currently have implemented for other API's, it was found that none of them would be able to produce the required functionality for this project. Because of this, I implemented my own reflect section that allows for API requests to be made with all of the correct HTTP fields and field values.
->
-> Reflect sections are made using [skript-reflect](https://github.com/SkriptLang/skript-reflect), an addon that bridges the gap between Skript development and Java development. Essentially, this allows us to implement Java code directly in our skript codebase, use it dynamically like we would other skript code, and combine the syntaxes of the two languages. While this does allow us to combine the benefits of the two languages, it also presents two different "rulebooks" that we have to conform to.
->
-> To briefly demonstrate how this implementation is done, consider this line of reflection code:
->
-> `try {_jsonRequestBody}.put("api_token", mwr_getEnvironmentalVariable("API_TOKEN"))`
->
-> In this line, we have a skript-reflect try statement to catch Java errors that may result from us using a method of a Java object that is stored in a skript variable. We call this Java object's method with two parameters, one of which is a base Skript string and the other is also a Skript string that is returned from a Skript function defined elsewhere in our codebase. All of this accomplished by combining both Java and Skript syntax via reflection. If that doesn't make sense, don't worry, the point here is not to teach reflection or skript syntax. Just understand that most of the code seen here is not Java code, and it is not supposed to be, but it's not quite Skript code, either.
+The global config is declared in the [Settings](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/mcl_common/config.py#L4) Pydantic model, which automatically reads and validates values from the OS environment variables or local `.env` files.
 
-With the implemented reflection section, we provide two different ways that the rest of our codebase can interact with the API:
+### Common Config Variables
 
-* Provide a player's name to the section and allow the section to directly mesage the output to the player. Preferred for cases where the raw output can be given to the player, such as for query commands or development / testing, along with implementation in triggers, where Skript will not allow waiting or delay before returning to the execution caller (player command or Skript event).
-* Wait for the response from the section and handle it further. Preferred for cases where delay is allowed, such as with the help ticket system, when players would already have to wait for a response from a staff member.
+| Environment Alias | Pydantic Field | Description |
+|---|---|---|
+| `GOOGLE_GEMINI_API_KEY` | `google_gemini_api_key` | Developer access token for Gemini API |
+| `GOOGLE_GEMINI_MODEL` | `google_gemini_model` | Generative LLM to use (e.g. `gemini-2.5-flash`) |
+| `GOOGLE_EMBEDDING_MODEL` | `google_embedding_model` | Model name for vector embeddings (`text-embedding-004`) |
+| `MCL_MONGO_CONNECTION_STRING` | `mcl_mongo_connection_string` | URI for the MongoDB server |
+| `DISCORD_BOT_TOKEN` | `discord_bot_token` | Token for the Discord bot client |
+| `DISCORD_TICKET_CHANNEL_ID` | `discord_ticket_channel_id` | Channel ID where bot threads are created |
+| `RAILWAY_API_DOMAIN` | `railway_api_domain` | The deployed backend API endpoint domain |
+| `RAG_HP_SOURCESCALE_WIKI` | `rag_hp_sourcescale_wiki` | Weight scaling factor for Wiki sources |
+| `RAG_HP_SOURCESCALE_FAQ` | `rag_hp_sourcescale_faq` | Weight scaling factor for FAQ/Support sources |
+| `RAG_HP_RECENCYHALFLIFE` | `rag_hp_recencyhalflife` | Exponential decay half-life in days |
+| `RAG_HP_SEASONBOOST` | `rag_hp_seasonboost` | Boost factor for current active map season |
 
-Both allow this to happen asynchronously. The main difference is in whether or not you the caller can wait for responses before continuing and whether or not the end response needs further formatting or actions.
+To load the configuration in any Python module, import the global settings instance:
+```python
+from mcl_common.config import settings
 
-### Discord Integration
+# Access properties directly
+mongo_uri = settings.mcl_mongo_connection_string
+embedding_dim = settings.google_embedding_dimensions
+```
 
-An additional interface for end users to interact with this system is Discord. To provide this, a lightweight implementation of a Discord Bot Application is provided in [the discord module](discord/). It creates a basic application (along with some styling like a displayed activity) and a singular command to ask questions. The application can then be invited to any desired servers, primarily our main community discord, our staff member discord, and our development/testing discord.
+---
 
-## Backend Deployment
+## 📚 Technical Documentation Links
 
-For the backend, I have created two [Railway](https://railway.com/) instances:
+For deeper technical implementation details, reference the individual sub-module guides:
 
-* The first instance handles the full backend API
-* The second instance provides the discord bot API
-
-Both of these instances are synced from this GitHub Repository. Any updates made to this repository will automatically restart the instances so that they are running with the latest updates. The instances also have several environmental variables which are accessed throughout the [project codebase](src/).
+* 🧠 **[RAG System Details & Mathematical Heuristics (RAG.md)](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/rag/RAG.md)**: Detailed equations for recency decay, chunking overlapping parameters, database indexing, and scaling strategies.
+* 🤖 **[Discord Bot commands and API (discordbot/README.md)](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/discordbot/README.md)**: Detailed bot API endpoints, thread workflows, persistent UI buttons, and deployment rolling restarts.
