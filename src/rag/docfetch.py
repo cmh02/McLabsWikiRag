@@ -9,6 +9,7 @@ MODULE IMPORTS
 '''
 
 # System
+from faiss import extra_wrappers
 import os
 import pickle
 import datetime
@@ -27,6 +28,9 @@ from bs4 import BeautifulSoup
 from google import genai
 from google.genai import types
 
+# MCL Packages
+from mcl_common.logger import MCL_Logger
+
 '''
 WIKI EMBEDDER CLASS
 
@@ -36,7 +40,13 @@ This class will handle fetching, parsing, chunking, and embedding all of the MCL
 class MCL_WikiEmbedder():
 
 	# Class Constructor
-	def __init__(self, client: genai.Client=None):
+	def __init__(self, client: genai.Client | None=None):
+
+		# Make client if not provided
+		if client is None:
+			self.client = genai.Client(api_key=os.getenv('GOOGLE_GEMINI_API_KEY'))
+		else:
+			self.client = client
 
 		# Current file and directory paths
 		self.CURRENT_FILE_PATH = os.path.abspath(__file__)
@@ -50,18 +60,13 @@ class MCL_WikiEmbedder():
 		# MCL Wiki URL
 		self.MCL_WIKI_API_URL = "https://labs-mc.com/w/api.php"
 
-		# Make client if not provided
-		if client is None:
-			self.client = genai.Client(api_key=os.getenv('GOOGLE_GEMINI_API_KEY'))
-		else:
-			self.client = client
-
 		# Make index and document list
 		self.index = faiss.IndexFlatL2(768)
 		self.documents = []
 
-		# Print
-		print(f"New WikiEmbedder instance created!")
+		# Log creation
+		self.logger = MCL_Logger.setup_logger("MCL_API_Logger")
+		self.logger.info(f"New WikiEmbedder instance created!")
 
 	# Main function to fetch, chunk, embed, and index wiki pages
 	def fetchAndEmbedWiki(self, batch_size=10):
@@ -92,7 +97,7 @@ class MCL_WikiEmbedder():
 			flatEmbeddings = [chunkEmbedding for pageEmbeddings in allEmbeddings.values() for chunkEmbedding in pageEmbeddings]
 			embeddingsMatrix = np.vstack(flatEmbeddings).astype('float32')
 			faiss.normalize_L2(embeddingsMatrix)
-			self.index.add(embeddingsMatrix)
+			self.index.add(embeddingsMatrix)  # type: ignore
 
 			# Flatten chunks into documents with titles
 			self.documents.extend([
@@ -101,13 +106,13 @@ class MCL_WikiEmbedder():
 				for chunkText in chunkList
 			])
 
-			print(f"Processed batch of {len(titles)} pages")
+			self.logger.info(f"Processed batch of {len(titles)} pages")
 
 			# Break the loop if there are no more pages to fetch
 			if not apcontinue:
 				break
 
-		print(f"FAISS index has {self.index.ntotal} vectors")
+		self.logger.info(f"FAISS index has {self.index.ntotal} vectors")
 
 	# Function to load, chunk, embed, and index help questions
 	def fetchAndEmbedHelpQuestions(self, helpQuestionsFilePath: str):
@@ -128,7 +133,7 @@ class MCL_WikiEmbedder():
 				# Get the question, answer, and timestamp
 				doctime, question, answer = line.split("|||")
 			except Exception as e:
-				print(f"Exception `{e}` occured while parsing help question line: {line}. Skipping!")
+				self.logger.error(f"Exception `{e}` occured while parsing help question line: {line}. Skipping!")
 				continue
 			
 			# Determine if the doc has old unix (no period) or new unix (has period)
@@ -139,7 +144,7 @@ class MCL_WikiEmbedder():
 				else:
 					doctime = float(doctime) / 1000.0
 			except Exception as e:
-				print(f"Exception `{e}` occured while parsing timestamp in help question line: {line}. Skipping!")
+				self.logger.error(f"Exception `{e}` occured while parsing timestamp in help question line: {line}. Skipping!")
 				continue
 
 			# Convert to ISO date
@@ -159,11 +164,11 @@ class MCL_WikiEmbedder():
 		# Add to FAISS index
 		embeddingsMatrix = np.vstack(embeddings).astype('float32')
 		faiss.normalize_L2(embeddingsMatrix)
-		self.index.add(embeddingsMatrix)
+		self.index.add(embeddingsMatrix)  # type: ignore
 
 		# Add to documents with title "Help Question", source "helpQA", and date
 		self.documents.extend([{"title": "Help Question", "content": chunk, "source": "helpQA", "date": t} for t, chunk in zip([t for t, q, a in helpQuestionPairs], chunks)])
-		print(f"Added {len(chunks)} help questions to the index and documents!")
+		self.logger.info(f"Added {len(chunks)} help questions to the index and documents!")
 
 	# Save the FAISS index and documents to disk
 	def saveIndexAndDocuments(self):
@@ -171,7 +176,7 @@ class MCL_WikiEmbedder():
 		faiss.write_index(self.index, f"{self.PATH_EMBEDDINGS}wiki.index")
 		with open(f"{self.PATH_EMBEDDINGS}wiki_docs.pkl", "wb") as f:
 			pickle.dump(self.documents, f)
-		print(f"Saved index and {len(self.documents)} documents to disk")
+		self.logger.info(f"Saved index and {len(self.documents)} documents to disk")
 
 	# Load the FAISS index and documents from disk
 	def loadIndexAndDocuments(self):
@@ -179,7 +184,7 @@ class MCL_WikiEmbedder():
 		self.index = faiss.read_index(f"{self.PATH_EMBEDDINGS}wiki.index")
 		with open(f"{self.PATH_EMBEDDINGS}wiki_docs.pkl", "rb") as f:
 			self.documents = pickle.load(f)
-		print(f"Loaded index and {len(self.documents)} documents from disk")
+		self.logger.info(f"Loaded index and {len(self.documents)} documents from disk")
 
 	# Embed text chunk using Gemini API
 	def embedChunks(self, chunks: list[str]) -> list[np.ndarray]:

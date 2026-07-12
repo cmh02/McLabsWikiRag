@@ -23,6 +23,7 @@ from google import genai
 from google.genai import types
 
 # MCL Packages
+from mcl_common.logger import MCL_Logger
 from src.rag.docfetch import MCL_WikiEmbedder
 
 '''
@@ -53,6 +54,10 @@ class MCL_WikiRag():
 		if not model_name:
 			raise ValueError("GOOGLE_GEMINI_MODEL environment variable is not set.")
 		self.model_name: str = model_name
+
+		# Set up logger
+		self.logger = MCL_Logger.setup_logger("MCL_API_Logger")
+		self.logger.info(f"New WikiRag instance created with model: {self.model_name}!")
 
 	# Full pipeline function to handle a user query
 	def queryPipeline(self, question, topK=5) -> tuple:
