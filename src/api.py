@@ -47,7 +47,9 @@ async def lifespan(app: FastAPI):
 	app.state.InstanceClient = genai.Client(api_key=settings.google_gemini_api_key)
 
 	# Load the index and documents
-	app.state.InstanceWikiDocLoader = MCL_WikiDocLoader()
+	app.state.InstanceWikiDocLoader = MCL_WikiDocLoader(
+		dataDirectory = settings.railway_data_directory
+	)
 	app.state.InstanceWikiDocLoader.loadIndexAndDocuments()
 
 	# RAG instance
@@ -65,6 +67,7 @@ async def lifespan(app: FastAPI):
 		docLoader=app.state.InstanceWikiDocLoader,
 		generationModelName=settings.google_gemini_model,
 		embeddingModelName=settings.google_embedding_model,
+		embeddingDimension=settings.google_embedding_dimensions,
 		dynamicSourceScale=dynamic_source_scale,
 		dynamicTimeScale=dynamic_time_scale
 	)
