@@ -25,6 +25,7 @@ from google.genai import types
 # MCL Packages
 from mcl_common.logger import MCL_Logger
 from src.rag.docloader import MCL_WikiDocLoader
+from src.rag.document import RagDocument, DocumentSource
 
 '''
 RAG CLASS
@@ -91,7 +92,7 @@ class MCL_WikiRag():
 		return np.array(response.embeddings[0].values, dtype=np.float32)
 
 	# Retrieve top-K relevant chunks from FAISS index
-	def _retrieveChunks(self, queryVector, topK=5) -> list:
+	def _retrieveChunks(self, queryVector, topK=5) -> list[RagDocument]:
 		
 		# Normalize the query vector
 		faiss.normalize_L2(queryVector.reshape(1, -1))
@@ -109,24 +110,27 @@ class MCL_WikiRag():
 			# Get the document
 			doc = self.docLoader.getDocument(index)
 
+			# Apply raw weight from the document itself
+			score *= doc.scale
+
 			# Modify score based on document type
-			if doc.get("source") == "helpQA":
+			if doc.source == DocumentSource.HELP_QUESTION:
 				
 				# Apply FAQ boost
-				score *= int(os.getenv('RAG_HP_FAQSCOREBOOST', 1.2))
+				score *= float(os.getenv('RAG_HP_FAQSCOREBOOST', 1.2))
 
 				# Apply time boosts if date is present
-				if "date" in doc:
+				if doc.date is not None:
 					try:
 						# Document date boost, targeted at prioritizing most recent FAQs, with 50% being > 90 days
-						documentDate = datetime.date.fromisoformat(doc.get("date"))
+						documentDate = datetime.date.fromtimestamp(doc.date)
 						documentAge = (current_date - documentDate).days
-						lam = np.log(2) / int(os.getenv("RAG_HP_RECENCYHALFLIFE", 90.0))
+						lam = np.log(2) / float(os.getenv("RAG_HP_RECENCYHALFLIFE", 90.0))
 						score *= np.exp(-lam * documentAge)
 
 						# Current season boost, targeted at prioritizing FAQs from the current season (since May 1st)
 						if documentDate >= datetime.date(current_date.year, 5, 1):
-							score *= int(os.getenv('RAG_HP_SEASONBOOST', 1.1))
+							score *= float(os.getenv('RAG_HP_SEASONBOOST', 1.1))
 
 					except Exception:
 						# Incase of date parsing error, just ignore
@@ -145,7 +149,10 @@ class MCL_WikiRag():
 	def _generateAnswer(self, question, topChunks) -> str | None:
 		
 		# Combine chunks into context and create the prompt
-		contextText = "\n".join([f"{chunk['title']}: {chunk['content']}" for chunk in topChunks])
+		contextText = "\n".join([
+			f"{chunk.title}: {chunk.content}" if chunk.title else chunk.content
+			for chunk in topChunks
+		])
 		prompt = f"""
 		You are a helpful assistant for players on a minecraft server. 
 		Use the following wiki and Q&A context to answer the given question. 

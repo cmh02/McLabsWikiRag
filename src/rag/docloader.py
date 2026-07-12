@@ -5,9 +5,10 @@ Author: Chris Hinkson @cmh02
 '''
 
 import os
-import pickle
+import json
 import faiss
 from mcl_common.logger import MCL_Logger
+from src.rag.document import RagDocument
 
 class MCL_WikiDocLoader():
 
@@ -38,8 +39,16 @@ class MCL_WikiDocLoader():
 
 		# Load the index and documents for later use
 		self.index = faiss.read_index(f"{self.PATH_EMBEDDINGS}wiki.index")
-		with open(f"{self.PATH_EMBEDDINGS}wiki_docs.pkl", "rb") as f:
-			self.documents = pickle.load(f)
+		
+		# Load documents from JSON
+		json_path = f"{self.PATH_EMBEDDINGS}wiki_docs.json"
+		if os.path.exists(json_path):
+			with open(json_path, "r", encoding="utf-8") as f:
+				docs_data = json.load(f)
+				self.documents = [RagDocument.model_validate(doc) for doc in docs_data]
+		else:
+			self.logger.warning(f"wiki_docs.json not found at {json_path}")
+			self.documents = []
 		self.logger.info(f"Loaded index and {len(self.documents)} documents from disk")
 
 	# Perform nearest neighbors search in the FAISS index
@@ -49,5 +58,5 @@ class MCL_WikiDocLoader():
 		return self.index.search(queryVector, k)
 
 	# Retrieve document metadata by index
-	def getDocument(self, index: int) -> dict:
+	def getDocument(self, index: int) -> RagDocument:
 		return self.documents[index]

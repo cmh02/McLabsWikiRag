@@ -9,13 +9,13 @@ MODULE IMPORTS
 '''
 
 # System
-from faiss import extra_wrappers
 import os
-import pickle
+import json
 import datetime
 
 # Vector Database
 import faiss
+from faiss import extra_wrappers
 
 # Data Handling
 import numpy as np
@@ -30,6 +30,7 @@ from google.genai import types
 
 # MCL Packages
 from mcl_common.logger import MCL_Logger
+from src.rag.document import RagDocument, DocumentSource
 
 '''
 WIKI EMBEDDER CLASS
@@ -69,7 +70,7 @@ class MCL_WikiEmbedder():
 		self.logger.info(f"New WikiEmbedder instance created!")
 
 	# Main function to fetch, chunk, embed, and index wiki pages
-	def fetchAndEmbedWiki(self, batch_size=10):
+	def fetchAndEmbedWiki(self, batch_size=10, raw_weight=1.0):
 
 		# Initialize the apcontinue parameter for pagination
 		apcontinue = None
@@ -100,11 +101,17 @@ class MCL_WikiEmbedder():
 			self.index.add(embeddingsMatrix)  # type: ignore
 
 			# Flatten chunks into documents with titles
-			self.documents.extend([
-				{"title": pageTitle, "content": chunkText, "source": "playerwiki", "date": "N/A"}
-				for pageTitle, chunkList in allChunks.items()
-				for chunkText in chunkList
-			])
+			for pageTitle, chunkList in allChunks.items():
+				for chunkText in chunkList:
+					self.documents.append(
+						RagDocument(
+							title=pageTitle,
+							content=chunkText,
+							source=DocumentSource.WIKI,
+							date=None,
+							scale=raw_weight
+						)
+					)
 
 			self.logger.info(f"Processed batch of {len(titles)} pages")
 
@@ -115,7 +122,7 @@ class MCL_WikiEmbedder():
 		self.logger.info(f"FAISS index has {self.index.ntotal} vectors")
 
 	# Function to load, chunk, embed, and index help questions
-	def fetchAndEmbedHelpQuestions(self, helpQuestionsFilePath: str):
+	def fetchAndEmbedHelpQuestions(self, helpQuestionsFilePath: str, raw_weight=1.0):
 
 		# Load help questions from file
 		with open(helpQuestionsFilePath, "r") as helpQuestionFile:
@@ -140,21 +147,21 @@ class MCL_WikiEmbedder():
 			try:
 				if "." in doctime:
 					# New format with period, in common unix timestamp format
-					doctime = float(doctime)
+					doc_timestamp = float(doctime)
 				else:
-					doctime = float(doctime) / 1000.0
+					doc_timestamp = float(doctime) / 1000.0
 			except Exception as e:
 				self.logger.error(f"Exception `{e}` occured while parsing timestamp in help question line: {line}. Skipping!")
 				continue
 
-			# Convert to ISO date
-			doctime = datetime.datetime.fromtimestamp(doctime).date().isoformat()
-
 			# Remove the answer prefix if present
-			helpQuestionPairs.append((doctime, question, answer))
+			helpQuestionPairs.append((doc_timestamp, question, answer))
 
-		# Turn Q&A pairs into chunks
-		chunks = [f"T: {t}\nQ: {q}\nA: {a}" for t, q, a in helpQuestionPairs]
+		# Turn Q&A pairs into chunks with a readable date header
+		chunks = []
+		for t, q, a in helpQuestionPairs:
+			readable_date = datetime.datetime.fromtimestamp(t).date().isoformat()
+			chunks.append(f"T: {readable_date}\nQ: {q}\nA: {a}")
 
 		# Embed the chunks in batches of 100 (gemini limit)
 		embeddings = []
@@ -166,17 +173,29 @@ class MCL_WikiEmbedder():
 		faiss.normalize_L2(embeddingsMatrix)
 		self.index.add(embeddingsMatrix)  # type: ignore
 
-		# Add to documents with title "Help Question", source "helpQA", and date
-		self.documents.extend([{"title": "Help Question", "content": chunk, "source": "helpQA", "date": t} for t, chunk in zip([t for t, q, a in helpQuestionPairs], chunks)])
+		# Add to documents with title "Help Question", source HelpQuestion, and date
+		for (t, q, a), chunk in zip(helpQuestionPairs, chunks):
+			self.documents.append(
+				RagDocument(
+					title="Help Question",
+					content=chunk,
+					source=DocumentSource.HELP_QUESTION,
+					date=t,
+					scale=raw_weight
+				)
+			)
 		self.logger.info(f"Added {len(chunks)} help questions to the index and documents!")
 
 	# Save the FAISS index and documents to disk
 	def saveIndexAndDocuments(self):
 		# Save the index and documents for later use
 		faiss.write_index(self.index, f"{self.PATH_EMBEDDINGS}wiki.index")
-		with open(f"{self.PATH_EMBEDDINGS}wiki_docs.pkl", "wb") as f:
-			pickle.dump(self.documents, f)
-		self.logger.info(f"Saved index and {len(self.documents)} documents to disk")
+		
+		# Save documents to JSON
+		json_path = f"{self.PATH_EMBEDDINGS}wiki_docs.json"
+		with open(json_path, "w", encoding="utf-8") as f:
+			json.dump([doc.model_dump() for doc in self.documents], f, indent=2)
+		self.logger.info(f"Saved index and {len(self.documents)} documents to disk as JSON")
 
 	# Embed text chunk using Gemini API
 	def embedChunks(self, chunks: list[str]) -> list[np.ndarray]:
