@@ -34,90 +34,45 @@ RAG CLASS
 This class will handle actually performing RAG prompting and response generation.
 '''
 
-def get_embedding_dim(client, model_name: str) -> int:
-	"""
-	Dynamically detects embedding dimension size by calling embed_content once.
-	"""
-	try:
-		response = client.models.embed_content(
-			model=model_name,
-			contents=["probe"]
-		)
-		if response.embeddings:
-			return len(response.embeddings[0].values)
-	except Exception:
-		pass
-	return 768
-
 class MCL_WikiRag():
 
 	# Class Constructor
-	def __init__(self, client: genai.Client | None = None, docLoader: MCL_WikiDocLoader | None = None):
+	def __init__(self, 
+		client: genai.Client,
+		docLoader: MCL_WikiDocLoader,
+		generationModelName: str,
+		embeddingModelName: str,
+		embeddingDimension: int,
+		dynamicSourceScale: Dict[DocumentSource, float],
+		dynamicTimeScale: Dict[str, float]
+	):
 
-		# Make client if not provided
-		if client is None:
-			self.client = genai.Client(api_key=os.getenv('GOOGLE_GEMINI_API_KEY'))
-		else:
-			self.client = client
-
-		# Make WikiDocLoader instance if not provided
-		if docLoader is None:
-			self.docLoader = MCL_WikiDocLoader()
-			self.docLoader.loadIndexAndDocuments()
-		else:
-			self.docLoader = docLoader
-
-		# Load Google Gemini model name from environment (required)
-		model_name = os.getenv('GOOGLE_GEMINI_MODEL')
-		if not model_name:
-			raise ValueError("GOOGLE_GEMINI_MODEL environment variable is not set.")
-		self.model_name: str = model_name
-
-		# Load Google Gemini embedding model name from environment
-		self.embedding_model_name: str = os.getenv('GOOGLE_EMBEDDING_MODEL', 'gemini-embedding-2')
-		# Dynamically determine embedding dimensionality
-		self.embedding_dim: int = get_embedding_dim(self.client, self.embedding_model_name)
-
-
-		# Load dynamic source-based scale factors
-		env_RAG_HP_SOURCESCALE_WIKI: str | None = os.getenv("RAG_HP_SOURCESCALE_WIKI")
-		if env_RAG_HP_SOURCESCALE_WIKI is None:
-			raise ValueError("RAG_HP_SOURCESCALE_WIKI environment variable is not set.")
-		env_RAG_HP_SOURCESCALE_WIKI_parsed: float | None = float(env_RAG_HP_SOURCESCALE_WIKI)
-		if env_RAG_HP_SOURCESCALE_WIKI_parsed is None:
-			raise ValueError("RAG_HP_SOURCESCALE_WIKI environment variable could not be parsed correctly.")
-		env_RAG_HP_SOURCESCALE_FAQ: str | None = os.getenv("RAG_HP_SOURCESCALE_FAQ")
-		if env_RAG_HP_SOURCESCALE_FAQ is None:
-			raise ValueError("RAG_HP_SOURCESCALE_FAQ environment variable is not set.")
-		env_RAG_HP_SOURCESCALE_FAQ_parsed: float | None = float(env_RAG_HP_SOURCESCALE_FAQ)
-		if env_RAG_HP_SOURCESCALE_FAQ_parsed is None:
-			raise ValueError("RAG_HP_SOURCESCALE_FAQ environment variable could not be parsed correctly.")
-		self.dynamicSourceScale: Dict[DocumentSource, float] = {
-			DocumentSource.WIKI: env_RAG_HP_SOURCESCALE_WIKI_parsed,
-			DocumentSource.HELP_QUESTION: env_RAG_HP_SOURCESCALE_FAQ_parsed
-		}
-
-		# Load dynamic time-based scale factors
-		env_RAG_HP_RECENCYHALFLIFE: str | None = os.getenv("RAG_HP_RECENCYHALFLIFE")
-		if env_RAG_HP_RECENCYHALFLIFE is None:
-			raise ValueError("RAG_HP_RECENCYHALFLIFE environment variable is not set.")
-		env_RAG_HP_RECENCYHALFLIFE_parsed: float | None = float(env_RAG_HP_RECENCYHALFLIFE)
-		if env_RAG_HP_RECENCYHALFLIFE_parsed is None:
-			raise ValueError("RAG_HP_RECENCYHALFLIFE environment variable could not be parsed correctly.")
-		env_RAG_HP_SEASONBOOST: str | None = os.getenv("RAG_HP_SEASONBOOST")
-		if env_RAG_HP_SEASONBOOST is None:
-			raise ValueError("RAG_HP_SEASONBOOST environment variable is not set.")
-		env_RAG_HP_SEASONBOOST_parsed: float | None = float(env_RAG_HP_SEASONBOOST)
-		if env_RAG_HP_SEASONBOOST_parsed is None:
-			raise ValueError("RAG_HP_SEASONBOOST environment variable could not be parsed correctly.")
-		self.dynamicTimeScale: Dict[str, float] = {
-			"recency": env_RAG_HP_RECENCYHALFLIFE_parsed,
-			"season": env_RAG_HP_SEASONBOOST_parsed
-		}
+		# Make sure required objects are passed in
+		if (client is None):
+			raise ValueError("MCLabs RAG Object requires Google GenAI Client object to be provided!")
+		if (docLoader is None):
+			raise ValueError("MCLabs RAG Object requires MCL_WikiDocLoader object to be provided!")
+		if ((generationModelName is None) or (generationModelName.strip() == "")):
+			raise ValueError("MCLabs RAG Object requires Google Gemini model name to be provided!")
+		if ((embeddingModelName is None) or (embeddingModelName.strip() == "")):
+			raise ValueError("MCLabs RAG Object requires Google Gemini embedding model name to be provided!")
+		if (embeddingDimension is None):
+			raise ValueError("MCLabs RAG Object requires embedding dimension to be provided!")
+		if (dynamicSourceScale is None):
+			raise ValueError("MCLabs RAG Object requires dynamic source scale dictionary to be provided!")
+		if (dynamicTimeScale is None):
+			raise ValueError("MCLabs RAG Object requires dynamic time scale dictionary to be provided!")
+		self.client: genai.Client = client
+		self.docLoader: MCL_WikiDocLoader = docLoader
+		self.generationModelName: str = generationModelName
+		self.embeddingModelName: str = embeddingModelName
+		self.embeddingDimension: int = embeddingDimension
+		self.dynamicSourceScale: Dict[DocumentSource, float] = dynamicSourceScale
+		self.dynamicTimeScale: Dict[str, float] = dynamicTimeScale
 
 		# Set up logger
 		self.logger = MCL_Logger.setup_logger("MCL_API_Logger")
-		self.logger.info(f"New WikiRag instance created with model: {self.model_name}!")
+		self.logger.info(f"New WikiRag instance created with model: {self.generationModelName}!")
 
 	# Full pipeline function to handle a user query
 	def queryPipeline(self, question, topK=5) -> tuple:
@@ -139,11 +94,11 @@ class MCL_WikiRag():
 		
 		# Get embedding using API
 		response = self.client.models.embed_content(
-			model=self.embedding_model_name,
+			model=self.embeddingModelName,
 			contents=[query],
 			config=types.EmbedContentConfig(
 				task_type="RETRIEVAL_QUERY",
-				output_dimensionality=self.embedding_dim
+				output_dimensionality=self.embeddingDimension
 			)
 		)
 		
@@ -237,7 +192,7 @@ class MCL_WikiRag():
 		
 		# Get the answer using the API
 		response = self.client.interactions.create(
-			model=self.model_name,
+			model=self.generationModelName,
 			input=prompt
 		)
 		

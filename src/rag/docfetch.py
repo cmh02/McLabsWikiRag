@@ -29,9 +29,9 @@ from google import genai
 from google.genai import types
 
 # MCL Packages
+from mcl_common.config import settings
 from mcl_common.logger import MCL_Logger
 from src.rag.document import RagDocument, DocumentSource
-from src.rag.rag import get_embedding_dim
 
 '''
 WIKI EMBEDDER CLASS
@@ -42,44 +42,36 @@ This class will handle fetching, parsing, chunking, and embedding all of the MCL
 class MCL_WikiEmbedder():
 
 	# Class Constructor
-	def __init__(self, client: genai.Client | None=None):
+	def __init__(self, 
+		client: genai.Client,
+		dataDirectory: str,
+		embeddingModelName: str,
+		embeddingDimension: int
+	):
 
-		# Make client if not provided
-		if client is None:
-			self.client = genai.Client(api_key=os.getenv('GOOGLE_GEMINI_API_KEY'))
-		else:
-			self.client = client
-
-		# Current file and directory paths
-		self.CURRENT_FILE_PATH = os.path.abspath(__file__)
-		self.CURRENT_DIR = os.path.dirname(self.CURRENT_FILE_PATH)
-		self.ROOT_DIR = os.path.dirname(self.CURRENT_DIR)
-		self.PROJECT_ROOT = os.path.dirname(self.ROOT_DIR)
-
-		# Load DATA_DIR environment variable
-		data_dir = os.getenv("RAILWAY_DATA_DIRECTORY")
-		if not data_dir:
-			raise ValueError("RAILWAY_DATA_DIRECTORY environment variable is not set.")
-
-		if not os.path.isabs(data_dir):
-			data_path = os.path.join(self.PROJECT_ROOT, data_dir)
-		else:
-			data_path = data_dir
+		# Input Validation
+		if (client is None):
+			raise ValueError("MCLabs Wiki Embedder requires Google GenAI Client object to be provided!")
+		if ((dataDirectory is None) or (dataDirectory.strip() == "")):
+			raise ValueError("MCLabs Wiki Embedder requires data directory to be provided!")
+		if ((embeddingModelName is None) or (embeddingModelName.strip() == "")):
+			raise ValueError("MCLabs Wiki Embedder requires embedding model name to be provided!")
+		if (embeddingDimension is None):
+			raise ValueError("MCLabs Wiki Embedder requires embedding dimension to be provided!")
+		self.client: genai.Client = client
+		self.dataDirectory: str = dataDirectory
+		self.embeddingModelName: str = embeddingModelName
+		self.embeddingDimension: int = embeddingDimension
 
 		# Embeddings folder path
-		self.PATH_EMBEDDINGS = os.path.join(data_path, 'embeddings/')
+		self.PATH_EMBEDDINGS = os.path.join(self.dataDirectory, 'embeddings/')
 		os.makedirs(self.PATH_EMBEDDINGS, exist_ok=True)
 
 		# MCL Wiki URL
 		self.MCL_WIKI_API_URL = "https://labs-mc.com/w/api.php"
 
-		# Load Google Gemini embedding model name from environment
-		self.embedding_model_name: str = os.getenv('GOOGLE_EMBEDDING_MODEL', 'gemini-embedding-2')
-		# Dynamically determine embedding dimensionality
-		self.embedding_dim: int = get_embedding_dim(self.client, self.embedding_model_name)
-
 		# Make index and document list
-		self.index = faiss.IndexFlatL2(self.embedding_dim)
+		self.index = faiss.IndexFlatL2(self.embeddingDimension)
 		self.documents = []
 
 		# Log creation
@@ -219,11 +211,11 @@ class MCL_WikiEmbedder():
 		
 		# Make embedding request and return as numpy array
 		response = self.client.models.embed_content(
-			model=self.embedding_model_name,
+			model=self.embeddingModelName,
 			contents=chunks,
 			config=types.EmbedContentConfig(
 				task_type="RETRIEVAL_DOCUMENT",
-				output_dimensionality=self.embedding_dim
+				output_dimensionality=self.embeddingDimension
 			)
 		)
 		if not response.embeddings:

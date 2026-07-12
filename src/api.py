@@ -24,12 +24,14 @@ from google import genai
 
 # MCL Packages
 from mcl_common.logger import MCL_Logger
+from mcl_common.config import settings
 from src.internal.helpmanager import MCL_HelpManager
 from mcl_common.mongo import MCL_MongoManager
 from mcl_common.limiter import limiter
 from src.network.relay import MCL_OutboundRelay
 from src.network.endpoints import router as InternalEndpointsRouter
 from src.rag.docloader import MCL_WikiDocLoader
+from src.rag.document import DocumentSource
 from src.rag.rag import MCL_WikiRag
 
 '''
@@ -38,38 +40,34 @@ FASTAPI APP STARTUP / SHUTDOWN
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
-	# Load environment variables from .env file if not in Railway environment
-	if os.getenv("RAILWAY_ENVIRONMENT_ID") is None:
-		from dotenv import load_dotenv
-		load_dotenv()
-
 	# Setup logging
 	app.state.logger = MCL_Logger.setup_logger("MCL_API_Logger")
 
-	# Validate Gemini & environment variables
-	gemini_api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
-	gemini_model = os.getenv("GOOGLE_GEMINI_MODEL")
-	data_dir = os.getenv("RAILWAY_DATA_DIRECTORY")
-
-	if not gemini_api_key:
-		app.state.logger.error("GOOGLE_GEMINI_API_KEY environment variable is not set.")
-		raise RuntimeError("GOOGLE_GEMINI_API_KEY environment variable is not set.")
-	if not gemini_model:
-		app.state.logger.error("GOOGLE_GEMINI_MODEL environment variable is not set.")
-		raise RuntimeError("GOOGLE_GEMINI_MODEL environment variable is not set.")
-	if not data_dir:
-		app.state.logger.error("RAILWAY_DATA_DIRECTORY environment variable is not set.")
-		raise RuntimeError("RAILWAY_DATA_DIRECTORY environment variable is not set.")
-
 	# Gemini client
-	app.state.InstanceClient = genai.Client(api_key=gemini_api_key)
+	app.state.InstanceClient = genai.Client(api_key=settings.google_gemini_api_key)
 
 	# Load the index and documents
 	app.state.InstanceWikiDocLoader = MCL_WikiDocLoader()
 	app.state.InstanceWikiDocLoader.loadIndexAndDocuments()
 
 	# RAG instance
-	app.state.InstanceRag = MCL_WikiRag(client=app.state.InstanceClient, docLoader=app.state.InstanceWikiDocLoader)
+	dynamic_source_scale = {
+		DocumentSource.WIKI: settings.rag_hp_sourcescale_wiki,
+		DocumentSource.HELP_QUESTION: settings.rag_hp_sourcescale_faq
+	}
+	dynamic_time_scale = {
+		"recency": settings.rag_hp_recencyhalflife,
+		"season": settings.rag_hp_seasonboost
+	}
+
+	app.state.InstanceRag = MCL_WikiRag(
+		client=app.state.InstanceClient,
+		docLoader=app.state.InstanceWikiDocLoader,
+		generationModelName=settings.google_gemini_model,
+		embeddingModelName=settings.google_embedding_model,
+		dynamicSourceScale=dynamic_source_scale,
+		dynamicTimeScale=dynamic_time_scale
+	)
 
 	# Initialize Help Manager
 	MCL_HelpManager().initialize()

@@ -7,36 +7,30 @@ Author: Chris Hinkson @cmh02
 import os
 import json
 import faiss
+import numpy as np
+from typing import List
 from mcl_common.logger import MCL_Logger
 from src.rag.document import RagDocument
 
 class MCL_WikiDocLoader():
 
 	# Class Constructor
-	def __init__(self, path_embeddings: str | None = None):
+	def __init__(self, 
+		dataDirectory: str
+	):
 
-		# Current file and directory paths
-		self.CURRENT_FILE_PATH = os.path.abspath(__file__)
-		self.CURRENT_DIR = os.path.dirname(self.CURRENT_FILE_PATH)
-		self.ROOT_DIR = os.path.dirname(self.CURRENT_DIR)
-		self.PROJECT_ROOT = os.path.dirname(self.ROOT_DIR)
+		# Input Validation
+		if ((dataDirectory is None) or (dataDirectory.strip() == "")):
+			raise ValueError("MCLabs Wiki DocLoader requires data directory to be provided!")
+		self.dataDirectory: str = dataDirectory
 
 		# Embeddings folder path
-		if path_embeddings is None:
-			data_dir = os.getenv("RAILWAY_DATA_DIRECTORY")
-			if not data_dir:
-				raise ValueError("RAILWAY_DATA_DIRECTORY environment variable is not set.")
-			if not os.path.isabs(data_dir):
-				data_path = os.path.join(self.PROJECT_ROOT, data_dir)
-			else:
-				data_path = data_dir
-			self.PATH_EMBEDDINGS = os.path.join(data_path, 'embeddings/')
-		else:
-			self.PATH_EMBEDDINGS = path_embeddings
+		self.PATH_EMBEDDINGS = os.path.join(self.dataDirectory, 'embeddings/')
+		os.makedirs(self.PATH_EMBEDDINGS, exist_ok=True)
 
 		# Initialize placeholders for index and documents
-		self.index = None
-		self.documents = []
+		self.index: faiss.IndexFlatL2 | None = None
+		self.documents: List[RagDocument] = []
 
 		# Log creation
 		self.logger = MCL_Logger.setup_logger("MCL_API_Logger")
@@ -65,10 +59,10 @@ class MCL_WikiDocLoader():
 		self.logger.info(f"Loaded index and {len(self.documents)} documents from disk!")
 
 	# Perform nearest neighbors search in the FAISS index
-	def performIndexSearch(self, queryVector, k: int):
+	def performIndexSearch(self, queryVector: np.ndarray, k: int):
 		if self.index is None:
 			raise RuntimeError("FAISS index has not been loaded. Call loadIndexAndDocuments() first.")
-		return self.index.search(queryVector, k)
+		return self.index.search(queryVector, k) # type: ignore
 
 	# Retrieve document metadata by index
 	def getDocument(self, index: int) -> RagDocument:
