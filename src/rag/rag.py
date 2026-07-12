@@ -24,7 +24,7 @@ from google.genai import types
 
 # MCL Packages
 from mcl_common.logger import MCL_Logger
-from src.rag.docfetch import MCL_WikiEmbedder
+from src.rag.docfetch import MCL_WikiDocLoader
 
 '''
 RAG CLASS
@@ -35,7 +35,7 @@ This class will handle actually performing RAG prompting and response generation
 class MCL_WikiRag():
 
 	# Class Constructor
-	def __init__(self, client: genai.Client | None = None, wikiEmbedder: MCL_WikiEmbedder | None = None):
+	def __init__(self, client: genai.Client | None = None, docLoader: MCL_WikiDocLoader | None = None):
 
 		# Make client if not provided
 		if client is None:
@@ -43,11 +43,12 @@ class MCL_WikiRag():
 		else:
 			self.client = client
 
-		# Make WikiEmbedder instance if not provided
-		if wikiEmbedder is None:
-			self.wikiEmbedder = MCL_WikiEmbedder(client=self.client)
+		# Make WikiDocLoader instance if not provided
+		if docLoader is None:
+			self.docLoader = MCL_WikiDocLoader()
+			self.docLoader.loadIndexAndDocuments()
 		else:
-			self.wikiEmbedder = wikiEmbedder
+			self.docLoader = docLoader
 
 		# Load Google Gemini model name from environment (required)
 		model_name = os.getenv('GOOGLE_GEMINI_MODEL')
@@ -100,13 +101,13 @@ class MCL_WikiRag():
 		current_date = datetime.date.today()
 
 		# Get top K*2 nearest neighbors for resorting
-		distances, indices = self.wikiEmbedder.index.search(queryVector.reshape(1, -1), topK * 2)  # type: ignore
+		distances, indices = self.docLoader.index.search(queryVector.reshape(1, -1), topK * 2)  # type: ignore
 
 		# Sort results by type and date
 		for score, index in zip(distances[0], indices[0]):
 
 			# Get the document
-			doc = self.wikiEmbedder.documents[index]
+			doc = self.docLoader.documents[index]
 
 			# Modify score based on document type
 			if doc.get("source") == "helpQA":

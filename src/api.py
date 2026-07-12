@@ -29,7 +29,7 @@ from mcl_common.mongo import MCL_MongoManager
 from mcl_common.limiter import limiter
 from src.network.relay import MCL_OutboundRelay
 from src.network.endpoints import router as InternalEndpointsRouter
-from src.rag.docfetch import MCL_WikiEmbedder
+from src.rag.docfetch import MCL_WikiDocLoader
 from src.rag.rag import MCL_WikiRag
 
 '''
@@ -61,11 +61,11 @@ async def lifespan(app: FastAPI):
 	app.state.InstanceClient = genai.Client(api_key=gemini_api_key)
 
 	# Load the index and documents
-	app.state.InstanceWikiEmbedder = MCL_WikiEmbedder(client=app.state.InstanceClient)
-	app.state.InstanceWikiEmbedder.loadIndexAndDocuments()
+	app.state.InstanceWikiDocLoader = MCL_WikiDocLoader()
+	app.state.InstanceWikiDocLoader.loadIndexAndDocuments()
 
 	# RAG instance
-	app.state.InstanceRag = MCL_WikiRag(client=app.state.InstanceClient, wikiEmbedder=app.state.InstanceWikiEmbedder)
+	app.state.InstanceRag = MCL_WikiRag(client=app.state.InstanceClient, docLoader=app.state.InstanceWikiDocLoader)
 
 	# Initialize Help Manager
 	MCL_HelpManager().initialize()

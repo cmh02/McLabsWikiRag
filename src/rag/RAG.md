@@ -6,19 +6,24 @@ Welcome to the technical documentation for the MCLabs Retrieval-Augmented Genera
 
 ## Table of Contents
 1. [System Architecture](#1-system-architecture)
-2. [Data Ingestion & Indexing (`MCL_WikiEmbedder`)](#2-data-ingestion--indexing-mcl_wikiembedder)
+2. [Prework Stage: Data Ingestion & Indexing (`MCL_WikiEmbedder`)](#2-prework-stage-data-ingestion--indexing-mcl_wikiembedder)
    - [Wiki Article Ingestion](#wiki-article-ingestion)
    - [Support FAQ Ingestion](#support-faq-ingestion)
-   - [Embedding and Vector Index Storage](#embedding-and-vector-index-storage)
-3. [Retrieval & Scoring Modifiers (`MCL_WikiRag`)](#3-retrieval--scoring-modifiers-mcl_wikirag)
+   - [Chunking Strategy](#chunking-strategy)
+   - [Generating Vector Embeddings](#generating-vector-embeddings)
+   - [Adding a New Data Type](#adding-a-new-data-type)
+3. [Storage, Persistence & Runtime Loading (`MCL_WikiDocLoader`)](#3-storage-persistence--runtime-loading-mcl_wikidocloader)
+   - [Persistence Files](#persistence-files)
+   - [Runtime Load Flow](#runtime-load-flow)
+4. [Retrieval & Scoring Modifiers (`MCL_WikiRag`)](#4-retrieval--scoring-modifiers-mcl_wikirag)
    - [Query Processing](#query-processing)
    - [FAQ Boost](#faq-boost)
    - [Recency Decay (Half-Life)](#recency-decay-half-life)
    - [Season Boost](#season-boost)
-4. [Generation & Guardrails](#4-generation--guardrails)
+5. [Generation & Guardrails](#5-generation--guardrails)
    - [Standard Q&A Pipeline](#standard-qa-pipeline)
    - [Support Ticket Classification ("UNANSWERABLE")](#support-ticket-classification-unanswerable)
-5. [Configuration & Environment Variables](#5-configuration--environment-variables)
+6. [Configuration & Environment Variables](#6-configuration--environment-variables)
 
 ---
 
@@ -56,41 +61,85 @@ graph TD
 
 ---
 
-## 2. Data Ingestion & Indexing (`MCL_WikiEmbedder`)
+## 2. Prework Stage: Data Ingestion & Indexing (`MCL_WikiEmbedder`)
 
-Located in [`docfetch.py`](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/rag/docfetch.py), the `MCL_WikiEmbedder` class is responsible for harvesting source text, transforming it into vector embeddings, and creating a FAISS flat index.
+The [MCL_WikiEmbedder](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/rag/docfetch.py#L40) class is responsible for harvesting source text, transforming it into vector embeddings, and creating a FAISS flat index. It is designed to be executed periodically (e.g., via cron tasks, background updates, or developer command runs) and **must not be initialized or invoked during runtime RAG queries**.
 
 ### Wiki Article Ingestion
-- **Source**: MediaWiki Action API at `https://labs-mc.com/w/api.php`
-- **Method**: Fetches titles using the `allpages` list with continuation support, then retrieves HTML content using the `parse` action.
-- **Parsing**: `BeautifulSoup` strips out HTML markers to extract clean text.
-- **Chunking**: Splits pages into sliding-window word blocks.
-  - **Chunk Size**: 500 words
-  - **Overlap**: 50 words (retains semantic context at boundaries)
+* **Source**: MediaWiki Action API at `https://labs-mc.com/w/api.php`.
+* **API Flow**:
+  1. Retrieves all page titles using `action=query` and `list=allpages` in batches of 10.
+  2. Uses continuation queries with the `apcontinue` parameter to iterate through the entire wiki.
+  3. Fetches the page markup for each title using `action=parse` and extracting the HTML block `response["parse"]["text"]["*"]`.
+* **Parsing**: Cleans raw HTML using `BeautifulSoup` to strip tags and extract clear text.
 
 ### Support FAQ Ingestion
-- **Source**: File logs or Mongo DB dumps format (`[Timestamp] time|||question|||answer`).
-- **Parsing**: Extracts timestamps, questions, and answers. Timestamps are parsed and standardized into ISO 8601 Date format (`YYYY-MM-DD`).
-- **Formatting**: Each QA pair is structured into a distinct chunk:
+* **Source**: Raw text logs or Mongo database exports format (`[Timestamp] time|||question|||answer`).
+* **Timestamp Normalization**: Standardizes timestamps by checking for a decimal point (which represents Unix epoch seconds) versus integer values (milliseconds) and standardizing them into ISO 8601 strings (`YYYY-MM-DD`).
+* **Chunk Formatting**: Structures the question-answer pairs into a standardized template prefix:
   ```
   T: <ISO-Date>
   Q: <Question>
   A: <Answer>
   ```
 
-### Embedding and Vector Index Storage
-- **Model**: `text-embedding-004` (via Google GenAI Client)
-- **Task Type**: `RETRIEVAL_DOCUMENT`
-- **Indexing**: 
-  - Uses `faiss.IndexFlatL2(768)` for L2 Euclidean distance vector matching.
-  - Normalizes the generated embeddings matrix using `faiss.normalize_L2` before adding to the index.
-- **Persistence**: Saved to disk at startup/indexing run:
-  - Vector index: `embeddings/wiki.index`
-  - Document metadata list: `embeddings/wiki_docs.pkl` (retains titles, raw contents, sources, dates)
+### Chunking Strategy
+* **Word-level sliding window**: The `_chunkWikiPage` method splits raw text into words by space and compiles sliding slices:
+  * **Chunk Size**: 500 words
+  * **Overlap**: 50 words (retains semantic context at page and paragraph boundaries)
+
+### Generating Vector Embeddings
+* **Embedding Model**: `text-embedding-004` (via the Google GenAI SDK client).
+* **Batching**: Inputs are processed in batches (max 100 chunks per embedding request to respect API limitations).
+* **Vector Index Configuration**:
+  * Utilizes `faiss.IndexFlatL2(768)` for L2 Euclidean distance vector matching.
+  - Normalizes the generated embeddings matrix using `faiss.normalize_L2` to ensure consistent cosine/Euclidean distance properties before adding to the index.
+
+### Adding a New Data Type
+To add a new data type (e.g., in-game command manuals, Discord announcements) to the prework stage, follow these steps:
+1. **Define the Parser**: Write an ingestion method that retrieves raw strings from the source (file system, database, or API).
+2. **Format and Structure**: Prefix the data chunks with structured identifiers (e.g. `Title: <X>\nContent: <Y>`) and extract metadata (date/time, title, source label).
+3. **Chunk**: Apply the sliding window chunker helper `_chunkWikiPage` to split large contents into normalized sizes.
+4. **Generate Embeddings**: Batch the list of chunks and call `embedChunks(chunks)` of `MCL_WikiEmbedder`.
+5. **Normalize and Add to FAISS Index**:
+   ```python
+   embeddingsMatrix = np.vstack(embeddings).astype('float32')
+   faiss.normalize_L2(embeddingsMatrix)
+   self.index.add(embeddingsMatrix)
+   ```
+6. **Extend Documents Metadata**: Add matching dictionary elements to `self.documents`:
+   ```python
+   self.documents.extend([
+       {
+           "title": "Document Title", 
+           "content": chunk_text, 
+           "source": "new_source_name", 
+           "date": "YYYY-MM-DD"
+       }
+   ])
+   ```
+7. **Write to Disk**: Run `saveIndexAndDocuments()` to overwrite the cached files in the `embeddings/` folder.
 
 ---
 
-## 3. Retrieval & Scoring Modifiers (`MCL_WikiRag`)
+## 3. Storage, Persistence & Runtime Loading (`MCL_WikiDocLoader`)
+
+To optimize production performance and ensure architectural decoupling, the RAG serving layer loads a pre-computed vector database from disk using [MCL_WikiDocLoader](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/rag/docfetch.py#L248).
+
+### Persistence Files
+When the preprocessing stage finishes, it writes the vector store and document registry into the `embeddings/` directory:
+1. **`embeddings/wiki.index`**: A FAISS vector binary file storing normalized document vectors.
+2. **`embeddings/wiki_docs.pkl`**: A serialized Python pickle file storing the list of document metadata dictionaries (containing `title`, `content`, `source`, and `date`).
+
+### Runtime Load Flow
+* During application startup in [api.py](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/api.py), `app.state.InstanceWikiDocLoader` is initialized.
+* `MCL_WikiDocLoader.loadIndexAndDocuments()` is called, which calls `faiss.read_index()` and loads the serialized doc list in memory.
+* The loaded index and document list are then passed to the [MCL_WikiRag](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/rag/rag.py#L35) instance constructor.
+* **Benefits**: Decoupling the load flow prevents web servers or API instances from needing external network connection or Google API credentials to initialize the database storage layout.
+
+---
+
+## 4. Retrieval & Scoring Modifiers (`MCL_WikiRag`)
 
 Located in [`rag.py`](file:///Users/chrishinkson/Programming/Personal%20Projects/MCLabs/McLabsWikiGpt/src/rag/rag.py), the `MCL_WikiRag` class manages user queries, similarity searches, and distance/score modifications.
 
@@ -120,7 +169,7 @@ After modifiers are applied, the documents are resorted in descending order of t
 
 ---
 
-## 4. Generation & Guardrails
+## 5. Generation & Guardrails
 
 The LLM generation pipeline leverages Google Gemini with detailed system rules and semantic translations specific to the server ecosystem. The prompt embeds the context chunks and the user's question, applying the following strict guidelines:
 
@@ -139,7 +188,7 @@ The LLM generation pipeline leverages Google Gemini with detailed system rules a
 
 ---
 
-## 5. Configuration & Environment Variables
+## 6. Configuration & Environment Variables
 
 The system relies on several parameters in the `.env` file to customize behavior:
 
