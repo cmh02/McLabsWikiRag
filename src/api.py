@@ -46,9 +46,10 @@ async def lifespan(app: FastAPI):
 	# Setup logging
 	app.state.logger = MCL_Logger.setup_logger("MCL_API_Logger")
 
-	# Validate Gemini environment variables
+	# Validate Gemini & environment variables
 	gemini_api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
 	gemini_model = os.getenv("GOOGLE_GEMINI_MODEL")
+	data_dir = os.getenv("RAILWAY_DATA_DIRECTORY")
 
 	if not gemini_api_key:
 		app.state.logger.error("GOOGLE_GEMINI_API_KEY environment variable is not set.")
@@ -56,6 +57,9 @@ async def lifespan(app: FastAPI):
 	if not gemini_model:
 		app.state.logger.error("GOOGLE_GEMINI_MODEL environment variable is not set.")
 		raise RuntimeError("GOOGLE_GEMINI_MODEL environment variable is not set.")
+	if not data_dir:
+		app.state.logger.error("RAILWAY_DATA_DIRECTORY environment variable is not set.")
+		raise RuntimeError("RAILWAY_DATA_DIRECTORY environment variable is not set.")
 
 	# Gemini client
 	app.state.InstanceClient = genai.Client(api_key=gemini_api_key)

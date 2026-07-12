@@ -19,10 +19,18 @@ class MCL_WikiDocLoader():
 		self.CURRENT_FILE_PATH = os.path.abspath(__file__)
 		self.CURRENT_DIR = os.path.dirname(self.CURRENT_FILE_PATH)
 		self.ROOT_DIR = os.path.dirname(self.CURRENT_DIR)
+		self.PROJECT_ROOT = os.path.dirname(self.ROOT_DIR)
 
 		# Embeddings folder path
 		if path_embeddings is None:
-			self.PATH_EMBEDDINGS = os.path.join(self.ROOT_DIR, 'embeddings/')
+			data_dir = os.getenv("RAILWAY_DATA_DIRECTORY")
+			if not data_dir:
+				raise ValueError("RAILWAY_DATA_DIRECTORY environment variable is not set.")
+			if not os.path.isabs(data_dir):
+				data_path = os.path.join(self.PROJECT_ROOT, data_dir)
+			else:
+				data_path = data_dir
+			self.PATH_EMBEDDINGS = os.path.join(data_path, 'embeddings/')
 		else:
 			self.PATH_EMBEDDINGS = path_embeddings
 
