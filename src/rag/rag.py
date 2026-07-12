@@ -34,6 +34,21 @@ RAG CLASS
 This class will handle actually performing RAG prompting and response generation.
 '''
 
+def get_embedding_dim(client, model_name: str) -> int:
+	"""
+	Dynamically detects embedding dimension size by calling embed_content once.
+	"""
+	try:
+		response = client.models.embed_content(
+			model=model_name,
+			contents=["probe"]
+		)
+		if response.embeddings:
+			return len(response.embeddings[0].values)
+	except Exception:
+		pass
+	return 768
+
 class MCL_WikiRag():
 
 	# Class Constructor
@@ -57,6 +72,12 @@ class MCL_WikiRag():
 		if not model_name:
 			raise ValueError("GOOGLE_GEMINI_MODEL environment variable is not set.")
 		self.model_name: str = model_name
+
+		# Load Google Gemini embedding model name from environment
+		self.embedding_model_name: str = os.getenv('GOOGLE_EMBEDDING_MODEL', 'gemini-embedding-2')
+		# Dynamically determine embedding dimensionality
+		self.embedding_dim: int = get_embedding_dim(self.client, self.embedding_model_name)
+
 
 		# Load dynamic source-based scale factors
 		env_RAG_HP_SOURCESCALE_WIKI: str | None = os.getenv("RAG_HP_SOURCESCALE_WIKI")
@@ -118,9 +139,12 @@ class MCL_WikiRag():
 		
 		# Get embedding using API
 		response = self.client.models.embed_content(
-			model="text-embedding-001",
+			model=self.embedding_model_name,
 			contents=[query],
-			config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
+			config=types.EmbedContentConfig(
+				task_type="RETRIEVAL_QUERY",
+				output_dimensionality=self.embedding_dim
+			)
 		)
 		
 		# Return embedding as a numpy float32 vector
@@ -212,10 +236,14 @@ class MCL_WikiRag():
 		Answer:"""
 		
 		# Get the answer using the API
-		response = self.client.models.generate_content(
+		response = self.client.interactions.create(
 			model=self.model_name,
-			contents=prompt
+			input=prompt
 		)
 		
 		# Return the generated answer text
-		return response.text
+		if hasattr(response, 'output_text') and response.output_text:
+			return response.output_text
+		if hasattr(response, 'outputs') and response.outputs:
+			return response.outputs[-1].text
+		return None

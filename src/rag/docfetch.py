@@ -31,6 +31,7 @@ from google.genai import types
 # MCL Packages
 from mcl_common.logger import MCL_Logger
 from src.rag.document import RagDocument, DocumentSource
+from src.rag.rag import get_embedding_dim
 
 '''
 WIKI EMBEDDER CLASS
@@ -72,8 +73,13 @@ class MCL_WikiEmbedder():
 		# MCL Wiki URL
 		self.MCL_WIKI_API_URL = "https://labs-mc.com/w/api.php"
 
+		# Load Google Gemini embedding model name from environment
+		self.embedding_model_name: str = os.getenv('GOOGLE_EMBEDDING_MODEL', 'gemini-embedding-2')
+		# Dynamically determine embedding dimensionality
+		self.embedding_dim: int = get_embedding_dim(self.client, self.embedding_model_name)
+
 		# Make index and document list
-		self.index = faiss.IndexFlatL2(768)
+		self.index = faiss.IndexFlatL2(self.embedding_dim)
 		self.documents = []
 
 		# Log creation
@@ -213,9 +219,12 @@ class MCL_WikiEmbedder():
 		
 		# Make embedding request and return as numpy array
 		response = self.client.models.embed_content(
-			model="text-embedding-004",
+			model=self.embedding_model_name,
 			contents=chunks,
-			config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
+			config=types.EmbedContentConfig(
+				task_type="RETRIEVAL_DOCUMENT",
+				output_dimensionality=self.embedding_dim
+			)
 		)
 		if not response.embeddings:
 			return []
