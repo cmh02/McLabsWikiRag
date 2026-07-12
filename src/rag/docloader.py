@@ -46,7 +46,12 @@ class MCL_WikiDocLoader():
 	def loadIndexAndDocuments(self):
 
 		# Load the index and documents for later use
-		self.index = faiss.read_index(f"{self.PATH_EMBEDDINGS}wiki.index")
+		index_path = f"{self.PATH_EMBEDDINGS}wiki.index"
+		if os.path.exists(index_path):
+			self.index = faiss.read_index(index_path)
+		else:
+			self.logger.warning(f"wiki.index not found at {index_path}. FAISS index not loaded.")
+			self.index = None
 		
 		# Load documents from JSON
 		json_path = f"{self.PATH_EMBEDDINGS}wiki_docs.json"
@@ -57,7 +62,7 @@ class MCL_WikiDocLoader():
 		else:
 			self.logger.warning(f"wiki_docs.json not found at {json_path}")
 			self.documents = []
-		self.logger.info(f"Loaded index and {len(self.documents)} documents from disk")
+		self.logger.info(f"Loaded index and {len(self.documents)} documents from disk!")
 
 	# Perform nearest neighbors search in the FAISS index
 	def performIndexSearch(self, queryVector, k: int):
