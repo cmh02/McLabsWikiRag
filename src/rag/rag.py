@@ -101,16 +101,17 @@ class MCL_WikiRag():
 		current_date = datetime.date.today()
 
 		# Get top K*2 nearest neighbors for resorting
-		distances, indices = self.docLoader.index.search(queryVector.reshape(1, -1), topK * 2)  # type: ignore
+		distances, indices = self.docLoader.performIndexSearch(queryVector.reshape(1, -1), topK * 2)
 
 		# Sort results by type and date
 		for score, index in zip(distances[0], indices[0]):
 
 			# Get the document
-			doc = self.docLoader.documents[index]
+			doc = self.docLoader.getDocument(index)
 
 			# Modify score based on document type
 			if doc.get("source") == "helpQA":
+				
 				# Apply FAQ boost
 				score *= int(os.getenv('RAG_HP_FAQSCOREBOOST', 1.2))
 

@@ -35,9 +35,19 @@ class MCL_WikiDocLoader():
 
 	# Load the FAISS index and documents from disk
 	def loadIndexAndDocuments(self):
-		
+
 		# Load the index and documents for later use
 		self.index = faiss.read_index(f"{self.PATH_EMBEDDINGS}wiki.index")
 		with open(f"{self.PATH_EMBEDDINGS}wiki_docs.pkl", "rb") as f:
 			self.documents = pickle.load(f)
 		self.logger.info(f"Loaded index and {len(self.documents)} documents from disk")
+
+	# Perform nearest neighbors search in the FAISS index
+	def performIndexSearch(self, queryVector, k: int):
+		if self.index is None:
+			raise RuntimeError("FAISS index has not been loaded. Call loadIndexAndDocuments() first.")
+		return self.index.search(queryVector, k)
+
+	# Retrieve document metadata by index
+	def getDocument(self, index: int) -> dict:
+		return self.documents[index]
