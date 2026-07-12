@@ -122,12 +122,13 @@ After modifiers are applied, the documents are resorted in descending order of t
 
 ## 4. Generation & Guardrails
 
-The LLM generation pipeline leverages Google Gemini with detailed system rules and semantic translations specific to the server ecosystem.
+The LLM generation pipeline leverages Google Gemini with detailed system rules and semantic translations specific to the server ecosystem. The prompt embeds the context chunks and the user's question, applying the following strict guidelines:
 
-### Standard Q&A Pipeline
-Used for general queries (`queryPipeline`). Chunks are formatted as context, and sent with the user question to Gemini under the following guidelines:
-- **Medium Length**: Concise but detailed response.
-- **Strict Anti-Hallucination**: If the context is insufficient, Gemini is directed to answer strictly with *"I don't know"*.
+- **Strict Classification & Fallback ("UNANSWERABLE")**: 
+  - If the user query does not contain an actual question, inquiry, or request for information (e.g., greetings, statements, thank-yous), the model outputs exactly `UNANSWERABLE`.
+  - If the provided context does not contain enough information or if the answer is unknown, the model outputs exactly `UNANSWERABLE`.
+  - For support tickets, if the model returns `UNANSWERABLE`, the Help Manager skips appending an automated response, allowing human staff to handle the ticket.
+- **Medium Length**: The model is instructed to provide a medium-length answer with details while being concise.
 - **Conflict Resolution**: If multiple context chunks conflict, the most recent chunk is preferred.
 - **Terminology Translations**:
   - Never use the word "chemicals"; always refer to them as "chems".
@@ -135,11 +136,6 @@ Used for general queries (`queryPipeline`). Chunks are formatted as context, and
   - Translate "Company world" to "Underworld".
   - Ignore any context regarding "factions", `/f` commands, or the "raid world".
 
-### Support Ticket Classification ("UNANSWERABLE")
-Used for automated ticket answering (`queryTicketPipeline`). It implements additional guardrails:
-- **Greeting/Irrelevant Filter**: If the message is just a greeting (e.g., "hello"), statement, thank you, or contains no concrete request, the model returns exactly `UNANSWERABLE`.
-- **Context Sufficiency**: If the context doesn't have enough facts to answer, the model must output `UNANSWERABLE`.
-- If the model returns `UNANSWERABLE`, the Help Manager skips appending an automated response, letting staff handle the ticket.
 
 ---
 

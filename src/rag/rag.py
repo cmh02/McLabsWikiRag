@@ -69,45 +69,6 @@ class MCL_WikiRag():
 		# Return the answer and the top chunks used
 		return answer, topChunks
 
-	# Pipeline function for ticket response validation and answering
-	def queryTicketPipeline(self, question, topK=5) -> str | None:
-		
-		# Embed the query
-		queryVector = self._embedQuery(question)
-		
-		# Retrieve top-K chunks using same scaling rules
-		topChunks = self._retrieveChunks(queryVector, topK=topK)
-
-		# Build prompt with UNANSWERABLE classification instruction
-		contextText = "\n".join([f"{chunk['title']}: {chunk['content']}" for chunk in topChunks])
-		prompt = f"""
-		You are a helpful assistant for players on a minecraft server. 
-		Use the following wiki and Q&A context to answer the given message. 
-
-		CRITICAL INSTRUCTIONS:
-		1. Determine if the message contains an actual question, inquiry, or request for information. If it does not (e.g. it is a simple greeting, statement, thank you, or irrelevant message), respond with exactly "UNANSWERABLE".
-		2. If the provided context does not contain enough information to answer the question, or if you don't know the answer, respond with exactly "UNANSWERABLE".
-		3. Do not hallucinate. Do not try to answer using general knowledge that is not related to the minecraft server.
-		4. Prefer FAQ chunks if present. If multiple answers conflict, choose the most recent one.
-		5. Ignore any context that regards factions, the /f command, or raid world.
-		6. Never refer to 'chems' as 'chemicals', only use the word 'chems'.
-		7. Refer to the Town world as the Overworld and the Company world as the Underworld.
-
-		Context:
-		{contextText}
-
-		Message: {question}
-
-		Answer:"""
-
-		# Query model
-		response = self.client.models.generate_content(
-			model=self.model_name,
-			contents=prompt
-		)
-
-		return response.text
-
 	# Embed a user's query using Gemini
 	def _embedQuery(self, query) -> np.ndarray:
 		
@@ -180,17 +141,24 @@ class MCL_WikiRag():
 		contextText = "\n".join([f"{chunk['title']}: {chunk['content']}" for chunk in topChunks])
 		prompt = f"""
 		You are a helpful assistant for players on a minecraft server. 
-		\n- Use the following wiki and Q&A context to answer the given question. 
-		\n- Provide a medium-length answer with details while being concise.
-		\n- Do not hallucinate. If you don't know the answer, only say 'I don't know'.
-		\n- Prefer FAQ chunks if present. If multiple answers conflict, choose the most recent one.
-		\n- Ignore any context that regards factions, the /f command, or raid world.
-		\n- Never refer to 'chems' as 'chemicals', only use the word 'chems'.
-		\n- Refer to the Town world as the Overworld and the Company world as the Underworld.
-		\n\nContext: {contextText}
-		\n\nQuestion: {question}
-		\n\nAnswer:"
-		"""
+		Use the following wiki and Q&A context to answer the given question. 
+
+		CRITICAL INSTRUCTIONS:
+		1. Determine if the question contains an actual question, inquiry, or request for information. If it does not (e.g. it is a simple greeting, statement, thank you, or irrelevant message), respond with exactly "UNANSWERABLE".
+		2. If the provided context does not contain enough information to answer the question, or if you don't know the answer, respond with exactly "UNANSWERABLE".
+		3. Provide a medium-length answer with details while being concise.
+		4. Do not hallucinate. Do not try to answer using general knowledge that is not related to the minecraft server.
+		5. Prefer FAQ chunks if present. If multiple answers conflict, choose the most recent one.
+		6. Ignore any context that regards factions, the /f command, or raid world.
+		7. Never refer to 'chems' as 'chemicals', only use the word 'chems'.
+		8. Refer to the Town world as the Overworld and the Company world as the Underworld.
+
+		Context:
+		{contextText}
+
+		Question: {question}
+
+		Answer:"""
 		
 		# Get the answer using the API
 		response = self.client.models.generate_content(
