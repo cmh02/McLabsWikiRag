@@ -11,6 +11,7 @@ MODULE IMPORTS
 # System
 import os
 import datetime
+from typing import Dict
 
 # Vector Database
 import faiss
@@ -56,6 +57,42 @@ class MCL_WikiRag():
 		if not model_name:
 			raise ValueError("GOOGLE_GEMINI_MODEL environment variable is not set.")
 		self.model_name: str = model_name
+
+		# Load dynamic source-based scale factors
+		env_RAG_HP_SOURCESCALE_WIKI: str | None = os.getenv("RAG_HP_SOURCESCALE_WIKI")
+		if env_RAG_HP_SOURCESCALE_WIKI is None:
+			raise ValueError("RAG_HP_SOURCESCALE_WIKI environment variable is not set.")
+		env_RAG_HP_SOURCESCALE_WIKI_parsed: float | None = float(env_RAG_HP_SOURCESCALE_WIKI)
+		if env_RAG_HP_SOURCESCALE_WIKI_parsed is None:
+			raise ValueError("RAG_HP_SOURCESCALE_WIKI environment variable could not be parsed correctly.")
+		env_RAG_HP_SOURCESCALE_FAQ: str | None = os.getenv("RAG_HP_SOURCESCALE_FAQ")
+		if env_RAG_HP_SOURCESCALE_FAQ is None:
+			raise ValueError("RAG_HP_SOURCESCALE_FAQ environment variable is not set.")
+		env_RAG_HP_SOURCESCALE_FAQ_parsed: float | None = float(env_RAG_HP_SOURCESCALE_FAQ)
+		if env_RAG_HP_SOURCESCALE_FAQ_parsed is None:
+			raise ValueError("RAG_HP_SOURCESCALE_FAQ environment variable could not be parsed correctly.")
+		self.dynamicSourceScale: Dict[DocumentSource, float] = {
+			DocumentSource.WIKI: env_RAG_HP_SOURCESCALE_WIKI_parsed,
+			DocumentSource.HELP_QUESTION: env_RAG_HP_SOURCESCALE_FAQ_parsed
+		}
+
+		# Load dynamic time-based scale factors
+		env_RAG_HP_RECENCYHALFLIFE: str | None = os.getenv("RAG_HP_RECENCYHALFLIFE")
+		if env_RAG_HP_RECENCYHALFLIFE is None:
+			raise ValueError("RAG_HP_RECENCYHALFLIFE environment variable is not set.")
+		env_RAG_HP_RECENCYHALFLIFE_parsed: float | None = float(env_RAG_HP_RECENCYHALFLIFE)
+		if env_RAG_HP_RECENCYHALFLIFE_parsed is None:
+			raise ValueError("RAG_HP_RECENCYHALFLIFE environment variable could not be parsed correctly.")
+		env_RAG_HP_SEASONBOOST: str | None = os.getenv("RAG_HP_SEASONBOOST")
+		if env_RAG_HP_SEASONBOOST is None:
+			raise ValueError("RAG_HP_SEASONBOOST environment variable is not set.")
+		env_RAG_HP_SEASONBOOST_parsed: float | None = float(env_RAG_HP_SEASONBOOST)
+		if env_RAG_HP_SEASONBOOST_parsed is None:
+			raise ValueError("RAG_HP_SEASONBOOST environment variable could not be parsed correctly.")
+		self.dynamicTimeScale: Dict[str, float] = {
+			"recency": env_RAG_HP_RECENCYHALFLIFE_parsed,
+			"season": env_RAG_HP_SEASONBOOST_parsed
+		}
 
 		# Set up logger
 		self.logger = MCL_Logger.setup_logger("MCL_API_Logger")
@@ -108,33 +145,33 @@ class MCL_WikiRag():
 		for score, index in zip(distances[0], indices[0]):
 
 			# Get the document
-			doc = self.docLoader.getDocument(index)
+			doc: RagDocument | None = self.docLoader.getDocument(index)
+			if doc is None:
+				raise ValueError(f"An error occured while trying to retrieve document at index {index} from FAISS!")
 
 			# Apply raw weight from the document itself
 			score *= doc.scale
 
 			# Modify score based on document type
-			if doc.source == DocumentSource.HELP_QUESTION:
-				
-				# Apply FAQ boost
-				score *= float(os.getenv('RAG_HP_FAQSCOREBOOST', 1.2))
+			score *= self.dynamicSourceScale[doc.source]
 
-				# Apply time boosts if date is present
-				if doc.date is not None:
-					try:
-						# Document date boost, targeted at prioritizing most recent FAQs, with 50% being > 90 days
-						documentDate = datetime.date.fromtimestamp(doc.date)
-						documentAge = (current_date - documentDate).days
-						lam = np.log(2) / float(os.getenv("RAG_HP_RECENCYHALFLIFE", 90.0))
-						score *= np.exp(-lam * documentAge)
+			# Apply time boosts if date is present
+			if doc.date is not None:
+				try:
 
-						# Current season boost, targeted at prioritizing FAQs from the current season (since May 1st)
-						if documentDate >= datetime.date(current_date.year, 5, 1):
-							score *= float(os.getenv('RAG_HP_SEASONBOOST', 1.1))
+					# Apply recency boost, targeted at prioritizing most recent FAQs, with 50% being > 90 days
+					documentDate = datetime.date.fromtimestamp(doc.date)
+					documentAge = (current_date - documentDate).days
+					lam = np.log(2) / self.dynamicTimeScale["recency"]
+					score *= np.exp(-lam * documentAge)
 
-					except Exception:
-						# Incase of date parsing error, just ignore
-						pass  
+					# Current season boost, targeted at prioritizing FAQs from the current season (since May 1st)
+					if documentDate >= datetime.date(current_date.year, 5, 1):
+						score *= self.dynamicTimeScale["season"]
+
+				except Exception:
+					# Incase of date parsing error, just ignore
+					pass  
 
 			# Append the (possibly modified) score and document to results
 			results.append((score, doc))
