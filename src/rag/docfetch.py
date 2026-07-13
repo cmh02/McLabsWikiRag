@@ -195,6 +195,48 @@ class MCL_WikiEmbedder():
 			)
 		self.logger.info(f"Added {len(chunks)} help questions to the index and documents!")
 
+	# Function to load, embed, and index semantic cache questions
+	def fetchAndEmbedSemanticCache(self, raw_cache_filename: str = "semantic_cache_raw.json"):
+		
+		# Path to raw cache file
+		raw_cache_path = os.path.join(self.dataDirectory, raw_cache_filename)
+		if not os.path.exists(raw_cache_path):
+			raise FileNotFoundError(f"Semantic cache raw file not found at: {raw_cache_path}")
+
+		# Load raw Q&A pairs
+		with open(raw_cache_path, "r", encoding="utf-8") as f:
+			raw_data = json.load(f)
+
+		if not raw_data:
+			self.logger.warning(f"Semantic cache file {raw_cache_path} is empty. Skipping cache build.")
+			return
+
+		# Extract questions and answers
+		questions = [item["question"] for item in raw_data]
+
+		# Generate embeddings for the questions
+		self.logger.info(f"Generating embeddings for {len(questions)} semantic cache questions...")
+		embeddings = []
+		for i in range(0, len(questions), 100):
+			batch_questions = questions[i:i+100]
+			embeddings.extend(self.embedChunks(batch_questions))
+
+		# Add to FAISS index (using a separate index instance to avoid mixing with wiki)
+		cache_index = faiss.IndexFlatIP(self.embeddingDimension)
+		embeddingsMatrix = np.vstack(embeddings).astype('float32')
+		faiss.normalize_L2(embeddingsMatrix)
+		cache_index.add(embeddingsMatrix)  # type: ignore
+
+		# Save semantic cache index to disk
+		faiss.write_index(cache_index, f"{self.PATH_EMBEDDINGS}semantic_cache.index")
+
+		# Save semantic cache answers mapping to disk
+		answers_path = f"{self.PATH_EMBEDDINGS}semantic_cache_answers.json"
+		with open(answers_path, "w", encoding="utf-8") as f:
+			json.dump(raw_data, f, indent=2)
+
+		self.logger.info(f"Successfully built and saved semantic cache with {len(raw_data)} items!")
+
 	# Save the FAISS index and documents to disk
 	def saveIndexAndDocuments(self):
 		# Save the index and documents for later use

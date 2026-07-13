@@ -44,7 +44,8 @@ class MCL_WikiRag():
 		embeddingModelName: str,
 		embeddingDimension: int,
 		dynamicSourceScale: Dict[DocumentSource, float],
-		dynamicTimeScale: Dict[str, float]
+		dynamicTimeScale: Dict[str, float],
+		cacheThreshold: float
 	):
 
 		# Make sure required objects are passed in
@@ -62,6 +63,8 @@ class MCL_WikiRag():
 			raise ValueError("MCLabs RAG Object requires dynamic source scale dictionary to be provided!")
 		if (dynamicTimeScale is None):
 			raise ValueError("MCLabs RAG Object requires dynamic time scale dictionary to be provided!")
+		if (cacheThreshold is None):
+			raise ValueError("MCLabs RAG Object requires semantic cache threshold to be provided!")
 		self.client: genai.Client = client
 		self.docLoader: MCL_WikiDocLoader = docLoader
 		self.generationModelName: str = generationModelName
@@ -69,6 +72,7 @@ class MCL_WikiRag():
 		self.embeddingDimension: int = embeddingDimension
 		self.dynamicSourceScale: Dict[DocumentSource, float] = dynamicSourceScale
 		self.dynamicTimeScale: Dict[str, float] = dynamicTimeScale
+		self.cacheThreshold: float = cacheThreshold
 
 		# Set up logger
 		self.logger = MCL_Logger.setup_logger("MCL_API_Logger")
@@ -79,8 +83,34 @@ class MCL_WikiRag():
 		
 		# Embed the query
 		queryVector = self._embedQuery(question)
+
+		# Check semantic cache first if loaded
+		if self.docLoader.cache_index is not None and self.docLoader.cache_answers:
+			# Normalize the query vector for cosine similarity search
+			queryVectorNorm = queryVector.copy()
+			faiss.normalize_L2(queryVectorNorm.reshape(1, -1))
+
+			# Search cache index for the single nearest neighbor
+			distances, indices = self.docLoader.cache_index.search(queryVectorNorm.reshape(1, -1), 1)
+
+			if len(distances) > 0 and len(distances[0]) > 0:
+				score = distances[0][0]
+				idx = indices[0][0]
+				if idx != -1 and score >= self.cacheThreshold:
+					matched_item = self.docLoader.cache_answers[idx]
+					self.logger.info(f"Semantic cache hit! Score: {score:.4f} >= threshold: {self.cacheThreshold:.4f}")
+
+					# Return cached answer with a dummy RagDocument representing the cache hit
+					cache_doc = RagDocument(
+						title=f"Semantic Cache Hit (Score: {score:.4f})",
+						content=f"Question: {matched_item['question']}\nAnswer: {matched_item['answer']}",
+						source=DocumentSource.SEMANTIC_CACHE,
+						date=None,
+						scale=1.0
+					)
+					return matched_item["answer"], [cache_doc]
 		
-		# Retriev top-K chunks
+		# Retrieve top-K chunks
 		topChunks = self._retrieveChunks(queryVector, topK=topK)
 
 		# Generate the answer

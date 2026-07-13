@@ -44,16 +44,32 @@ graph TD
     subgraph Ingestion Phase (Prework Stage)
         W[MCL Wiki API] -->|Parse & Chunk| WC[Wiki Chunks]
         F[Help QA File/DB Dumps] -->|Parse & Map Date| FC[FAQ Chunks]
+        SC[semantic_cache_raw.json] -->|Q&A Pairs| SCC[Cache Questions]
+        
         WC -->|text-embedding-004| WE[Document Vectors]
         FC -->|text-embedding-004| FE[Document Vectors]
+        SCC -->|text-embedding-004| SCE[Cache Vectors]
+        
         WE & FE -->|normalize L2| FAISS[FAISS IndexFlatIP]
         FAISS -->|Save to disk| FAISSD[wiki.index]
         WC & FC -->|Serialize docs| JSON[wiki_docs.json]
+        
+        SCE -->|normalize L2| FAISSC[FAISS IndexFlatIP]
+        FAISSC -->|Save to disk| FAISSCd[semantic_cache.index]
+        SC -->|Serialize answers| JSONC[semantic_cache_answers.json]
     end
 
     subgraph Query / Runtime Phase (Serving Stage)
         U[User Query / Ticket Message] -->|text-embedding-001| QV[Query Vector]
-        QV -->|normalize L2| FAISSSearch[FAISS Search top 2*K]
+        QV -->|normalize L2| QVN[Normalized Query]
+        
+        QVN -->|Search k=1| FAISSCacheSearch[FAISS Semantic Cache Search]
+        FAISSCd --> FAISSCacheSearch
+        JSONC -->|Lookup Answers| FAISSCacheSearch
+        
+        FAISSCacheSearch -->|Score >= Threshold| MatchFound[Cache Hit: Return Pre-defined Answer]
+        FAISSCacheSearch -->|Score < Threshold| FAISSSearch[FAISS Wiki Search top 2*K]
+        
         FAISSD --> FAISSSearch
         JSON -->|Pydantic model load| DocLoader[DocLoader Memory]
         DocLoader --> FAISSSearch
@@ -179,8 +195,13 @@ The `MCL_WikiRag` class manages user queries, similarity searches, and custom sc
 
 ### Query Processing
 1. The incoming user query is embedded using Google Gemini's `text-embedding-001` (Task type: `RETRIEVAL_QUERY`).
-2. The vector is normalized with `faiss.normalize_L2`.
-3. A similarity search is performed on the FAISS index to retrieve the top `K * 2` nearest neighbors (giving buffer room for score modifiers).
+2. The query vector is normalized with `faiss.normalize_L2`.
+3. **Semantic Cache Lookup**:
+   - The query is matched against the `semantic_cache.index` (containing pre-defined questions) to find the closest match ($k=1$).
+   - If the similarity score is greater than or equal to `RAG_HP_SEMANTIC_CACHE_THRESHOLD`, a cache hit occurs.
+   - On a cache hit, the pre-defined answer is returned immediately, bypassing the remaining retrieval and generation stages.
+4. **Normal RAG Pipeline**:
+   - If no match is found in the semantic cache, a similarity search is performed on the main FAISS index (`wiki.index`) to retrieve the top `K * 2` nearest neighbors (giving room for score modifiers).
 
 ### Math-Based Scoring & Heuristics
 The raw similarity score (inner product) returned by `faiss.IndexFlatIP` is modified dynamically using environment-driven hyperparameters:
@@ -250,6 +271,7 @@ All parameters are loaded from environment variables. If any are missing or inva
 | `RAG_HP_SOURCESCALE_FAQ` | Float | Scaling multiplier applied to Help Question/FAQ chunks (Required). |
 | `RAG_HP_RECENCYHALFLIFE` | Float | Decay half-life in days for FAQs (Required). |
 | `RAG_HP_SEASONBOOST` | Float | Boost multiplier for current-season FAQs (since May 1st) (Required). |
+| `RAG_HP_SEMANTIC_CACHE_THRESHOLD` | Float | Minimum similarity score (0.0 to 1.0) required to consider a semantic cache query as matching (Required). |
 
 ---
 

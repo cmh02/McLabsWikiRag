@@ -69,7 +69,8 @@ async def lifespan(app: FastAPI):
 		embeddingModelName=settings.google_embedding_model,
 		embeddingDimension=settings.google_embedding_dimensions,
 		dynamicSourceScale=dynamic_source_scale,
-		dynamicTimeScale=dynamic_time_scale
+		dynamicTimeScale=dynamic_time_scale,
+		cacheThreshold=settings.rag_hp_semantic_cache_threshold
 	)
 
 	# Initialize Help Manager
