@@ -49,3 +49,7 @@ class MongoCollection(Enum):
 	PLAYERS = "players"
 	SYSTEM_STATUS = "system_status"
 	SERVER_STATUS = "server_status"
+
+class RagIndexType(Enum):
+	HEAVY = "heavy"
+	CACHE = "cache"
