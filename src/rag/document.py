@@ -17,6 +17,7 @@ class DocumentSource(str, Enum):
     """
     WIKI = "Wiki"
     HELP_QUESTION = "HelpQuestion"
+    SEMANTIC_CACHE = "SemanticCache"
 
 class RagDocument(BaseModel):
     """
