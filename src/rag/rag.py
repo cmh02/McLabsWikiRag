@@ -25,6 +25,7 @@ from google.genai import types
 
 # MCL Packages
 from mcl_common.logger import MCL_Logger
+from mcl_common.enum import RagIndexType
 from src.rag.docloader import MCL_WikiDocLoader
 from src.rag.document import RagDocument, DocumentSource
 
@@ -79,41 +80,32 @@ class MCL_WikiRag():
 		self.logger.info(f"New WikiRag instance created with model: {self.generationModelName}!")
 
 	# Full pipeline function to handle a user query
-	def queryPipeline(self, question, topK=5) -> tuple:
+	def queryPipeline(self, question, topK=5, checkSemanticCache: bool=True) -> tuple:
 		
 		# Embed the query
 		queryVector = self._embedQuery(question)
 
-		# Check semantic cache first if loaded
-		if self.docLoader.cache_index is not None and self.docLoader.cache_answers:
-			# Normalize the query vector for cosine similarity search
-			queryVectorNorm = queryVector.copy()
-			faiss.normalize_L2(queryVectorNorm.reshape(1, -1))
+		# Normalize the query vector for cosine similarity search
+		queryVectorNorm = queryVector.copy()
+		faiss.normalize_L2(queryVectorNorm.reshape(1, -1))
 
-			# Search cache index for the single nearest neighbor
-			distances, indices = self.docLoader.cache_index.search(queryVectorNorm.reshape(1, -1), 1)
-
+		# Search cache index for the single nearest neighbor
+		if checkSemanticCache:
+			distances, indices = self.docLoader.performIndexSearch(queryVectorNorm, k=1, indexType=RagIndexType.CACHE)
 			if len(distances) > 0 and len(distances[0]) > 0:
 				score = distances[0][0]
 				idx = indices[0][0]
-				if idx != -1 and score >= self.cacheThreshold:
-					matched_item = self.docLoader.cache_answers[idx]
-					self.logger.info(f"Semantic cache hit! Score: {score:.4f} >= threshold: {self.cacheThreshold:.4f}")
 
-					# Return cached answer with a dummy RagDocument representing the cache hit
-					cache_doc = RagDocument(
-						title=f"Semantic Cache Hit (Score: {score:.4f})",
-						content=f"Question: {matched_item['question']}\nAnswer: {matched_item['answer']}",
-						source=DocumentSource.SEMANTIC_CACHE,
-						date=None,
-						scale=1.0
-					)
-					return matched_item["answer"], [cache_doc]
+				# Only return if the closest match is above the config threshold
+				if idx != -1 and score >= self.cacheThreshold:
+					matchedDocument = self.docLoader.getDocument(idx, RagIndexType.CACHE)
+					self.logger.debug(f"Semantic cache hit! Score: {score:.4f} >= threshold: {self.cacheThreshold:.4f}")
+					return matchedDocument.content, [matchedDocument]
 		
-		# Retrieve top-K chunks
+		# Retrieve top-K chunks from the heavy FAISS index
 		topChunks = self._retrieveChunks(queryVector, topK=topK)
 
-		# Generate the answer
+		# Generate the answer using the retrieved chunks
 		answer = self._generateAnswer(question, topChunks)
 
 		# Return the answer and the top chunks used
@@ -148,13 +140,20 @@ class MCL_WikiRag():
 		current_date = datetime.date.today()
 
 		# Get top K*2 nearest neighbors for resorting
-		distances, indices = self.docLoader.performIndexSearch(queryVector.reshape(1, -1), topK * 2)
+		distances, indices = self.docLoader.performIndexSearch(
+			queryVector = queryVector.reshape(1, -1),
+			k = topK * 2,
+			indexType = RagIndexType.HEAVY
+		)
 
 		# Sort results by type and date
 		for score, index in zip(distances[0], indices[0]):
 
 			# Get the document
-			doc: RagDocument | None = self.docLoader.getDocument(index)
+			doc: RagDocument | None = self.docLoader.getDocument(
+				index=index,
+				indexType=RagIndexType.HEAVY
+			)
 			if doc is None:
 				raise ValueError(f"An error occured while trying to retrieve document at index {index} from FAISS!")
 

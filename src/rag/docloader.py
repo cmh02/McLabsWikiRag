@@ -61,7 +61,7 @@ class MCL_WikiDocLoader():
 		with open(self.PATH_DOCS_HEAVY, "r", encoding="utf-8") as f:
 			self.documents[RagIndexType.HEAVY] = [RagDocument.model_validate(doc) for doc in json.load(f)]
 		with open(self.PATH_DOCS_CACHE, "r", encoding="utf-8") as f:
-			self.documents[RagIndexType.CACHE] = json.load(f)
+			self.documents[RagIndexType.CACHE] = [RagDocument.model_validate(doc) for doc in json.load(f)]
 		self.logger.info(f"Loaded semantic cache index and {len(self.documents[RagIndexType.CACHE])} cached answers from disk!")
 		self.logger.info(f"Loaded heavy FAISS index and {len(self.documents[RagIndexType.HEAVY])} documents from disk!")
 

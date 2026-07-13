@@ -230,10 +230,22 @@ class MCL_WikiEmbedder():
 		# Save semantic cache index to disk
 		faiss.write_index(cache_index, f"{self.PATH_EMBEDDINGS}semantic_cache.index")
 
+		# Construct RagDocument objects for the cache entries
+		cache_documents = [
+			RagDocument(
+				title=item["question"],
+				content=item["answer"],
+				source=DocumentSource.SEMANTIC_CACHE,
+				date=None,
+				scale=1.0
+			)
+			for item in raw_data
+		]
+
 		# Save semantic cache answers mapping to disk
 		answers_path = f"{self.PATH_EMBEDDINGS}semantic_cache_answers.json"
 		with open(answers_path, "w", encoding="utf-8") as f:
-			json.dump(raw_data, f, indent=2)
+			json.dump([doc.model_dump() for doc in cache_documents], f, indent=2)
 
 		self.logger.info(f"Successfully built and saved semantic cache with {len(raw_data)} items!")
 
