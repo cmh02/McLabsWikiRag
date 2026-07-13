@@ -71,7 +71,7 @@ class MCL_WikiEmbedder():
 		self.MCL_WIKI_API_URL = "https://labs-mc.com/w/api.php"
 
 		# Make index and document list
-		self.index = faiss.IndexFlatL2(self.embeddingDimension)
+		self.index = faiss.IndexFlatIP(self.embeddingDimension)
 		self.documents = []
 
 		# Log creation

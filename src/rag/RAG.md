@@ -46,7 +46,7 @@ graph TD
         F[Help QA File/DB Dumps] -->|Parse & Map Date| FC[FAQ Chunks]
         WC -->|text-embedding-004| WE[Document Vectors]
         FC -->|text-embedding-004| FE[Document Vectors]
-        WE & FE -->|normalize L2| FAISS[FAISS IndexFlatL2]
+        WE & FE -->|normalize L2| FAISS[FAISS IndexFlatIP]
         FAISS -->|Save to disk| FAISSD[wiki.index]
         WC & FC -->|Serialize docs| JSON[wiki_docs.json]
     end
@@ -122,7 +122,7 @@ The [MCL_WikiEmbedder](file:///Users/chrishinkson/Programming/Personal%20Project
 ### Generating Vector Embeddings
 * **Embedding Model**: `text-embedding-004` (via the Google GenAI SDK).
 * **Batching**: Inputs are processed in batches (max 100 chunks per request) to comply with API rate limits.
-* **Normalization**: The embedding vectors are stacked and normalized using `faiss.normalize_L2` before being added to a `faiss.IndexFlatL2(768)` index.
+* **Normalization**: The embedding vectors are stacked and normalized using `faiss.normalize_L2` before being added to a `faiss.IndexFlatIP(768)` index. Since the vectors are L2-normalized, the inner product calculations act as exact cosine similarity.
 
 ### Adding a New Data Type
 To add a new data type (e.g., game manuals, announcements) to the prework stage:
@@ -183,7 +183,7 @@ The `MCL_WikiRag` class manages user queries, similarity searches, and custom sc
 3. A similarity search is performed on the FAISS index to retrieve the top `K * 2` nearest neighbors (giving buffer room for score modifiers).
 
 ### Math-Based Scoring & Heuristics
-The raw distance returned by `faiss.IndexFlatL2` is modified dynamically using environment-driven hyperparameters:
+The raw similarity score (inner product) returned by `faiss.IndexFlatIP` is modified dynamically using environment-driven hyperparameters:
 
 $$Score_{final} = Score_{raw} \times Scale_{doc} \times Scale_{source} \times Scale_{recency} \times Scale_{season}$$
 
@@ -213,7 +213,7 @@ $$Scale_{season} = RAG\_HP\_SEASONBOOST$$
 ### Resorting & Selection
 Once modifiers are applied, the results are sorted in **descending** order of their final modified score, and the top `K` chunks are selected as context for the LLM. 
 > [!NOTE]
-> Since the FAISS query returns squared L2 distances (where smaller values mean closer vector proximity), sorting in descending order of the final multiplied scores means that documents starting with larger raw distances or boosted by high multipliers will rank higher in the returned context.
+> Since the FAISS query returns inner product values (representing cosine similarity on our L2-normalized vectors), sorting in descending order of the final modified scores correctly ranks the most similar and highly-boosted documents at the top of the returned context.
 
 ---
 

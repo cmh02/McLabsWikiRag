@@ -29,7 +29,7 @@ class MCL_WikiDocLoader():
 		os.makedirs(self.PATH_EMBEDDINGS, exist_ok=True)
 
 		# Initialize placeholders for index and documents
-		self.index: faiss.IndexFlatL2 | None = None
+		self.index: faiss.IndexFlatIP | None = None
 		self.documents: List[RagDocument] = []
 
 		# Log creation
