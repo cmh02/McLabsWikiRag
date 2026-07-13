@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     rag_hp_sourcescale_faq: float = Field(default=1.0, alias="RAG_HP_SOURCESCALE_FAQ")
     rag_hp_recencyhalflife: float = Field(default=90.0, alias="RAG_HP_RECENCYHALFLIFE")
     rag_hp_seasonboost: float = Field(default=1.1, alias="RAG_HP_SEASONBOOST")
+    rag_hp_semantic_cache_threshold: float = Field(alias="RAG_HP_SEMANTIC_CACHE_THRESHOLD")
 
     # Relaying & Network Routing Settings
     domain_minecraft_websocket: str = Field(alias="DOMAIN_MINECRAFT_WEBSOCKET")
