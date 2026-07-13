@@ -332,8 +332,8 @@ class MCL_HelpManager():
 				return
 
 			self.logger.info(f"Running RAG query pipeline for ticket {ticketId}...")
-			# Query RAG ticket pipeline
-			answer = self.rag.queryTicketPipeline(messageContent)
+			# Query RAG query pipeline
+			answer, _ = self.rag.queryPipeline(messageContent)
 
 			if not answer:
 				self.logger.warning(f"RAG workflow generated empty answer for ticket {ticketId}. Skipping response.")
