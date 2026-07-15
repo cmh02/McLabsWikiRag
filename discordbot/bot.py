@@ -305,7 +305,12 @@ FASTAPI APP DEFINITION
 '''
 
 # Initialize FastAPI app
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+	lifespan=lifespan,
+	docs_url=None,
+	redoc_url=None,
+	openapi_url=None
+)
 app.add_middleware(SlowAPIMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
