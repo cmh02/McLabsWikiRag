@@ -31,20 +31,20 @@ class MCL_WikiDocLoader():
 			raise FileNotFoundError(f"Embeddings folder not found at {self.PATH_EMBEDDINGS}!")
 		self.PATH_INDEX_HEAVY: str = os.path.join(self.PATH_EMBEDDINGS, 'wiki.index')
 		if not os.path.exists(self.PATH_INDEX_HEAVY):
-			raise Warning(f"Heavy FAISS index not found at {self.PATH_INDEX_HEAVY}! Making blank placeholder file!")
+			Warning(f"Heavy FAISS index not found at {self.PATH_INDEX_HEAVY}! Making blank placeholder file!")
 			faiss.write_index(faiss.IndexFlatIP(768), self.PATH_INDEX_HEAVY)
 		self.PATH_INDEX_CACHE: str = os.path.join(self.PATH_EMBEDDINGS, 'semantic_cache.index')
 		if not os.path.exists(self.PATH_INDEX_CACHE):
-			raise Warning(f"Cache FAISS index not found at {self.PATH_INDEX_CACHE}! Making blank placeholder file!")
+			Warning(f"Cache FAISS index not found at {self.PATH_INDEX_CACHE}! Making blank placeholder file!")
 			faiss.write_index(faiss.IndexFlatIP(768), self.PATH_INDEX_CACHE)
 		self.PATH_DOCS_HEAVY: str = os.path.join(self.PATH_EMBEDDINGS, 'wiki_docs.json')
 		if not os.path.exists(self.PATH_DOCS_HEAVY):
-			raise Warning(f"Heavy Documents JSON not found at {self.PATH_DOCS_HEAVY}! Making blank placeholder file!")
+			Warning(f"Heavy Documents JSON not found at {self.PATH_DOCS_HEAVY}! Making blank placeholder file!")
 			with open(self.PATH_DOCS_HEAVY, "w", encoding="utf-8") as f:
 				json.dump([], f)
 		self.PATH_DOCS_CACHE: str = os.path.join(self.PATH_EMBEDDINGS, 'semantic_cache_answers.json')
 		if not os.path.exists(self.PATH_DOCS_CACHE):
-			raise Warning(f"Cache Documents JSON not found at {self.PATH_DOCS_CACHE}! Making blank placeholder file!")
+			Warning(f"Cache Documents JSON not found at {self.PATH_DOCS_CACHE}! Making blank placeholder file!")
 			with open(self.PATH_DOCS_CACHE, "w", encoding="utf-8") as f:
 				json.dump([], f)
 
