@@ -20,13 +20,26 @@ def socks_monkey_patch():
 		raise ValueError("RAILWAY_TAILSCALE_DOMAIN environment variable is not set.")
 	print(f"Applying Tailscale SOCKS5 proxy patch pointing to: {tailscaleProxyUrl}")
 	proxy = urlparse(tailscaleProxyUrl)
+	try:
+		addr_info = _socket.getaddrinfo(proxy.hostname, proxy.port, _socket.AF_UNSPEC, _socket.SOCK_STREAM)
+		resolved_proxy_ip = addr_info[0][4][0]
+		family = addr_info[0][0]
+		print(f"Resolved proxy hostname to: {resolved_proxy_ip}")
+	except Exception as e:
+		print(f"Failed resolving proxy address: {e}")
+		resolved_proxy_ip = proxy.hostname
 	socks.set_default_proxy(
 		socks.SOCKS5,
-		proxy.hostname,
+		str(resolved_proxy_ip),
 		proxy.port,
 		rdns=True
 	)
-	_socket.socket = socks.socksocket
+	class CustomSocksSocket(socks.socksocket):
+		def __init__(self, af=family, st=_socket.SOCK_STREAM, proto=0, *args, **kwargs):
+			if af == _socket.AF_INET and family == _socket.AF_INET6:
+				af = _socket.AF_INET6
+			super().__init__(af, st, proto, *args, **kwargs)
+	_socket.socket = CustomSocksSocket
 	if hasattr(_socket, 'SOCK_CLOEXEC'):
 		delattr(_socket, 'SOCK_CLOEXEC')
 
