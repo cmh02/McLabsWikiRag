@@ -5,11 +5,41 @@ Author: Chris Hinkson @cmh02
 '''
 
 '''
+SOCKS MONKEY PATCH
+'''
+
+import os
+import socks
+import socket as _socket
+from urllib.parse import urlparse
+
+# Define monkeypatch so we can use proxy for mongo
+def socks_monkey_patch():
+	tailscaleProxyUrl = os.getenv("RAILWAY_TAILSCALE_DOMAIN")
+	if not tailscaleProxyUrl:
+		raise ValueError("RAILWAY_TAILSCALE_DOMAIN environment variable is not set.")
+	print(f"Applying Tailscale SOCKS5 proxy patch pointing to: {tailscaleProxyUrl}")
+	proxy = urlparse(tailscaleProxyUrl)
+	socks.set_default_proxy(
+		socks.SOCKS5,
+		proxy.hostname,
+		proxy.port,
+		rdns=True
+	)
+	_socket.socket = socks.socksocket
+	if hasattr(_socket, 'SOCK_CLOEXEC'):
+		delattr(_socket, 'SOCK_CLOEXEC')
+
+# Execute the patch before any internal imports or mongo imports
+socks_monkey_patch()
+
+
+
+'''
 MODULE IMPORTS
 '''
 
 # System
-import os
 import uuid
 from contextlib import asynccontextmanager
 
