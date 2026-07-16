@@ -78,7 +78,8 @@ async def lifespan(app: FastAPI):
 
 	# Load the index and documents
 	app.state.InstanceWikiDocLoader = MCL_WikiDocLoader(
-		dataDirectory = settings.railway_data_directory
+		dataDirectory = settings.railway_data_directory,
+		embeddingDimension = settings.google_embedding_dimensions
 	)
 	app.state.InstanceWikiDocLoader.loadIndexAndDocuments()
 

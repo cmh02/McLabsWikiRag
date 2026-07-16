@@ -17,34 +17,36 @@ class MCL_WikiDocLoader():
 
 	# Class Constructor
 	def __init__(self, 
-		dataDirectory: str
+		dataDirectory: str,
+		embeddingDimension: int = 768
 	):
 
 		# Input Validation
 		if ((dataDirectory is None) or (dataDirectory.strip() == "")):
 			raise ValueError("MCLabs Wiki DocLoader requires data directory to be provided!")
 		self.dataDirectory: str = dataDirectory
+		self.embeddingDimension: int = embeddingDimension
 
 		# Validate paths
 		self.PATH_EMBEDDINGS = os.path.join(self.dataDirectory, 'embeddings/')
 		if not os.path.exists(self.PATH_EMBEDDINGS):
 			raise FileNotFoundError(f"Embeddings folder not found at {self.PATH_EMBEDDINGS}!")
 		self.PATH_INDEX_HEAVY: str = os.path.join(self.PATH_EMBEDDINGS, 'wiki.index')
-		if not os.path.exists(self.PATH_INDEX_HEAVY):
-			Warning(f"Heavy FAISS index not found at {self.PATH_INDEX_HEAVY}! Making blank placeholder file!")
-			faiss.write_index(faiss.IndexFlatIP(768), self.PATH_INDEX_HEAVY)
+		if not os.path.exists(self.PATH_INDEX_HEAVY) or os.path.getsize(self.PATH_INDEX_HEAVY) == 0:
+			Warning(f"Heavy FAISS index not found or empty at {self.PATH_INDEX_HEAVY}! Making blank placeholder file!")
+			faiss.write_index(faiss.IndexFlatIP(self.embeddingDimension), self.PATH_INDEX_HEAVY)
 		self.PATH_INDEX_CACHE: str = os.path.join(self.PATH_EMBEDDINGS, 'semantic_cache.index')
-		if not os.path.exists(self.PATH_INDEX_CACHE):
-			Warning(f"Cache FAISS index not found at {self.PATH_INDEX_CACHE}! Making blank placeholder file!")
-			faiss.write_index(faiss.IndexFlatIP(768), self.PATH_INDEX_CACHE)
+		if not os.path.exists(self.PATH_INDEX_CACHE) or os.path.getsize(self.PATH_INDEX_CACHE) == 0:
+			Warning(f"Cache FAISS index not found or empty at {self.PATH_INDEX_CACHE}! Making blank placeholder file!")
+			faiss.write_index(faiss.IndexFlatIP(self.embeddingDimension), self.PATH_INDEX_CACHE)
 		self.PATH_DOCS_HEAVY: str = os.path.join(self.PATH_EMBEDDINGS, 'wiki_docs.json')
-		if not os.path.exists(self.PATH_DOCS_HEAVY):
-			Warning(f"Heavy Documents JSON not found at {self.PATH_DOCS_HEAVY}! Making blank placeholder file!")
+		if not os.path.exists(self.PATH_DOCS_HEAVY) or os.path.getsize(self.PATH_DOCS_HEAVY) == 0:
+			Warning(f"Heavy Documents JSON not found or empty at {self.PATH_DOCS_HEAVY}! Making blank placeholder file!")
 			with open(self.PATH_DOCS_HEAVY, "w", encoding="utf-8") as f:
 				json.dump([], f)
 		self.PATH_DOCS_CACHE: str = os.path.join(self.PATH_EMBEDDINGS, 'semantic_cache_answers.json')
-		if not os.path.exists(self.PATH_DOCS_CACHE):
-			Warning(f"Cache Documents JSON not found at {self.PATH_DOCS_CACHE}! Making blank placeholder file!")
+		if not os.path.exists(self.PATH_DOCS_CACHE) or os.path.getsize(self.PATH_DOCS_CACHE) == 0:
+			Warning(f"Cache Documents JSON not found or empty at {self.PATH_DOCS_CACHE}! Making blank placeholder file!")
 			with open(self.PATH_DOCS_CACHE, "w", encoding="utf-8") as f:
 				json.dump([], f)
 
