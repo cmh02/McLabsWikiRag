@@ -27,7 +27,8 @@ class MCL_Logger():
 		formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - [%(module)s:%(lineno)d] - %(message)s')
 		console_handler.setFormatter(formatter)
 
-		# Add handler to logger
-		api_logger.addHandler(console_handler)
+		# Add handler to logger if not already configured
+		if not api_logger.handlers:
+			api_logger.addHandler(console_handler)
 
 		return api_logger
