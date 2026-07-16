@@ -15,20 +15,27 @@ from urllib.parse import urlparse
 
 # Define monkeypatch so we can use proxy for mongo
 def socks_monkey_patch():
-	tailscaleProxyUrl = os.getenv("RAILWAY_TAILSCALE_DOMAIN")
-	if not tailscaleProxyUrl:
-		raise ValueError("RAILWAY_TAILSCALE_DOMAIN environment variable is not set.")
-	print(f"Applying Tailscale SOCKS5 proxy patch pointing to: {tailscaleProxyUrl}")
-	proxy = urlparse(tailscaleProxyUrl)
-	socks.set_default_proxy(
-		socks.SOCKS5,
-		proxy.hostname,
-		proxy.port,
-		rdns=True
-	)
-	_socket.socket = socks.socksocket
-	if hasattr(_socket, 'SOCK_CLOEXEC'):
-		delattr(_socket, 'SOCK_CLOEXEC')
+    tailscaleProxyUrl = os.getenv("RAILWAY_TAILSCALE_DOMAIN")
+    if not tailscaleProxyUrl:
+        raise ValueError("RAILWAY_TAILSCALE_DOMAIN environment variable is not set.")
+    print(f"Applying Tailscale SOCKS5 proxy patch pointing to: {tailscaleProxyUrl}")
+    proxy = urlparse(tailscaleProxyUrl)
+    try:
+        addr_info = _socket.getaddrinfo(proxy.hostname, proxy.port, _socket.AF_UNSPEC, _socket.SOCK_STREAM)
+        resolved_proxy_ip = addr_info[0][4][0]
+        print(f"Resolved proxy hostname to: {resolved_proxy_ip}")
+    except Exception as e:
+        print(f"Failed resolving proxy address: {e}")
+        resolved_proxy_ip = proxy.hostname
+    socks.set_default_proxy(
+        socks.SOCKS5,
+        str(resolved_proxy_ip),
+        proxy.port,
+        rdns=True
+    )
+    _socket.socket = socks.socksocket
+    if hasattr(_socket, 'SOCK_CLOEXEC'):
+        delattr(_socket, 'SOCK_CLOEXEC')
 
 # Execute the patch before any internal imports or mongo imports
 socks_monkey_patch()
