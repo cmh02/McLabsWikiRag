@@ -43,8 +43,10 @@ def socks_monkey_patch():
 
 	# Build a wrapper to allow certain domains to bypass proxy
 	BYPASS_DOMAINS = {
-		os.getenv("RAILWAY_DISCORD_DOMAIN"),
-		os.getenv("RAILWAY_API_DOMAIN")
+		domain for domain in (
+			os.getenv("RAILWAY_DISCORD_DOMAIN"),
+			os.getenv("RAILWAY_API_DOMAIN")
+		) if domain
 	}
 	class CustomSocksSocket(socks.socksocket):
 		def __init__(self, family=_socket.AF_INET, type=_socket.SOCK_STREAM, proto=0, *args, **kwargs):
@@ -52,18 +54,18 @@ def socks_monkey_patch():
 				family = _socket.AF_INET6
 			super().__init__(family, type, proto, *args, **kwargs)
 
-		def connect(self, dest_pair):
+		def connect(self, dest_pair: tuple[str, int], catch_errors: bool | None = None) -> None:
 			host = dest_pair[0] if dest_pair else ""
 			
 			# Check if the destination host matches any of our bypass targets
-			if any(domain in str(host) for domain in BYPASS_DOMAINS):
+			if any(domain in host for domain in BYPASS_DOMAINS):
 
 				# Strip proxy for this request to route logic to real internet
-				self.proxy = None 
+				self.set_proxy()
 				return original_socket_connect(self, dest_pair)
 			
 			# Otherwise, use normal SOCKS routing (e.g. for MongoDB)
-			return super().connect(dest_pair)
+			return super().connect(dest_pair, catch_errors=catch_errors)
 
 	_socket.socket = CustomSocksSocket
 	if hasattr(_socket, 'SOCK_CLOEXEC'):
