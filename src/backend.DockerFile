@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies needed for Tailscale and general operations
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends curl ca-certificates iptables ip6tables && \
+    apt-get install -y --no-install-recommends curl ca-certificates iptables && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy Tailscale binaries from the official Tailscale image (Excellent approach!)
