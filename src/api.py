@@ -20,10 +20,13 @@ def socks_monkey_patch():
 		raise ValueError("RAILWAY_TAILSCALE_DOMAIN environment variable is not set.")
 	print(f"Applying Tailscale SOCKS5 proxy patch pointing to: {tailscaleProxyUrl}")
 	proxy = urlparse(tailscaleProxyUrl)
+	
+	# Resolve proxy address
+	family = _socket.AF_INET
 	try:
 		addr_info = _socket.getaddrinfo(proxy.hostname, proxy.port, _socket.AF_UNSPEC, _socket.SOCK_STREAM)
 		resolved_proxy_ip = addr_info[0][4][0]
-		family = addr_info[0][0]
+		resolved_proxy_family = addr_info[0][0]
 		print(f"Resolved proxy hostname to: {resolved_proxy_ip}")
 	except Exception as e:
 		print(f"Failed resolving proxy address: {e}")
@@ -34,11 +37,34 @@ def socks_monkey_patch():
 		proxy.port,
 		rdns=True
 	)
+
+	# Preserve a clean reference to the true original socket connect method
+	original_socket_connect = _socket.socket.connect
+
+	# Build a wrapper to allow certain domains to bypass proxy
+	BYPASS_DOMAINS = {
+		os.getenv("RAILWAY_DISCORD_DOMAIN"),
+		os.getenv("RAILWAY_API_DOMAIN")
+	}
 	class CustomSocksSocket(socks.socksocket):
-		def __init__(self, af=family, st=_socket.SOCK_STREAM, proto=0, *args, **kwargs):
-			if af == _socket.AF_INET and family == _socket.AF_INET6:
-				af = _socket.AF_INET6
-			super().__init__(af, st, proto, *args, **kwargs)
+		def __init__(self, family=_socket.AF_INET, type=_socket.SOCK_STREAM, proto=0, *args, **kwargs):
+			if family == _socket.AF_INET and resolved_proxy_family == _socket.AF_INET6:
+				family = _socket.AF_INET6
+			super().__init__(family, type, proto, *args, **kwargs)
+
+		def connect(self, dest_pair):
+			host = dest_pair[0] if dest_pair else ""
+			
+			# Check if the destination host matches any of our bypass targets
+			if any(domain in str(host) for domain in BYPASS_DOMAINS):
+
+				# Strip proxy for this request to route logic to real internet
+				self.proxy = None 
+				return original_socket_connect(self, dest_pair)
+			
+			# Otherwise, use normal SOCKS routing (e.g. for MongoDB)
+			return super().connect(dest_pair)
+
 	_socket.socket = CustomSocksSocket
 	if hasattr(_socket, 'SOCK_CLOEXEC'):
 		delattr(_socket, 'SOCK_CLOEXEC')
