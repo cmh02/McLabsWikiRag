@@ -1,7 +1,9 @@
 #!/bin/sh
 
+# Ensure Python flushes logs instantly so you can see them in Railway
+export PYTHONUNBUFFERED=1
+
 # Start tailscaled in the background with userspace networking.
-# We also setup SOCKS5 and HTTP proxies on port 1055.
 echo "Starting tailscaled..."
 tailscaled \
   --tun=userspace-networking \
@@ -23,11 +25,11 @@ else
     echo "Warning: TAILSCALE_AUTHKEY / TS_AUTHKEY is not set. Skipping tailscale authentication."
 fi
 
-# Set proxy environment variables so the app can route traffic through Tailscale
-export HTTP_PROXY="http://localhost:1055"
-export HTTPS_PROXY="http://localhost:1055"
-export ALL_PROXY="socks5://localhost:1055"
+# -------------------------------------------------------------------------
+# CRITICAL FIX: We removed global HTTP_PROXY/HTTPS_PROXY/ALL_PROXY exports.
+# This prevents your Discord bot traffic from getting hijacked by Tailscale.
+# -------------------------------------------------------------------------
 
-# Run the backend API start command
+# Run the backend API start command with explicitly enabled log capture
 echo "Starting backend application!"
-exec uvicorn src.api:app --host :: --port "${PORT:-5000}"
+exec uvicorn src.api:app --host :: --port "${PORT:-5000}" --log-level info --workers 1

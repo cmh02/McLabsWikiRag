@@ -1,6 +1,9 @@
 # Use a lightweight python image
 FROM python:3.11-slim
 
+# Force Python to flush all print/logging statements instantly to the console
+ENV PYTHONUNBUFFERED=1
+
 # Ensure we don't get stuck on interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
