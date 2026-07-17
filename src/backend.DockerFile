@@ -2,12 +2,9 @@
 FROM python:3.11-slim
 
 # Install system dependencies needed for Tailscale and general operations
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    iptables \
-    ip6tables \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends curl ca-certificates iptables ip6tables && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy Tailscale binaries from the official Tailscale image
 COPY --from=tailscale/tailscale:stable /usr/local/bin/tailscaled /usr/local/bin/tailscaled
