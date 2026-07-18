@@ -5,7 +5,10 @@ Author: Chris Hinkson @cmh02
 '''
 
 '''
-MODULE IMPORTS
+TAILSCALE MONKEYPATCH
+
+This monkeypatch forces any requests going to the mongodb host
+to be passed through the mclabs tailscale ssh proxy.
 '''
 
 import os
@@ -49,8 +52,12 @@ def target_only_mongodb_proxy_patch():
 target_only_mongodb_proxy_patch()
 
 
+
+'''
+MODULE IMPORTS
+'''
+
 # System
-import os
 import uuid
 from contextlib import asynccontextmanager
 
