@@ -55,7 +55,7 @@ class MCL_OutboundRelay:
 			logger.error("RAILWAY_API_DOMAIN environment variable is not set.")
 			return False
 
-		url = f"https://{self.apiUrl}{endpoint}"
+		url = f"http://{self.apiUrl}{endpoint}"
 		headers = {
 			"Content-Type": "application/json",
 			"Authorization": self.token or "",

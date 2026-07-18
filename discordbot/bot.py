@@ -110,7 +110,7 @@ class MclBot(commands.Bot):
 			self.logger.error("ensureApiAwake is missing required environment variables.")
 			return False
 
-		url = f"https://{domain_backend}/wakeup"
+		url = f"http://{domain_backend}/wakeup"
 		headers = {
 			"Authorization": token,
 			"User-Agent": user_agent
