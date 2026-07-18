@@ -30,16 +30,20 @@ def target_only_mongodb_proxy_patch():
         except Exception:
             pass
 
+    # Save reference to original socket class to bypass PySocks for standard traffic
+    _original_socket = _socket.socket
+
     class CustomSocksSocket(socks.socksocket):
         def connect(self, dest_pair, *args, **kwargs):
             host = dest_pair[0] if dest_pair else ""
             if host and host in MONGO_TARGET_IPS:
                 # Set up SOCKS5 proxy specifically for MongoDB
                 self.set_proxy(socks.SOCKS5, "127.0.0.1", PROXY_PORT)
+                return super().connect(dest_pair, *args, **kwargs)
             else:
-                # Bypass SOCKS5 proxy for all other destinations
-                self.set_proxy()
-            return super().connect(dest_pair, *args, **kwargs)
+                # Bypass PySocks entirely for non-MongoDB traffic to support IPv6
+                self.proxy_peername = dest_pair
+                return _original_socket.connect(self, dest_pair, *args, **kwargs)
 
     # Apply the patch specifically to the socket class
     _socket.socket = CustomSocksSocket
