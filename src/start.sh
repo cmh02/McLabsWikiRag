@@ -32,4 +32,4 @@ fi
 
 # Run the backend API start command with explicitly enabled log capture
 echo "Starting backend application!"
-exec uvicorn src.api:app --host "" --port ${PORT:-3000} --log-level info --workers 1
+exec uvicorn src.api:app --host "" --port ${RAILWAY_API_PORT:-${PORT:-3000}} --log-level info --workers 1
