@@ -79,7 +79,7 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 		try:
 			# 1. Create ticket on backend
 			async with bot.session.post(
-				f"https://{domain_backend}/create_ticket",
+				f"http://{domain_backend}/create_ticket",
 				headers=headers,
 				json={
 					"type": "SUPPORT",
@@ -100,7 +100,7 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 
 			# 2. Append the user's question to the ticket conversation
 			async with bot.session.post(
-				f"https://{domain_backend}/append_ticket_message",
+				f"http://{domain_backend}/append_ticket_message",
 				headers=headers,
 				json={
 					"ticketId": ticket_id,
