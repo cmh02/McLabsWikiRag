@@ -31,5 +31,8 @@ COPY . .
 COPY discordbot/start.sh /start.sh
 RUN chmod +x /start.sh
 
+# Expose the application port
+EXPOSE 3000
+
 # Set entrypoint to the startup script at the root level
 CMD ["/start.sh"]
