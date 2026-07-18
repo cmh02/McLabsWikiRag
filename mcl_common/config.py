@@ -51,5 +51,8 @@ class Settings(BaseSettings):
     user_agent_backend: str = Field(alias="USER_AGENT_BACKEND")
     user_agent_discordbot: str = Field(alias="USER_AGENT_DISCORDBOT")
 
+    # AI Feature Toggle
+    config_ai: bool = Field(default=True, alias="CONFIG_AI")
+
 # Global settings instance
 settings = Settings()

@@ -84,40 +84,44 @@ async def lifespan(app: FastAPI):
 	# Setup logging
 	app.state.logger = MCL_Logger.setup_logger("MCL_API_Logger")
 
-	# Gemini client
-	app.state.InstanceClient = genai.Client(api_key=settings.google_gemini_api_key)
-
-	# Load the index and documents
-	app.state.InstanceWikiDocLoader = MCL_WikiDocLoader(
-		dataDirectory = settings.railway_data_directory,
-		embeddingDimension = settings.google_embedding_dimensions
-	)
-	app.state.InstanceWikiDocLoader.loadIndexAndDocuments()
-
-	# RAG instance
-	dynamic_source_scale = {
-		DocumentSource.WIKI: settings.rag_hp_sourcescale_wiki,
-		DocumentSource.HELP_QUESTION: settings.rag_hp_sourcescale_faq
-	}
-	dynamic_time_scale = {
-		"recency": settings.rag_hp_recencyhalflife,
-		"season": settings.rag_hp_seasonboost
-	}
-
-	app.state.InstanceRag = MCL_WikiRag(
-		client=app.state.InstanceClient,
-		docLoader=app.state.InstanceWikiDocLoader,
-		generationModelName=settings.google_gemini_model,
-		embeddingModelName=settings.google_embedding_model,
-		embeddingDimension=settings.google_embedding_dimensions,
-		dynamicSourceScale=dynamic_source_scale,
-		dynamicTimeScale=dynamic_time_scale,
-		cacheThreshold=settings.rag_hp_semantic_cache_threshold
-	)
-
 	# Initialize Help Manager
 	MCL_HelpManager().initialize()
-	MCL_HelpManager().set_rag_instance(app.state.InstanceRag)
+
+	if settings.config_ai:
+		# Gemini client
+		app.state.InstanceClient = genai.Client(api_key=settings.google_gemini_api_key)
+
+		# Load the index and documents
+		app.state.InstanceWikiDocLoader = MCL_WikiDocLoader(
+			dataDirectory = settings.railway_data_directory,
+			embeddingDimension = settings.google_embedding_dimensions
+		)
+		app.state.InstanceWikiDocLoader.loadIndexAndDocuments()
+
+		# RAG instance
+		dynamic_source_scale = {
+			DocumentSource.WIKI: settings.rag_hp_sourcescale_wiki,
+			DocumentSource.HELP_QUESTION: settings.rag_hp_sourcescale_faq
+		}
+		dynamic_time_scale = {
+			"recency": settings.rag_hp_recencyhalflife,
+			"season": settings.rag_hp_seasonboost
+		}
+
+		app.state.InstanceRag = MCL_WikiRag(
+			client=app.state.InstanceClient,
+			docLoader=app.state.InstanceWikiDocLoader,
+			generationModelName=settings.google_gemini_model,
+			embeddingModelName=settings.google_embedding_model,
+			embeddingDimension=settings.google_embedding_dimensions,
+			dynamicSourceScale=dynamic_source_scale,
+			dynamicTimeScale=dynamic_time_scale,
+			cacheThreshold=settings.rag_hp_semantic_cache_threshold
+		)
+		MCL_HelpManager().set_rag_instance(app.state.InstanceRag)
+		app.state.logger.info("AI feature enabled: Gemini RAG client initialized.")
+	else:
+		app.state.logger.info("AI feature disabled: Skipping Gemini RAG client initialization.")
 
 	# Initialize Mongo Manager
 	MCL_MongoManager().initialize(logger=app.state.logger)

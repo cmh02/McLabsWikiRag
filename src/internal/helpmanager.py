@@ -20,6 +20,7 @@ from fastapi.encoders import jsonable_encoder
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import BackgroundTasks
 
+from mcl_common.config import settings
 from src.network.relay import MCL_OutboundRelay
 from mcl_common.mongo import MCL_MongoManager
 from mcl_common.enum import TicketType, TicketStatus, TicketFeedback, TicketAction
@@ -300,7 +301,7 @@ class MCL_HelpManager():
 		)
 
 		# Asynchronous RAG + AI workflow execution check
-		if backgroundTasks and self.rag:
+		if settings.config_ai and backgroundTasks and self.rag:
 			# Validate that the sender of the message is the ticket creator
 			is_creator = False
 			if message.sender.minecraftUUID and message.sender.minecraftUUID == ticket.playerInfo.minecraftUUID:
