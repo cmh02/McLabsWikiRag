@@ -9,33 +9,37 @@ MODULE IMPORTS
 '''
 
 import os
-import os
 import socket as _socket
 import socks
 
 def target_only_mongodb_proxy_patch():
     # Define the exact MongoDB Tailscale target IP
-    MONGO_TARGET_IP = os.getenv("TAILSCALE_DOMAIN_DEDI")
+    MONGO_TARGET = os.getenv("TAILSCALE_DOMAIN_DEDI")
     PROXY_PORT = 1055
 
-    # Keep a reference to the true, untouched original socket connect method
-    original_connect = _socket.socket.connect
+    # Resolve MONGO_TARGET to all associated IPs to handle hostname vs IP transparently
+    MONGO_TARGET_IPS = {MONGO_TARGET} if MONGO_TARGET else set()
+    if MONGO_TARGET:
+        try:
+            addr_info = _socket.getaddrinfo(MONGO_TARGET, None)
+            for item in addr_info:
+                MONGO_TARGET_IPS.add(str(item[4][0]))
+        except Exception:
+            pass
 
-    def custom_connect(self, dest_pair):
-        # dest_pair is a tuple: (host/ip, port)
-        host = dest_pair[0] if dest_pair else ""
-        
-        # ONLY apply the SOCKS5 proxy rules if we are explicitly connecting to the Mongo IP
-        if host == MONGO_TARGET_IP:
-            # Set up the proxy properties for this individual socket instance dynamically
-            self.proxy = (socks.SOCKS5, "127.0.0.1", PROXY_PORT, True, None, None)
-            return socks.socksocket.connect(self, dest_pair)
-        
-        # For ALL other traffic (Discord, HTTP, local Railway services), bypass the proxy entirely
-        return original_connect(self, dest_pair)
+    class CustomSocksSocket(socks.socksocket):
+        def connect(self, dest_pair, *args, **kwargs):
+            host = dest_pair[0] if dest_pair else ""
+            if host and host in MONGO_TARGET_IPS:
+                # Set up SOCKS5 proxy specifically for MongoDB
+                self.set_proxy(socks.SOCKS5, "127.0.0.1", PROXY_PORT)
+            else:
+                # Bypass SOCKS5 proxy for all other destinations
+                self.set_proxy()
+            return super().connect(dest_pair, *args, **kwargs)
 
-    # Apply the patch specifically to the socket connect function
-    _socket.socket.connect = custom_connect
+    # Apply the patch specifically to the socket class
+    _socket.socket = CustomSocksSocket
 
     # Crucial for PyMongo: clean up type flags to prevent cryptic SSL socket errors
     if hasattr(_socket, 'SOCK_CLOEXEC'):
