@@ -32,4 +32,4 @@ fi
 
 # Run the discord bot start command with explicitly enabled log capture
 echo "Starting discord bot application!"
-exec uvicorn discordbot.bot:app --host :: --port "${PORT:-8000}" --log-level info --workers 1
+exec uvicorn discordbot.bot:app --host "" --port ${PORT:-3000} --log-level info --workers 1
