@@ -67,9 +67,9 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 		token = os.getenv("API_TOKEN")
 		if not token:
 			raise EnvironmentError("API_TOKEN environment variable is not set.")
-		user_agent = os.getenv("USER_AGENT_DISCORD_BOT")
+		user_agent = os.getenv("USER_AGENT_DISCORDBOT")
 		if not user_agent:
-			raise EnvironmentError("USER_AGENT_DISCORD_BOT environment variable is not set.")
+			raise EnvironmentError("USER_AGENT_DISCORDBOT environment variable is not set.")
 		headers = {
 			"Content-Type": "application/json",
 			"Authorization": token,

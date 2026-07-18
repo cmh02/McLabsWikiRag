@@ -64,7 +64,7 @@ The following environment variables are required and validated during the bot st
 *   `DISCORD_ADMIN_CHANNEL_ID`: Channel ID (int) where startup, shutdown, and error alerts are sent.
 *   `API_TOKEN`: Secret token used to authenticate outgoing and incoming API headers.
 *   `RAILWAY_API_DOMAIN`: The domain address of the backend RAG/Wiki API service.
-*   `USER_AGENT_DISCORD_BOT`: The user agent string sent with requests to the backend.
+*   `USER_AGENT_DISCORDBOT`: The user agent string sent with requests to the backend.
 
 ### API Endpoints
 The FastAPI router exposes endpoints mapped to `/` for the backend to notify the bot:

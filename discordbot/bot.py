@@ -100,7 +100,7 @@ class MclBot(commands.Bot):
 		'''
 		domain_backend = os.getenv("RAILWAY_API_DOMAIN")
 		token = os.getenv("API_TOKEN")
-		user_agent = os.getenv("USER_AGENT_DISCORD_BOT")
+		user_agent = os.getenv("USER_AGENT_DISCORDBOT")
 		
 		if not domain_backend or not token or not user_agent:
 			self.logger.error("ensureApiAwake is missing required environment variables.")

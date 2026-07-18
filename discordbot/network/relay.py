@@ -41,9 +41,9 @@ class MCL_OutboundRelay:
 		self.apiUrl = os.getenv("RAILWAY_API_DOMAIN")
 		if self.apiUrl is None:
 			raise ValueError("RAILWAY_API_DOMAIN environment variable is not set.")
-		self.userAgent = os.getenv("USER-AGENT-DISCORD-BOT")
+		self.userAgent = os.getenv("USER_AGENT_DISCORDBOT")
 		if self.userAgent is None:
-			raise ValueError("USER-AGENT-DISCORD-BOT environment variable is not set.")
+			raise ValueError("USER_AGENT_DISCORDBOT environment variable is not set.")
 
 		logger.info("Initialized MCL Outbound Relay for Discord Bot.")
 
