@@ -17,10 +17,10 @@ sleep 2
 # Authenticate with Tailscale if an auth key is provided
 if [ -n "$TAILSCALE_AUTHKEY" ]; then
     echo "Authenticating Tailscale with TAILSCALE_AUTHKEY..."
-    tailscale up --authkey="$TAILSCALE_AUTHKEY" --hostname="${TAILSCALE_HOSTNAME:-mclabs-wiki-gpt}"
+    tailscale up --authkey="$TAILSCALE_AUTHKEY" --hostname="${TAILSCALE_HOSTNAME_BACKEND:-mclabs-wiki-gpt}"
 elif [ -n "$TS_AUTHKEY" ]; then
     echo "Authenticating Tailscale with TS_AUTHKEY..."
-    tailscale up --authkey="$TS_AUTHKEY" --hostname="${TAILSCALE_HOSTNAME:-mclabs-wiki-gpt}"
+    tailscale up --authkey="$TS_AUTHKEY" --hostname="${TAILSCALE_HOSTNAME_BACKEND:-mclabs-wiki-gpt}"
 else
     echo "Warning: TAILSCALE_AUTHKEY / TS_AUTHKEY is not set. Skipping tailscale authentication."
 fi
