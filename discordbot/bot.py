@@ -313,7 +313,7 @@ app = FastAPI(
 	openapi_url=None
 )
 app.add_middleware(SlowAPIMiddleware)
-app.add_middleware(RequestLoggingMiddleware)
+# app.add_middleware(RequestLoggingMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.include_router(InternalEndpointsRouter)
