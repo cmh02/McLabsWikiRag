@@ -32,7 +32,13 @@ Creation of the API router for all endpoints.
 '''
 router: APIRouter = MclRouter.getNewRouter()
 
-# Simple health check at root level required by network
+
+
+'''
+# HEALTH CHECK ENDPOINT
+
+This endpoint is a simple health check at the root level required by the network.
+'''
 @router.get("/")
 @limiter.limit("50/minute")
 async def health_check(request: Request):
@@ -149,6 +155,20 @@ def create_ticket(request: Request, body: CreateTicketSchema, backgroundTasks: B
 		}
 	)
 
+
+
+'''
+# RESOLVE PLAYER ENDPOINT
+
+This endpoint resolves and syncs player information synchronously.
+
+## Request Headers (via router)
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
+- "playerInfo": The identification details of the player to resolve.
+'''
 class ResolvePlayerSchema(BaseModel):
 	'''
 	# ResolvePlayerSchema
@@ -197,6 +217,21 @@ async def resolve_player(request: Request, body: ResolvePlayerSchema):
 		}
 	)
 
+
+
+'''
+# UPDATE TICKET THREAD ENDPOINT
+
+This endpoint updates a ticket with its linked Discord thread ID.
+
+## Request Headers (via router)
+- 'Authorization': API token for authentication
+- 'User-Agent': User agent string to identify discord versus minecraft requests
+
+## JSON Body Parameters
+- "ticketId": The ID of the ticket to update.
+- "threadId": The Discord thread ID to link to the ticket.
+'''
 class UpdateTicketThreadSchema(BaseModel):
 	'''
 	# UpdateTicketThreadSchema
