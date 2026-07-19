@@ -131,6 +131,7 @@ FASTAPI APP DEFINITION
 # Initialize FastAPI app
 app = FastAPI(
 	lifespan=lifespan,
+	debug=True,
 	docs_url=None,
 	redoc_url=None,
 	openapi_url=None
