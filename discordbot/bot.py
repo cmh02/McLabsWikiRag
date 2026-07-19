@@ -3,60 +3,6 @@ MCLabs Wiki GPT - Discord Bot
 
 Author: Chris Hinkson @cmh02
 '''
-
-'''
-TAILSCALE MONKEYPATCH
-
-This monkeypatch forces any requests going to the mongodb host
-to be passed through the mclabs tailscale ssh proxy.
-'''
-
-import os
-import socket as _socket
-import socks
-
-def target_only_mongodb_proxy_patch():
-    # Define the exact MongoDB Tailscale target IP
-    MONGO_TARGET = os.getenv("TAILSCALE_DOMAIN_DEDI")
-    PROXY_PORT = 1055
-
-    # Resolve MONGO_TARGET to all associated IPs to handle hostname vs IP transparently
-    MONGO_TARGET_IPS = {MONGO_TARGET} if MONGO_TARGET else set()
-    if MONGO_TARGET:
-        try:
-            addr_info = _socket.getaddrinfo(MONGO_TARGET, None)
-            for item in addr_info:
-                MONGO_TARGET_IPS.add(str(item[4][0]))
-        except Exception:
-            pass
-
-    # Save reference to original socket class to bypass PySocks for standard traffic
-    _original_socket = _socket.socket
-
-    class CustomSocksSocket(socks.socksocket):
-        def connect(self, dest_pair, *args, **kwargs):
-            host = dest_pair[0] if dest_pair else ""
-            if host and host in MONGO_TARGET_IPS:
-                # Set up SOCKS5 proxy specifically for MongoDB
-                self.set_proxy(socks.SOCKS5, "127.0.0.1", PROXY_PORT)
-                return super().connect(dest_pair, *args, **kwargs)
-            else:
-                # Bypass PySocks entirely for non-MongoDB traffic to support IPv6
-                self.proxy_peername = dest_pair
-                return _original_socket.connect(self, dest_pair, *args, **kwargs)
-
-    # Apply the patch specifically to the socket class
-    _socket.socket = CustomSocksSocket
-
-    # Crucial for PyMongo: clean up type flags to prevent cryptic SSL socket errors
-    if hasattr(_socket, 'SOCK_CLOEXEC'):
-        delattr(_socket, 'SOCK_CLOEXEC')
-
-# Run the target patch before importing database or discord clients
-target_only_mongodb_proxy_patch()
-
-
-
 '''
 MODULE IMPORTS
 '''

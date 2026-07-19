@@ -7,14 +7,11 @@ ENV PYTHONUNBUFFERED=1
 # Ensure we don't get stuck on interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies needed for Tailscale and general operations
+# Install system dependencies
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends curl ca-certificates iptables && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy Tailscale binaries from the official Tailscale image (Excellent approach!)
-COPY --from=tailscale/tailscale:stable /usr/local/bin/tailscaled /usr/local/bin/tailscaled
-COPY --from=tailscale/tailscale:stable /usr/local/bin/tailscale /usr/local/bin/tailscale
 
 # Set the working directory for the Python app
 WORKDIR /app
