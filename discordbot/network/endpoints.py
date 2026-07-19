@@ -5,17 +5,20 @@ Author: Chris Hinkson @cmh02
 '''
 
 import os
+import io
 import discord
-from fastapi import APIRouter, Request, HTTPException
+from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Request, HTTPException
 
 from mcl_common.limiter import limiter
 from mcl_common.router import MclRouter
-from discordbot.network.schemas import UpdateRequest, AdminMessageRequest
+from mcl_common.enum import TicketAction
 from mcl_common.mongo import MCL_MongoManager
 from discordbot.network.relay import MCL_OutboundRelay
+from discordbot.utils.transcript import generate_html_transcript
+from discordbot.network.schemas import UpdateRequest, AdminMessageRequest
 from discordbot.components.ticket_view import HelpTicketThreadView, generate_ticket_embed, HELPER_ROLE_IDS
-from mcl_common.enum import TicketAction
 
 '''
 # API ROUTER
@@ -193,6 +196,78 @@ async def update(request: Request, updateRequest: UpdateRequest):
 				# Notify the thread
 				closed_by = ticket.closedBy or "Unknown"
 				await thread.send(f"🔒 Ticket has been closed by <@{closed_by}>.")
+
+				# Generate and send HTML transcript to player and staff
+				try:
+
+					# Resolve usernames for all participants to construct a clean transcript
+					user_ids_to_resolve = set()
+					if ticket.playerInfo.discordId and ticket.playerInfo.discordId.isdigit():
+						user_ids_to_resolve.add(ticket.playerInfo.discordId)
+					if ticket.claimedBy and ticket.claimedBy.isdigit():
+						user_ids_to_resolve.add(ticket.claimedBy)
+					if ticket.closedBy and ticket.closedBy.isdigit():
+						user_ids_to_resolve.add(ticket.closedBy)
+					
+					for msg in ticket.conversation.messages:
+						if msg.sender.discordId and msg.sender.discordId.isdigit():
+							user_ids_to_resolve.add(msg.sender.discordId)
+					
+					resolved_names = {}
+					for uid in user_ids_to_resolve:
+						try:
+							user = bot.get_user(int(uid))
+							if not user:
+								user = await bot.fetch_user(int(uid))
+							if user:
+								resolved_names[uid] = user.name
+						except Exception as resolve_err:
+							bot.logger.warning(f"Could not resolve username for Discord ID {uid}: {resolve_err}")
+
+					html_content = generate_html_transcript(ticket, resolved_names)
+
+					# Determine recipients: player and claimed helper
+					recipients = set()
+					if ticket.playerInfo.discordId and ticket.playerInfo.discordId.isdigit():
+						recipients.add(ticket.playerInfo.discordId)
+					if ticket.claimedBy and ticket.claimedBy.isdigit():
+						recipients.add(ticket.claimedBy)
+
+					for r_id in recipients:
+						try:
+							user = bot.get_user(int(r_id))
+							if not user:
+								user = await bot.fetch_user(int(r_id))
+							if user:
+								# Create a fresh buffer and file object for this send
+								fp = io.BytesIO(html_content.encode('utf-8'))
+								discord_file = discord.File(fp=fp, filename=f"transcript-ticket-{ticketId}.html")
+
+								dm_embed = discord.Embed(
+									title=f"🎫 Ticket #{ticketId} Closed",
+									description="Your help ticket has been successfully closed. A complete styled transcript of the conversation has been attached below for your records.",
+									color=discord.Color.red(),
+									timestamp=datetime.now(timezone.utc)
+								)
+								
+								creator_mention = f"<@{ticket.playerInfo.discordId}>" if ticket.playerInfo.discordId else "Unknown"
+								claimed_mention = f"<@{ticket.claimedBy}>" if ticket.claimedBy else "Not Claimed"
+								closed_mention = f"<@{ticket.closedBy}>" if ticket.closedBy else "Unknown"
+								
+								dm_embed.add_field(name="Opened By", value=creator_mention, inline=True)
+								dm_embed.add_field(name="Claimed By", value=claimed_mention, inline=True)
+								dm_embed.add_field(name="Closed By", value=closed_mention, inline=True)
+								dm_embed.set_footer(text="MCLabs Ticket Archiver")
+
+								await user.send(embed=dm_embed, file=discord_file)
+								bot.logger.info(f"Successfully sent ticket {ticketId} transcript DM to user {r_id}.")
+						except discord.Forbidden:
+							bot.logger.warning(f"Could not send DM to user {r_id} (DMs are likely disabled/restricted).")
+						except Exception as dm_err:
+							bot.logger.error(f"Failed to send DM transcript to user {r_id}: {dm_err}")
+				except Exception as trans_err:
+					bot.logger.exception(f"Error handling ticket {ticketId} transcript: {trans_err}")
+
 				# Archive and lock the thread
 				await thread.edit(archived=True, locked=True)
 				bot.logger.info(f"Archived and locked Discord thread {thread.id} for ticket {ticketId}.")
