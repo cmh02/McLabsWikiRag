@@ -149,6 +149,54 @@ def create_ticket(request: Request, body: CreateTicketSchema, backgroundTasks: B
 		}
 	)
 
+class ResolvePlayerSchema(BaseModel):
+	'''
+	# ResolvePlayerSchema
+
+	Model for resolving and syncing player info.
+	'''
+	playerInfo: PlayerInfoSchema = Field(description="The identification details of the player to resolve.")
+
+@router.post("/resolve_player")
+@limiter.limit("100/minute")
+async def resolve_player(request: Request, body: ResolvePlayerSchema):
+
+	# Extract data from request body
+	data = body.model_dump()
+	playerInfoData = data.get("playerInfo")
+
+	if not playerInfoData:
+		raise HTTPException(
+			status_code=400,
+			detail="Missing 'playerInfo'"
+		)
+
+	# Instantiate PlayerInfo datatype
+	playerInfo = PlayerInfo(
+		minecraftUsername=playerInfoData.get("minecraftUsername"),
+		minecraftUUID=playerInfoData.get("minecraftUUID"),
+		discordUsername=playerInfoData.get("discordUsername"),
+		discordId=playerInfoData.get("discordId")
+	)
+
+	# Run the database and external API lookup pipeline synchronously (blocking the request)
+	try:
+		await MCL_MongoManager()._runBackgroundResolve(playerInfo)
+	except Exception as e:
+		request.app.state.logger.exception(f"Error in resolve_player endpoint: {e}")
+		raise HTTPException(
+			status_code=500,
+			detail=f"Failed to resolve player info: {str(e)}"
+		)
+
+	return JSONResponse(
+		status_code=200,
+		content={
+			"status": "success",
+			"playerInfo": playerInfo.toDict()
+		}
+	)
+
 class UpdateTicketThreadSchema(BaseModel):
 	'''
 	# UpdateTicketThreadSchema
