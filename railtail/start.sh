@@ -49,7 +49,12 @@ for mapping in $PROXY_MAPPINGS; do
     target_port=$(echo "$mapping" | cut -d':' -f3)
 
     echo "Forwarding internal port $local_port -> $target_host:$target_port (via SOCKS5)..."
+    # Listen on IPv4 (0.0.0.0)
     socat TCP-LISTEN:$local_port,fork,reuseaddr SOCKS5:127.0.0.1:$target_host:$target_port,socksport=1055 &
+    pids="$pids $!"
+    
+    # Listen on IPv6 (::) only to prevent port collision with IPv4 listener
+    socat TCP6-LISTEN:$local_port,fork,reuseaddr,ipv6only=1 SOCKS5:127.0.0.1:$target_host:$target_port,socksport=1055 &
     pids="$pids $!"
 done
 IFS="$OLD_IFS"
