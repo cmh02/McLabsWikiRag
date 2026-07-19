@@ -32,6 +32,12 @@ Creation of the API router for all endpoints.
 '''
 router: APIRouter = MclRouter.getNewRouter()
 
+# Simple health check at root level required by network
+@router.get("/")
+@limiter.limit("50/minute")
+async def health_check(request: Request):
+    return {"status": "ok"}
+
 
 
 '''
