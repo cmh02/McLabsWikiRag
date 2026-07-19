@@ -346,7 +346,7 @@ class MCL_OutboundRelay():
 		try:
 			async with aiohttp.ClientSession() as session:
 				async with session.post(
-					url=f"http://{self.domain_discordBotApi}/send_admin_message",
+					url=f"https://{self.domain_discordBotApi}/send_admin_message",
 					headers={
 						"Content-Type": "application/json",
 						"Authorization": env_apiToken,
