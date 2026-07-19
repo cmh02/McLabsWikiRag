@@ -14,7 +14,7 @@ from mcl_common.router import MclRouter
 from discordbot.network.schemas import UpdateRequest, AdminMessageRequest
 from mcl_common.mongo import MCL_MongoManager
 from discordbot.network.relay import MCL_OutboundRelay
-from discordbot.components.ticket_view import HelpTicketThreadView, generate_ticket_embed
+from discordbot.components.ticket_view import HelpTicketThreadView, generate_ticket_embed, HELPER_ROLE_IDS
 from mcl_common.enum import TicketAction
 
 '''
@@ -130,6 +130,21 @@ async def update(request: Request, updateRequest: UpdateRequest):
 				# Send status card in thread with persistent view
 				view = HelpTicketThreadView()
 				await thread.send(embed=embed, view=view)
+				
+				# Send and delete a temporary ping to add the creator and staff to the thread
+				# so that it is instantly visible in their channel sidebar.
+				mentions = []
+				if ticket.playerInfo.discordId:
+					mentions.append(f"<@{ticket.playerInfo.discordId}>")
+				for role_id in HELPER_ROLE_IDS:
+					mentions.append(f"<@&{role_id}>")
+				
+				if mentions:
+					try:
+						ping_msg = await thread.send(" ".join(mentions))
+						await ping_msg.delete()
+					except Exception as e:
+						bot.logger.error(f"Failed to send/delete transient thread pings: {e}")
 				
 				bot.logger.info(f"Created Discord thread {thread.id} for ticket {ticketId}.")
 				
