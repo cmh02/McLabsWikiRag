@@ -120,7 +120,7 @@ async def update(request: Request, updateRequest: UpdateRequest):
 				# Create a new public thread on the ticket channel
 				thread = await channel.create_thread(
 					name=f"🎫-ticket-{ticketId}",
-					type=discord.ChannelType.public_thread,
+					type=discord.ChannelType.private_thread,
 					auto_archive_duration=10080  # 7 days
 				)
 				
