@@ -233,34 +233,74 @@ async def update(request: Request, updateRequest: UpdateRequest):
 					if ticket.claimedBy and ticket.claimedBy.isdigit():
 						recipients.add(ticket.claimedBy)
 
+					# Upload the transcript to the administration/moderation channel first
+					admin_channel_id = os.getenv("DISCORD_ADMIN_CHANNEL_ID")
+					transcript_url = None
+					if admin_channel_id:
+						try:
+							admin_channel = bot.get_channel(int(admin_channel_id))
+							if not admin_channel:
+								admin_channel = await bot.fetch_channel(int(admin_channel_id))
+							if admin_channel:
+								fp = io.BytesIO(html_content.encode('utf-8'))
+								discord_file = discord.File(fp=fp, filename=f"transcript-ticket-{ticketId}.html")
+								admin_msg = await admin_channel.send(
+									content=f"📝 **Ticket #{ticketId} Closed** - Transcript Archive",
+									file=discord_file
+								)
+								if admin_msg.attachments:
+									transcript_url = admin_msg.attachments[0].url
+									bot.logger.info(f"Uploaded ticket {ticketId} transcript to admin channel: {transcript_url}")
+						except Exception as upload_err:
+							bot.logger.error(f"Failed to upload ticket {ticketId} transcript to admin channel: {upload_err}")
+
 					for r_id in recipients:
 						try:
 							user = bot.get_user(int(r_id))
 							if not user:
 								user = await bot.fetch_user(int(r_id))
 							if user:
-								# Create a fresh buffer and file object for this send
-								fp = io.BytesIO(html_content.encode('utf-8'))
-								discord_file = discord.File(fp=fp, filename=f"transcript-ticket-{ticketId}.html")
-
-								dm_embed = discord.Embed(
-									title=f"🎫 Ticket #{ticketId} Closed",
-									description="Your help ticket has been successfully closed. A complete styled transcript of the conversation has been attached below for your records.",
-									color=discord.Color.red(),
-									timestamp=datetime.now(timezone.utc)
-								)
-								
 								creator_mention = f"<@{ticket.playerInfo.discordId}>" if ticket.playerInfo.discordId else "Unknown"
 								claimed_mention = f"<@{ticket.claimedBy}>" if ticket.claimedBy else "Not Claimed"
 								closed_mention = f"<@{ticket.closedBy}>" if ticket.closedBy else "Unknown"
-								
-								dm_embed.add_field(name="Opened By", value=creator_mention, inline=True)
-								dm_embed.add_field(name="Claimed By", value=claimed_mention, inline=True)
-								dm_embed.add_field(name="Closed By", value=closed_mention, inline=True)
-								dm_embed.set_footer(text="MCLabs Ticket Archiver")
 
-								await user.send(embed=dm_embed, file=discord_file)
-								bot.logger.info(f"Successfully sent ticket {ticketId} transcript DM to user {r_id}.")
+								if transcript_url:
+									# Send premium embed with a link button to the hosted transcript
+									dm_embed = discord.Embed(
+										title=f"🎫 Ticket #{ticketId} Closed",
+										description="Your help ticket has been successfully closed. A complete styled transcript of the conversation is available via the button below.",
+										color=discord.Color.red(),
+										timestamp=datetime.now(timezone.utc)
+									)
+									dm_embed.add_field(name="Opened By", value=creator_mention, inline=True)
+									dm_embed.add_field(name="Claimed By", value=claimed_mention, inline=True)
+									dm_embed.add_field(name="Closed By", value=closed_mention, inline=True)
+									dm_embed.set_footer(text="MCLabs Ticket Archiver")
+
+									# Create view with link button
+									view = discord.ui.View()
+									view.add_item(discord.ui.Button(label="View Ticket Transcript", url=transcript_url, emoji="📄"))
+
+									await user.send(embed=dm_embed, view=view)
+									bot.logger.info(f"Successfully sent ticket {ticketId} transcript DM with Link Button to user {r_id}.")
+								else:
+									# Fallback: Send the file directly in the DM if upload failed
+									fp = io.BytesIO(html_content.encode('utf-8'))
+									discord_file = discord.File(fp=fp, filename=f"transcript-ticket-{ticketId}.html")
+
+									dm_embed = discord.Embed(
+										title=f"🎫 Ticket #{ticketId} Closed",
+										description="Your help ticket has been successfully closed. A complete styled transcript of the conversation has been attached below for your records.",
+										color=discord.Color.red(),
+										timestamp=datetime.now(timezone.utc)
+									)
+									dm_embed.add_field(name="Opened By", value=creator_mention, inline=True)
+									dm_embed.add_field(name="Claimed By", value=claimed_mention, inline=True)
+									dm_embed.add_field(name="Closed By", value=closed_mention, inline=True)
+									dm_embed.set_footer(text="MCLabs Ticket Archiver")
+
+									await user.send(embed=dm_embed, file=discord_file)
+									bot.logger.info(f"Successfully sent ticket {ticketId} transcript DM as file attachment to user {r_id} (fallback).")
 						except discord.Forbidden:
 							bot.logger.warning(f"Could not send DM to user {r_id} (DMs are likely disabled/restricted).")
 						except Exception as dm_err:
