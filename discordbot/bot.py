@@ -233,14 +233,15 @@ class MclBot(commands.Bot):
 					# to avoid posting duplicate messages on every restart.
 					found_message = False
 					async for message in channel.history(limit=50):
-						if message.author.id == self.user.id and message.embeds:
+						if self.user and message.author and message.author.id == self.user.id and message.embeds:
 							for view in message.components:
-								for child in view.children:
-									if getattr(child, 'custom_id', None) == 'btn_create_ticket':
-										found_message = True
+								if isinstance(view, discord.ActionRow):
+									for child in view.children:
+										if getattr(child, 'custom_id', None) == 'btn_create_ticket':
+											found_message = True
+											break
+									if found_message:
 										break
-								if found_message:
-									break
 						if found_message:
 							break
 
