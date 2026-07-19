@@ -34,7 +34,7 @@ graph TD
 2.  **Thread Setup**: Upon submitting, the bot responds ephemerally. A dedicated public thread named `🎫-ticket-[ID]` is created in the server's configured ticket channel.
 3.  **Status Card**: At the top of the thread, the bot posts a persistent status card embed displaying:
     *   **Ticket Creator**: Mentions the user and lists their username.
-    *   **Minecraft Account**: Shows the player's linked Minecraft username, or `Placeholder Minecraft` (Not Linked).
+    *   **Minecraft Account**: Shows the player's linked Minecraft username, or `Not Linked`.
     *   **Status**: Displays the live status (`🟢 Open`, `🟡 Claimed by <Staff>`, `🔴 Closed`).
     *   **Feedback**: Displays user feedback rating once submitted.
     *   **Original Question**: Displays the text entered in the modal.

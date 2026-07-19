@@ -64,7 +64,7 @@ def generate_ticket_embed(ticket: HelpTicket, creator: Optional[discord.Member] 
 	embed.add_field(name="Ticket Creator", value=creator_mention, inline=True)
 	embed.add_field(name="Discord Username", value=f"`{creator_tag}`", inline=True)
 	
-	minecraft_account = f"`{ticket.playerInfo.minecraftUsername}`" if ticket.playerInfo.minecraftUsername else "`Placeholder Minecraft` (Not Linked)"
+	minecraft_account = f"`{ticket.playerInfo.minecraftUsername}`" if ticket.playerInfo.minecraftUsername else "`Not Linked`"
 	embed.add_field(name="Minecraft Account", value=minecraft_account, inline=True)
 	embed.add_field(name="Status", value=status_str, inline=True)
 
