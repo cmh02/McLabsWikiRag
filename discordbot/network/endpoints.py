@@ -198,8 +198,28 @@ async def update(request: Request, updateRequest: UpdateRequest):
 						if str(last_discord_msg.author.id) == last_msg.sender.discordId and last_discord_msg.content == last_msg.content:
 							is_duplicate = True
 
-					if is_duplicate:
-						bot.logger.info(f"Skipping duplicate message relay for ticket {ticketId}: {last_msg.content}")
+					# Find the original question message (first message by the player)
+					original_msg = None
+					for msg in ticket.conversation.messages:
+						is_sender_match = False
+						if msg.sender.minecraftUUID and ticket.playerInfo.minecraftUUID and msg.sender.minecraftUUID == ticket.playerInfo.minecraftUUID:
+							is_sender_match = True
+						elif msg.sender.discordId and ticket.playerInfo.discordId and msg.sender.discordId == ticket.playerInfo.discordId:
+							is_sender_match = True
+
+						if is_sender_match:
+							original_msg = msg
+							break
+
+					is_original_question = False
+					if original_msg and last_msg.timestamp == original_msg.timestamp and last_msg.content == original_msg.content:
+						is_original_question = True
+
+					if is_duplicate or is_original_question:
+						if is_duplicate:
+							bot.logger.info(f"Skipping duplicate message relay for ticket {ticketId}: {last_msg.content}")
+						else:
+							bot.logger.info(f"Skipping relay of the original question for ticket {ticketId}: {last_msg.content}")
 					else:
 						# Format the message header depending on source
 						sender_name = last_msg.sender.minecraftUsername or last_msg.sender.discordUsername or "Unknown"
