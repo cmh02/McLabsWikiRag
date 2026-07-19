@@ -15,7 +15,7 @@ COPY --from=tailscale/tailscale:stable /usr/local/bin/tailscale /usr/local/bin/t
 RUN mkdir -p /var/run/tailscale /var/lib/tailscale
 
 # Copy startup script
-COPY start.sh /start.sh
+COPY railtail/start.sh /start.sh
 RUN chmod +x /start.sh
 
 CMD ["/start.sh"]
