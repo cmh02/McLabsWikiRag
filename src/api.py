@@ -24,7 +24,6 @@ from google import genai
 # MCL Packages
 from mcl_common.logger import MCL_Logger
 from mcl_common.config import settings
-from mcl_common.middleware import RequestLoggingMiddleware
 from src.internal.helpmanager import MCL_HelpManager
 from mcl_common.mongo import MCL_MongoManager
 from mcl_common.limiter import limiter
@@ -137,7 +136,6 @@ app = FastAPI(
 	openapi_url=None
 )
 app.add_middleware(SlowAPIMiddleware)
-# app.add_middleware(RequestLoggingMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler) # type: ignore[arg-type]
 app.include_router(InternalEndpointsRouter)
