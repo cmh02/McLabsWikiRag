@@ -77,6 +77,7 @@ The global config is declared in the [Settings](file:///Users/chrishinkson/Progr
 | `MCL_MONGO_CONNECTION_STRING` | `mcl_mongo_connection_string` | URI for the MongoDB server |
 | `DISCORD_BOT_TOKEN` | `discord_bot_token` | Token for the Discord bot client |
 | `DISCORD_TICKET_CHANNEL_ID` | `discord_ticket_channel_id` | Channel ID where bot threads are created |
+| `DISCORD_OPEN_CHANNEL_ID` | `discord_open_channel_id` | Channel ID where the persistent ticket creation button/embed is kept |
 | `RAILWAY_API_DOMAIN` | `railway_api_domain` | The deployed backend API endpoint domain |
 | `RAG_HP_SOURCESCALE_WIKI` | `rag_hp_sourcescale_wiki` | Weight scaling factor for Wiki sources |
 | `RAG_HP_SOURCESCALE_FAQ` | `rag_hp_sourcescale_faq` | Weight scaling factor for FAQ/Support sources |

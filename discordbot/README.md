@@ -62,6 +62,7 @@ The following environment variables are required and validated during the bot st
 *   `DISCORD_BOT_TOKEN`: The authentication token for the Discord bot client.
 *   `DISCORD_TICKET_CHANNEL_ID`: Channel ID (int) where the ticket threads will be created.
 *   `DISCORD_ADMIN_CHANNEL_ID`: Channel ID (int) where startup, shutdown, and error alerts are sent.
+*   `DISCORD_OPEN_CHANNEL_ID`: Channel ID (int) where the persistent ticket creation button/embed is kept.
 *   `API_TOKEN`: Secret token used to authenticate outgoing and incoming API headers.
 *   `RAILWAY_API_DOMAIN`: The domain address of the backend RAG/Wiki API service.
 *   `USER_AGENT_DISCORDBOT`: The user agent string sent with requests to the backend.

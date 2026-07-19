@@ -25,7 +25,7 @@ from mcl_common.datatypes import PlayerInfo
 from discordbot.network.endpoints import router as InternalEndpointsRouter
 from discordbot.network.relay import MCL_OutboundRelay
 from mcl_common.mongo import MCL_MongoManager
-from discordbot.components.ticket_view import HelpTicketThreadView
+from discordbot.components.ticket_view import HelpTicketThreadView, HelpTicketCreateView
 
 '''
 BOT DEFINITION
@@ -107,6 +107,17 @@ class MclBot(commands.Bot):
 			self.logger.error("DISCORD_ADMIN_CHANNEL_ID environment variable is not a valid integer. Bot shutting down.")
 			raise RuntimeError("DISCORD_ADMIN_CHANNEL_ID environment variable is not a valid integer.")
 
+		# Validate DISCORD_OPEN_CHANNEL_ID environment variable
+		open_channel_id = os.getenv("DISCORD_OPEN_CHANNEL_ID")
+		if not open_channel_id:
+			self.logger.error("DISCORD_OPEN_CHANNEL_ID environment variable is not set. Bot shutting down.")
+			raise RuntimeError("DISCORD_OPEN_CHANNEL_ID environment variable is not set.")
+		try:
+			int(open_channel_id)
+		except ValueError:
+			self.logger.error("DISCORD_OPEN_CHANNEL_ID environment variable is not a valid integer. Bot shutting down.")
+			raise RuntimeError("DISCORD_OPEN_CHANNEL_ID environment variable is not a valid integer.")
+
 		# Initialize Mongo Manager
 		mongo_manager = MCL_MongoManager()
 		mongo_manager.initialize(logger=self.logger)
@@ -122,6 +133,7 @@ class MclBot(commands.Bot):
 
 		# Register persistent views
 		self.add_view(HelpTicketThreadView())
+		self.add_view(HelpTicketCreateView())
 
 		# Dynamically load all cogs/extensions in the cogs directory
 		cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")
@@ -192,6 +204,8 @@ class MclBot(commands.Bot):
 			self.logger.info("MCL Discord Bot online message already sent for this session. Skipping duplicate.")
 			return
 
+		self.has_sent_online = True
+
 		admin_channel_id = os.getenv("DISCORD_ADMIN_CHANNEL_ID")
 		if admin_channel_id:
 			try:
@@ -200,14 +214,52 @@ class MclBot(commands.Bot):
 					channel = await self.fetch_channel(int(admin_channel_id))
 				if not channel:
 					self.logger.error("MCL Discord Bot could not find admin channel!")
-					return
-				if not isinstance(channel, discord.TextChannel):
+				elif not isinstance(channel, discord.TextChannel):
 					self.logger.error("MCL Discord Bot admin channel is not a text channel!")
-					return
-				await channel.send("🟢 MCL Discord Bot is online!")
-				self.has_sent_online = True
+				else:
+					await channel.send("🟢 MCL Discord Bot is online!")
 			except Exception as e:
 				self.logger.exception(f"Failed to send online message to admin channel: {e}")
+
+		# Setup the open ticket channel message if config exists
+		open_channel_id = os.getenv("DISCORD_OPEN_CHANNEL_ID")
+		if open_channel_id:
+			try:
+				channel = self.get_channel(int(open_channel_id))
+				if not channel:
+					channel = await self.fetch_channel(int(open_channel_id))
+				if channel and isinstance(channel, discord.TextChannel):
+					# Check if there is already a message with our button view in the channel history
+					# to avoid posting duplicate messages on every restart.
+					found_message = False
+					async for message in channel.history(limit=50):
+						if message.author.id == self.user.id and message.embeds:
+							for view in message.components:
+								for child in view.children:
+									if getattr(child, 'custom_id', None) == 'btn_create_ticket':
+										found_message = True
+										break
+								if found_message:
+									break
+						if found_message:
+							break
+
+					if not found_message:
+						# Send the ticket creation embed
+						embed = discord.Embed(
+							title="🎫 Create a Support Ticket",
+							description="Click the button below to open a support ticket. A private thread will be created for you where our staff can assist you.",
+							color=discord.Color.from_rgb(0, 205, 246)
+						)
+						embed.set_footer(text="MCLabs Support System", icon_url=self.user.avatar.url if self.user and self.user.avatar else None)
+						await channel.send(embed=embed, view=HelpTicketCreateView())
+						self.logger.info("Sent support ticket creation embed to open ticket channel.")
+					else:
+						self.logger.info("Support ticket creation embed already exists in open ticket channel. Skipped sending.")
+				else:
+					self.logger.error("MCL Discord Bot open ticket channel was not found or is not a text channel!")
+			except Exception as e:
+				self.logger.exception(f"Failed to setup open ticket channel: {e}")
 
 	async def on_message(self, message: discord.Message):
 		# Skip bot messages

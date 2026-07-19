@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     discord_public_key: str = Field(alias="DISCORD_PUBLIC_KEY")
     discord_ticket_channel_id: str = Field(alias="DISCORD_TICKET_CHANNEL_ID")
     discord_admin_channel_id: str = Field(alias="DISCORD_ADMIN_CHANNEL_ID")
+    discord_open_channel_id: str = Field(alias="DISCORD_OPEN_CHANNEL_ID")
 
     # API, Security & Logging Configuration
     api_token: str = Field(alias="API_TOKEN")

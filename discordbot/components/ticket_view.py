@@ -291,3 +291,21 @@ class FeedbackSelectionView(discord.ui.View):
 			await interaction.followup.send("Thank you for your feedback!", ephemeral=True)
 		else:
 			await interaction.followup.send("Failed to submit feedback via API.", ephemeral=True)
+
+
+class HelpTicketCreateView(discord.ui.View):
+	'''
+	# HelpTicketCreateView
+
+	Persistent view containing the button to open a support ticket.
+	'''
+	def __init__(self):
+		super().__init__(timeout=None)
+
+	@discord.ui.button(label="Create Ticket", style=discord.ButtonStyle.primary, emoji="🎫", custom_id="btn_create_ticket")
+	async def create_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+		logger.info(f"Button Create Ticket clicked by {interaction.user}")
+		from discordbot.cogs.helpsystem import HelpSystemModal
+		modal = HelpSystemModal(logger)
+		await interaction.response.send_modal(modal)
+
