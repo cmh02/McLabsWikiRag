@@ -260,6 +260,85 @@ class General(commands.Cog):
 			self.logger.exception(f"Unexpected error in /link command: {e}")
 			await ctx.send(f"An unexpected error occurred: {str(e)}", ephemeral=True)
 
+	@commands.hybrid_command(name="leaderboard", description="View the helper leaderboard for support tickets.")
+	async def leaderboard(self, ctx: commands.Context):
+		"""
+		# Leaderboard Command
+
+		Displays the helper leaderboard based on support tickets claimed and feedback received.
+		"""
+		self.logger.info(f"Leaderboard command invoked by {ctx.author}!")
+		
+		# Ensure context is in a guild
+		if not ctx.guild or not isinstance(ctx.author, discord.Member):
+			await ctx.send("This command can only be used in a server.", ephemeral=True)
+			return
+
+		# Check helper permissions
+		from discordbot.components.ticket_view import is_helper_plus
+		if not is_helper_plus(ctx.author):
+			await ctx.send("You do not have permission to view the helper leaderboard.", ephemeral=True)
+			return
+
+		await ctx.defer(ephemeral=True)
+
+		try:
+			mongo = MCL_MongoManager()
+			results = mongo.getHelperLeaderboard()
+
+			if not results:
+				embed = discord.Embed(
+					title="🏆 Helper Leaderboard",
+					description="No tickets have been claimed yet.",
+					color=discord.Color.from_rgb(0, 205, 246),
+					timestamp=discord.utils.utcnow()
+				)
+				await ctx.send(embed=embed, ephemeral=True)
+				return
+
+			embed = discord.Embed(
+				title="🏆 Helper Leaderboard",
+				description="Leaderboard of staff members ranked by total claimed tickets.",
+				color=discord.Color.from_rgb(0, 205, 246),
+				timestamp=discord.utils.utcnow()
+			)
+
+			leaderboard_text = []
+			for idx, row in enumerate(results, 1):
+				claimed_by_id = row["_id"]
+				total_claimed = row["total_claimed"]
+				pos = row["positive"]
+				neg = row["negative"]
+				no_fb = row["no_feedback"]
+
+				# Resolve the user id to a readable mention or string representation
+				member = ctx.guild.get_member(int(claimed_by_id))
+				if not member:
+					try:
+						member = await self.bot.fetch_user(int(claimed_by_id))
+					except Exception:
+						member = None
+
+				user_name = member.mention if member else f"User ID: {claimed_by_id}"
+
+				leaderboard_text.append(
+					f"**{idx}.** {user_name}\n"
+					f"└ 🎟️ **Total Claimed:** `{total_claimed}` | 👍 `{pos}` | 👎 `{neg}` | ❔ `{no_fb}`"
+				)
+
+			# Embed limit safety: limit to top 15 helpers
+			description_content = "\n\n".join(leaderboard_text[:15])
+			if len(leaderboard_text) > 15:
+				description_content += f"\n\n*And {len(leaderboard_text) - 15} more staff members...*"
+
+			embed.description = f"Leaderboard of staff members ranked by total claimed tickets.\n\n{description_content}"
+			embed.set_footer(text="MCLabs Ticket System • Helper Leaderboard", icon_url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None)
+			await ctx.send(embed=embed, ephemeral=True)
+
+		except Exception as e:
+			self.logger.exception(f"Error executing /leaderboard command: {e}")
+			await ctx.send("An error occurred while generating the leaderboard.", ephemeral=True)
+
 	@commands.hybrid_command(name="help", description="List all available commands and their usage details.")
 	async def help(self, ctx: commands.Context):
 		'''
@@ -293,16 +372,23 @@ class General(commands.Cog):
 			)
 			embed.add_field(name="🎫 Help & Support", value=support_cmds, inline=False)
 
-			# Check permissions to see if developer commands should be listed
+			# Check permissions to see if developer/staff commands should be listed
 			is_admin = False
+			is_helper = False
 			if ctx.guild and isinstance(ctx.author, discord.Member):
 				is_admin = ctx.author.guild_permissions.administrator
+				from discordbot.components.ticket_view import is_helper_plus
+				is_helper = is_helper_plus(ctx.author)
 
-			if is_admin:
-				dev_cmds = (
-					"**/ping** - Check bot latency and client status.\n"
-					"**/mirror** - Mirror your Discord user info back in an embed."
-				)
+			if is_admin or is_helper:
+				dev_cmds_list = []
+				if is_admin:
+					dev_cmds_list.append("**/ping** - Check bot latency and client status.")
+					dev_cmds_list.append("**/mirror** - Mirror your Discord user info back in an embed.")
+				if is_helper:
+					dev_cmds_list.append("**/leaderboard** - View the helper leaderboard for support tickets.")
+				
+				dev_cmds = "\n".join(dev_cmds_list)
 				embed.add_field(name="🛠️ Developer / Staff Commands", value=dev_cmds, inline=False)
 
 			embed.set_footer(text="MCLabs Help System", icon_url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None)

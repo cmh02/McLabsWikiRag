@@ -509,3 +509,50 @@ class MCL_MongoManager():
 			upsert=True
 		)
 		return result
+
+	def getHelperLeaderboard(self) -> list[dict]:
+		"""
+		## Get Helper Leaderboard
+
+		Aggregates the tickets collection to figure out each staff member's
+		positive / no / negative feedback counts, ranked by total claimed tickets.
+		"""
+		pipeline = [
+			{
+				"$match": {
+					"claimedBy": {"$exists": True, "$ne": None, "$nin": ["", "Unknown"]}
+				}
+			},
+			{
+				"$group": {
+					"_id": "$claimedBy",
+					"total_claimed": {"$sum": 1},
+					"positive": {
+						"$sum": {
+							"$cond": [{"$eq": ["$feedback", "HELPFUL"]}, 1, 0]
+						}
+					},
+					"negative": {
+						"$sum": {
+							"$cond": [{"$eq": ["$feedback", "UNHELPFUL"]}, 1, 0]
+						}
+					},
+					"no_feedback": {
+						"$sum": {
+							"$cond": [
+								{"$in": ["$feedback", ["NONE", None]]}, 
+								1, 
+								0
+							]
+						}
+					}
+				}
+			},
+			{
+				"$sort": {
+					"total_claimed": -1
+				}
+			}
+		]
+		cursor = self.collections[MongoDatabase.HELP][MongoCollection.TICKETS].aggregate(pipeline)
+		return list(cursor)
