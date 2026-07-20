@@ -260,5 +260,56 @@ class General(commands.Cog):
 			self.logger.exception(f"Unexpected error in /link command: {e}")
 			await ctx.send(f"An unexpected error occurred: {str(e)}", ephemeral=True)
 
+	@commands.hybrid_command(name="help", description="List all available commands and their usage details.")
+	async def help(self, ctx: commands.Context):
+		'''
+		# Help Command
+
+		Sends a beautifully structured list of all bot commands.
+		Conditionally displays developer/admin commands if the user has Administrator permissions.
+		'''
+		self.logger.info(f"Help command invoked by {ctx.author}!")
+		try:
+			embed = discord.Embed(
+				title="📚 MCLabs Help Menu",
+				description="Here is a categorized list of all commands you can use with the MCLabs Discord Bot:",
+				color=discord.Color.from_rgb(0, 205, 246),
+				timestamp=discord.utils.utcnow()
+			)
+
+			# General Commands
+			general_cmds = (
+				"**/info** - Get general information about the server, gameplay features, version, and IP.\n"
+				"**/ip** - Get the Minecraft server IP address.\n"
+				"**/version** - Get the supported Minecraft game version.\n"
+				"**/status** - Check real-time Minecraft server status, player counts, uptime, and TPS.\n"
+				"**/link [name]** - Link your Discord account to your Minecraft account."
+			)
+			embed.add_field(name="🌐 General Commands", value=general_cmds, inline=False)
+
+			# Help & Support
+			support_cmds = (
+				"**/ask [question]** - Open a private support ticket thread to ask a question."
+			)
+			embed.add_field(name="🎫 Help & Support", value=support_cmds, inline=False)
+
+			# Check permissions to see if developer commands should be listed
+			is_admin = False
+			if ctx.guild and isinstance(ctx.author, discord.Member):
+				is_admin = ctx.author.guild_permissions.administrator
+
+			if is_admin:
+				dev_cmds = (
+					"**/ping** - Check bot latency and client status.\n"
+					"**/mirror** - Mirror your Discord user info back in an embed."
+				)
+				embed.add_field(name="🛠️ Developer / Staff Commands", value=dev_cmds, inline=False)
+
+			embed.set_footer(text="MCLabs Help System", icon_url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None)
+			await ctx.send(embed=embed, ephemeral=True)
+		except Exception as e:
+			self.logger.exception(f"Error executing /help command: {e}")
+			raise e
+
 async def setup(bot: MclBot):
 	await bot.add_cog(General(bot))

@@ -303,6 +303,7 @@ intents.message_content = True
 bot = MclBot(
 	command_prefix="/", 
 	intents=intents, 
+	help_command=None,
 	activity=discord.Streaming(
 		name="MCLabs Help Assistant", 
 		description="Ranked #2 Helper",
