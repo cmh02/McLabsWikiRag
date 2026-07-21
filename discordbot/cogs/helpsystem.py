@@ -10,6 +10,7 @@ MODULE IMPORTS
 
 import os
 import logging
+import asyncio
 import aiohttp
 import discord
 from discord import app_commands
@@ -18,6 +19,7 @@ from typing import cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
 	from discordbot.bot import MclBot
+	from discordbot.components.ticket_view import handle_discord_create
 
 '''
 MODAL DEFINITION
@@ -114,6 +116,8 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 			) as resp:
 				if resp.status != 200:
 					self.logger.error(f"Failed to append message to ticket {ticket_id}. Status: {resp.status}")
+				else:
+					asyncio.create_task(handle_discord_create(bot, ticket_id))
 
 			# 3. Inform the user of successful creation
 			await interaction.followup.send(
