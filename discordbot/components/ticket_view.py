@@ -163,6 +163,11 @@ class HelpTicketThreadView(discord.ui.View):
 			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
 			return
 
+		# Check if the ticket is claimed
+		if ticket.status != TicketStatus.CLAIMED or not ticket.claimedBy:
+			await interaction.response.send_message("You cannot unclaim a ticket that isn't claimed.", ephemeral=True)
+			return
+
 		# Acknowledge the interaction immediately
 		await interaction.response.defer()
 
