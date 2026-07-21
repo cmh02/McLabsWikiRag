@@ -9,7 +9,7 @@ import os
 import asyncio
 import logging
 import aiohttp
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from mcl_common.datatypes import PlayerInfo
 
 logger = logging.getLogger("MCL_DISCORD_Logger")
@@ -45,6 +45,9 @@ class MCL_OutboundRelay:
 		if self.userAgent is None:
 			raise ValueError("USER_AGENT_DISCORDBOT environment variable is not set.")
 
+		# Track last successful API response time for lazy wakeup
+		self._last_success_time = 0.0
+
 		logger.info("Initialized MCL Outbound Relay for Discord Bot.")
 
 	async def _post_with_retry(self, endpoint: str, json_data: Dict[str, Any], max_tries: int = 5, initial_delay: float = 3.0) -> bool:
@@ -62,24 +65,34 @@ class MCL_OutboundRelay:
 			"User-Agent": self.userAgent or "Discord-Bot"
 		}
 
-		# Ensure API is awake
-		is_awake = await self.bot.ensureApiAwake(numberTries=max_tries, sleepInterval=int(initial_delay))
-		if not is_awake:
-			logger.error(f"Cannot perform POST to {endpoint} because backend API is unavailable.")
-			return False
-
+		import time
 		delay = initial_delay
 		for attempt in range(max_tries):
+			# Ensure API is awake only if last success was > 5 minutes ago
+			current_time = time.time()
+			if current_time - self._last_success_time > 300.0:
+				wakeup_tries = max_tries if attempt == 0 else 1
+				logger.info(f"API last active check failed or timed out. Ensuring backend is awake (attempt {attempt + 1})...")
+				is_awake = await self.bot.ensureApiAwake(numberTries=wakeup_tries, sleepInterval=int(delay))
+				if not is_awake:
+					logger.warning(f"Backend API is not awake on attempt {attempt + 1}.")
+					self._last_success_time = 0.0
+				else:
+					self._last_success_time = time.time()
+
 			try:
 				async with self.bot.session.post(url, headers=headers, json=json_data, timeout=aiohttp.ClientTimeout(total=10)) as response:
 					if response.status == 200:
 						logger.info(f"Successfully posted to {endpoint} on attempt {attempt + 1}")
+						self._last_success_time = time.time()
 						return True
 					else:
 						text = await response.text()
 						logger.warning(f"Failed POST to {endpoint} on attempt {attempt + 1}. Status {response.status}: {text}")
+						self._last_success_time = 0.0
 			except Exception as e:
 				logger.error(f"Exception during POST to {endpoint} on attempt {attempt + 1}: {e}")
+				self._last_success_time = 0.0
 
 			await asyncio.sleep(delay)
 			delay *= 2
@@ -140,18 +153,22 @@ class MCL_OutboundRelay:
 			}
 		)
 
-	async def update_ticket_thread(self, ticket_id: int, thread_id: int) -> bool:
+	async def update_ticket_thread(self, ticket_id: int, thread_id: int, status_message_id: Optional[int] = None) -> bool:
 		'''
 		# Update Ticket Thread
 
-		Sends a request to the backend RAG API to set/update a ticket's thread ID.
+		Sends a request to the backend RAG API to set/update a ticket's thread ID and status message ID.
 		'''
+		json_data = {
+			"ticketId": ticket_id,
+			"threadId": thread_id
+		}
+		if status_message_id is not None:
+			json_data["statusMessageId"] = status_message_id
+
 		return await self._post_with_retry(
 			endpoint="/update_ticket_thread",
-			json_data={
-				"ticketId": ticket_id,
-				"threadId": thread_id
-			}
+			json_data=json_data
 		)
 
 	async def set_ticket_feedback(self, ticket_id: int, feedback: str) -> bool:

@@ -435,7 +435,8 @@ class MCL_MongoManager():
 			playerInfo=PlayerInfo.fromDict(ticket_data["playerInfo"]),
 			type=TicketType(ticket_data["type"]),
 			conversation=Conversation.fromDict(ticket_data["conversation"]) if "conversation" in ticket_data else None,
-			threadId=ticket_data.get("threadId")
+			threadId=ticket_data.get("threadId"),
+			statusMessageId=ticket_data.get("statusMessageId")
 		)
 		ticket.status = TicketStatus(ticket_data["status"])
 		ticket.feedback = TicketFeedback(ticket_data["feedback"])

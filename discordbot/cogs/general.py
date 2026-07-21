@@ -10,6 +10,7 @@ MODULE IMPORTS
 '''
 
 import os
+import asyncio
 import aiohttp
 import logging
 import discord
@@ -113,7 +114,7 @@ class General(commands.Cog):
 		self.logger.info(f"Status command invoked by {ctx.author}!")
 		try:
 			mongo = MCL_MongoManager()
-			status = mongo.getServerStatus()
+			status = await asyncio.to_thread(mongo.getServerStatus)
 			
 			if not status or not status.online:
 				embed = discord.Embed(
@@ -284,7 +285,7 @@ class General(commands.Cog):
 
 		try:
 			mongo = MCL_MongoManager()
-			results = mongo.getHelperLeaderboard()
+			results = await asyncio.to_thread(mongo.getHelperLeaderboard)
 
 			if not results:
 				embed = discord.Embed(

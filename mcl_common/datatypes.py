@@ -123,7 +123,8 @@ class HelpTicket:
 				 playerInfo: PlayerInfo,
 				 type: TicketType,
 				 conversation: Optional[Conversation] = None,
-				 threadId: Optional[int] = None
+				 threadId: Optional[int] = None,
+				 statusMessageId: Optional[int] = None
 				):
 		self.ticketId: int = ticketId
 		self.playerInfo: PlayerInfo = playerInfo
@@ -137,6 +138,7 @@ class HelpTicket:
 		self.time_claim: Optional[float] = None
 		self.time_close: Optional[float] = None
 		self.threadId: Optional[int] = threadId
+		self.statusMessageId: Optional[int] = statusMessageId
 
 	def toDict(self) -> dict:
 		"""
@@ -161,7 +163,8 @@ class HelpTicket:
 			"time_create": self.time_create,
 			"time_claim": self.time_claim,
 			"time_close": self.time_close,
-			"threadId": self.threadId
+			"threadId": self.threadId,
+			"statusMessageId": self.statusMessageId
 		}
 	
 	def appendMessage(self, message: Message):

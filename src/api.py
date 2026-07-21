@@ -120,6 +120,9 @@ async def lifespan(app: FastAPI):
 	if is_active:
 		await MCL_OutboundRelay().messageDiscordAdminChannel(f"🔴 {shutdownMessage}")
 
+	# Shutdown Outbound Relay ClientSession
+	await MCL_OutboundRelay().close()
+
 	# Shutdown Mongo Manager
 	MCL_MongoManager().shutdown()
 

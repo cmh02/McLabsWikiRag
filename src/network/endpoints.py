@@ -240,6 +240,7 @@ class UpdateTicketThreadSchema(BaseModel):
 	'''
 	ticketId: int = Field(description="The ID of the ticket to update.")
 	threadId: int = Field(description="The Discord thread ID to link to the ticket.")
+	statusMessageId: Optional[int] = Field(default=None, description="The Discord message ID of the status card embed.")
 
 @router.post("/update_ticket_thread")
 @limiter.limit("100/minute")
@@ -249,6 +250,7 @@ def update_ticket_thread(request: Request, body: UpdateTicketThreadSchema):
 	data: Dict = body.model_dump()
 	ticketId: int | None = data.get("ticketId")
 	threadId: int | None = data.get("threadId")
+	statusMessageId: int | None = data.get("statusMessageId")
 
 	# Validate that we got a ticketId and threadId
 	if not ticketId:
@@ -265,7 +267,8 @@ def update_ticket_thread(request: Request, body: UpdateTicketThreadSchema):
 	# Update ticket thread
 	MCL_HelpManager().updateTicketThread(
 		ticketId=ticketId,
-		threadId=threadId
+		threadId=threadId,
+		statusMessageId=statusMessageId
 	)
 
 	return JSONResponse(

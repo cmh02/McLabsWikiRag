@@ -5,6 +5,7 @@ Author: Chris Hinkson @cmh02
 '''
 
 import logging
+import asyncio
 import discord
 from typing import Optional
 from datetime import datetime, timezone
@@ -120,17 +121,18 @@ class HelpTicketThreadView(discord.ui.View):
 			return
 
 		mongo = MCL_MongoManager()
-		ticket = mongo.getTicketByThreadId(interaction.channel_id)
+		ticket = await asyncio.to_thread(mongo.getTicketByThreadId, interaction.channel_id)
 		if not ticket:
 			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
 			return
 
+		# Optimistic response: immediately acknowledge interaction
+		await interaction.response.send_message("Claiming ticket...", ephemeral=True)
+
 		# Call claim API on backend
 		success = await MCL_OutboundRelay().claim_ticket(ticket.ticketId, str(interaction.user.id))
-		if success:
-			await interaction.response.send_message("Claiming ticket...", ephemeral=True)
-		else:
-			await interaction.response.send_message("Failed to claim ticket via API.", ephemeral=True)
+		if not success:
+			await interaction.followup.send("Failed to claim ticket via API.", ephemeral=True)
 
 	@discord.ui.button(label="Unclaim", style=discord.ButtonStyle.secondary, emoji="🚫", custom_id="btn_unclaim_ticket")
 	async def unclaim(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -152,17 +154,18 @@ class HelpTicketThreadView(discord.ui.View):
 			return
 
 		mongo = MCL_MongoManager()
-		ticket = mongo.getTicketByThreadId(interaction.channel_id)
+		ticket = await asyncio.to_thread(mongo.getTicketByThreadId, interaction.channel_id)
 		if not ticket:
 			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
 			return
 
+		# Optimistic response: immediately acknowledge interaction
+		await interaction.response.send_message("Unclaiming ticket...", ephemeral=True)
+
 		# Call unclaim API on backend
 		success = await MCL_OutboundRelay().unclaim_ticket(ticket.ticketId)
-		if success:
-			await interaction.response.send_message("Unclaiming ticket...", ephemeral=True)
-		else:
-			await interaction.response.send_message("Failed to unclaim ticket via API.", ephemeral=True)
+		if not success:
+			await interaction.followup.send("Failed to unclaim ticket via API.", ephemeral=True)
 
 	@discord.ui.button(label="Close", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="btn_close_ticket")
 	async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -179,7 +182,7 @@ class HelpTicketThreadView(discord.ui.View):
 			return
 
 		mongo = MCL_MongoManager()
-		ticket = mongo.getTicketByThreadId(interaction.channel_id)
+		ticket = await asyncio.to_thread(mongo.getTicketByThreadId, interaction.channel_id)
 		if not ticket:
 			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
 			return
@@ -209,7 +212,7 @@ class HelpTicketThreadView(discord.ui.View):
 			return
 
 		mongo = MCL_MongoManager()
-		ticket = mongo.getTicketByThreadId(interaction.channel_id)
+		ticket = await asyncio.to_thread(mongo.getTicketByThreadId, interaction.channel_id)
 		if not ticket:
 			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
 			return

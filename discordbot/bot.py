@@ -271,7 +271,7 @@ class MclBot(commands.Bot):
 		if isinstance(message.channel, discord.Thread):
 			try:
 				mongo = MCL_MongoManager()
-				ticket = mongo.getTicketByThreadId(message.channel.id)
+				ticket = await asyncio.to_thread(mongo.getTicketByThreadId, message.channel.id)
 				if ticket:
 					self.logger.info(f"Relaying message from Discord user {message.author.name} in thread {message.channel.id} for ticket {ticket.ticketId}.")
 					

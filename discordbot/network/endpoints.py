@@ -6,6 +6,7 @@ Author: Chris Hinkson @cmh02
 
 import os
 import io
+import asyncio
 import discord
 from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
@@ -79,9 +80,9 @@ async def update(request: Request, updateRequest: UpdateRequest):
 	bot.logger.info(f"Received relay update {updateId} for ticket {ticketId} with action {ticketAction}.")
 
 	try:
-		# Retrieve the latest ticket state from Mongo
+		# Retrieve the latest ticket state from Mongo (non-blocking)
 		mongo = MCL_MongoManager()
-		ticket = mongo.getTicket(ticketId)
+		ticket = await asyncio.to_thread(mongo.getTicket, ticketId)
 		if not ticket:
 			bot.logger.error(f"Ticket with ID {ticketId} not found in database for update {updateId}.")
 			raise HTTPException(status_code=404, detail=f"Ticket {ticketId} not found")
@@ -112,13 +113,12 @@ async def update(request: Request, updateRequest: UpdateRequest):
 				bot.logger.info(f"Ticket {ticketId} already has thread {ticket.threadId}. Skipping thread creation.")
 			else:
 				# Wait up to 1.5s for the initial question message to be committed to MongoDB
-				import asyncio
 				for attempt in range(5):
 					if ticket.conversation and ticket.conversation.messages:
 						break
 					bot.logger.info(f"Ticket {ticketId} conversation is empty. Retrying fetch in 300ms (attempt {attempt + 1}/5)...")
 					await asyncio.sleep(0.3)
-					ticket = mongo.getTicket(ticketId)
+					ticket = await asyncio.to_thread(mongo.getTicket, ticketId)
 
 				# Create a new public thread on the ticket channel
 				thread = await channel.create_thread(
@@ -132,7 +132,7 @@ async def update(request: Request, updateRequest: UpdateRequest):
 				
 				# Send status card in thread with persistent view
 				view = HelpTicketThreadView()
-				await thread.send(embed=embed, view=view)
+				status_msg = await thread.send(embed=embed, view=view)
 				
 				# Send and delete a temporary ping to add the creator and staff to the thread
 				# so that it is instantly visible in their channel sidebar.
@@ -151,8 +151,8 @@ async def update(request: Request, updateRequest: UpdateRequest):
 				
 				bot.logger.info(f"Created Discord thread {thread.id} for ticket {ticketId}.")
 				
-				# Save thread ID to the backend
-				await MCL_OutboundRelay().update_ticket_thread(ticketId, thread.id)
+				# Save thread ID and status message ID to the backend
+				await MCL_OutboundRelay().update_ticket_thread(ticketId, thread.id, status_msg.id)
 
 		# 2. Handle status updates (CLAIM, UNCLAIM, CLOSE, FEEDBACK, NEWMESSAGE)
 		else:
@@ -169,12 +169,15 @@ async def update(request: Request, updateRequest: UpdateRequest):
 				bot.logger.error(f"Thread with ID {thread_id} not found or is not a thread.")
 				raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
 
-			# Find status message in the thread
+			# Find status message in the thread directly by ID
 			status_msg = None
-			async for message in thread.history(limit=20, oldest_first=True):
-				if message.author == bot.user and message.embeds:
-					status_msg = message
-					break
+			if ticket.statusMessageId:
+				try:
+					status_msg = bot.get_message(ticket.statusMessageId)
+					if not status_msg:
+						status_msg = await thread.fetch_message(ticket.statusMessageId)
+				except discord.NotFound:
+					bot.logger.error(f"Status message with ID {ticket.statusMessageId} not found in thread {thread.id}.")
 
 			# Edit status card embed
 			if status_msg:

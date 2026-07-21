@@ -87,3 +87,11 @@ The buttons in the ticket thread are backed by `HelpTicketThreadView`, which ove
 
 #### **3. API Wakeup Routine**
 In `bot.ensureApiAwake`, the bot performs a POST request to the backend `/wakeup` with exponential backoff on startup. This prevents failures during initial communication with a sleeping backend server.
+
+#### **4. Latency Optimizations**
+The system includes several latency and responsiveness optimizations:
+* **Optimistic UI Updates:** Buttons like **Claim** and **Unclaim** instantly acknowledge user clicks and reply ephemerally, updating UI status in parallel to prevent 3-second Discord interaction timeouts.
+* **Lazy Wakeup Checks:** Wakeup calls (`ensureApiAwake`) are bypassed for warm requests, and only run when the backend has been inactive for more than 5 minutes or a request fails.
+* **Non-blocking MongoDB Queries:** All synchronous database queries are wrapped in `asyncio.to_thread` pools to keep the Discord bot's single-threaded event loop fully responsive.
+* **Direct Status Card Resolution:** The status card message ID is stored directly in the `statusMessageId` database field, avoiding slow thread history scans when resolving embeds.
+* **Connection Pooling:** A persistent `ClientSession` is reused for all outbound requests to keep TCP/TLS connections warm and skip handshake overhead.

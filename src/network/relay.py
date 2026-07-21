@@ -13,7 +13,7 @@ import asyncio
 import time
 import uuid
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import aiohttp
 
@@ -122,6 +122,19 @@ class MCL_OutboundRelay():
 		if not self.domain_discordBotApi:
 			self.logger.error("DOMAIN_DISCORDBOT_API environment variable is not set.")
 			raise ValueError("DOMAIN_DISCORDBOT_API environment variable is not set.")
+
+		# aiohttp persistent session
+		self._session: Optional[aiohttp.ClientSession] = None
+
+	def get_session(self) -> aiohttp.ClientSession:
+		if self._session is None or self._session.closed:
+			self._session = aiohttp.ClientSession()
+		return self._session
+
+	async def close(self):
+		if self._session and not self._session.closed:
+			await self._session.close()
+			self.logger.info("Closed backend outbound relay ClientSession.")
 
 	def relay(self, ticketId: int, action: TicketAction):
 		'''
@@ -289,9 +302,9 @@ class MCL_OutboundRelay():
 			"ticket_id": data.ticketId,
 		}
 
-		async with aiohttp.ClientSession() as session:
-			async with session.post(
-				url=f"https://{self.domain_discordBotApi}/update",
+		session = self.get_session()
+		async with session.post(
+			url=f"https://{self.domain_discordBotApi}/update",
 				headers={
 					"Content-Type": "application/json",
 					"Authorization": env_apiToken,
@@ -344,9 +357,9 @@ class MCL_OutboundRelay():
 		}
 
 		try:
-			async with aiohttp.ClientSession() as session:
-				async with session.post(
-					url=f"https://{self.domain_discordBotApi}/send_admin_message",
+			session = self.get_session()
+			async with session.post(
+				url=f"https://{self.domain_discordBotApi}/send_admin_message",
 					headers={
 						"Content-Type": "application/json",
 						"Authorization": env_apiToken,
