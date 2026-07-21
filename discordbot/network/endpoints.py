@@ -173,7 +173,7 @@ async def update(request: Request, updateRequest: UpdateRequest):
 			status_msg = None
 			if ticket.statusMessageId:
 				try:
-					status_msg = bot.get_message(ticket.statusMessageId)
+					status_msg = discord.utils.get(bot.cached_messages, id=ticket.statusMessageId)
 					if not status_msg:
 						status_msg = await thread.fetch_message(ticket.statusMessageId)
 				except discord.NotFound:
