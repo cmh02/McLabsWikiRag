@@ -128,8 +128,8 @@ class HelpTicketThreadView(discord.ui.View):
 			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
 			return
 
-		# Optimistic response: immediately acknowledge interaction
-		await interaction.response.send_message("Claiming ticket...", ephemeral=True)
+		# Acknowledge the interaction immediately
+		await interaction.response.defer()
 
 		# Call claim API on backend
 		success = await MCL_OutboundRelay().claim_ticket(ticket.ticketId, str(interaction.user.id))
@@ -163,8 +163,8 @@ class HelpTicketThreadView(discord.ui.View):
 			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
 			return
 
-		# Optimistic response: immediately acknowledge interaction
-		await interaction.response.send_message("Unclaiming ticket...", ephemeral=True)
+		# Acknowledge the interaction immediately
+		await interaction.response.defer()
 
 		# Call unclaim API on backend
 		success = await MCL_OutboundRelay().unclaim_ticket(ticket.ticketId)
