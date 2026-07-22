@@ -19,6 +19,9 @@ from discordbot.network.relay import MCL_OutboundRelay
 
 logger = logging.getLogger("MCL_DISCORD_Logger")
 
+# Thread creation locks to prevent duplicate threads for the same ticket
+_creating_threads = {}  # ticket_id -> asyncio.Event
+
 # Configured staff/helper role IDs
 HELPER_ROLE_IDS = [1447520265113174066]
 
@@ -262,7 +265,7 @@ class HelpTicketThreadView(discord.ui.View):
 		if not hasattr(ticket, 'archiveRecipients') or ticket.archiveRecipients is None:
 			ticket.archiveRecipients = []
 			if ticket.playerInfo.discordId:
-				ticket.archiveRecipients.append(str(ticket.playerInfo.discordId))
+				ticket.archiveRecipients.append(ticket.playerInfo.discordId)
 
 		user_id = str(interaction.user.id)
 		if user_id in ticket.archiveRecipients:
@@ -427,91 +430,111 @@ async def handle_discord_create(bot, ticket_id: int, ticket: Optional[HelpTicket
 	Creates a new public thread on the ticket channel, sends the status card,
 	and sends/deletes transient mentions for notifications.
 	'''
-	mongo = MCL_MongoManager()
-	if not ticket:
+	# Check if another task is already creating a thread for this ticket
+	if ticket_id in _creating_threads:
+		logger.info(f"Another task is already creating a thread for ticket {ticket_id}. Waiting...")
+		await _creating_threads[ticket_id].wait()
+		# Re-fetch ticket to see if the thread was successfully created by the other task
+		mongo = MCL_MongoManager()
 		ticket = await asyncio.to_thread(mongo.getTicket, ticket_id)
-	if not ticket:
-		logger.error(f"Ticket with ID {ticket_id} not found in database for create.")
-		return False
+		if ticket and ticket.threadId:
+			logger.info(f"Thread for ticket {ticket_id} was successfully created by the other task. Skipping.")
+			return True
 
-	# Check the ticket channel
-	ticket_channel_id = os.getenv("DISCORD_TICKET_CHANNEL_ID")
-	if not ticket_channel_id:
-		logger.error("DISCORD_TICKET_CHANNEL_ID environment variable is not set.")
-		return False
-	
+	# Register our thread creation attempt
+	event = asyncio.Event()
+	_creating_threads[ticket_id] = event
+
 	try:
-		channel_id = int(ticket_channel_id)
-	except ValueError:
-		logger.error("DISCORD_TICKET_CHANNEL_ID is not a valid integer.")
-		return False
-
-	channel = bot.get_channel(channel_id)
-	if not channel:
-		try:
-			channel = await bot.fetch_channel(channel_id)
-		except Exception as e:
-			logger.error(f"Failed to fetch ticket channel {channel_id}: {e}")
+		mongo = MCL_MongoManager()
+		if not ticket:
+			ticket = await asyncio.to_thread(mongo.getTicket, ticket_id)
+		if not ticket:
+			logger.error(f"Ticket with ID {ticket_id} not found in database for create.")
 			return False
 
-	if not channel or not isinstance(channel, discord.TextChannel):
-		logger.error(f"Ticket channel with ID {channel_id} not found or is not a text channel.")
-		return False
-
-	if ticket.threadId:
-		logger.info(f"Ticket {ticket_id} already has thread {ticket.threadId}. Skipping thread creation.")
-		return True
-
-	# Wait up to 1.5s for the initial question message to be committed to MongoDB
-	for attempt in range(5):
-		if ticket.conversation and ticket.conversation.messages:
-			break
-		logger.info(f"Ticket {ticket_id} conversation is empty. Retrying fetch in 300ms (attempt {attempt + 1}/5)...")
-		await asyncio.sleep(0.3)
-		ticket = await asyncio.to_thread(mongo.getTicket, ticket_id)
-
-	# Create a new public thread on the ticket channel
-	try:
-		thread = await channel.create_thread(
-			name=f"🎫-ticket-{ticket_id}",
-			type=discord.ChannelType.private_thread,
-			auto_archive_duration=10080  # 7 days
-		)
-	except Exception as e:
-		logger.error(f"Failed to create Discord thread for ticket {ticket_id}: {e}")
-		return False
-	
-	# Generate initial embed
-	embed = generate_ticket_embed(ticket)
-	
-	# Send status card in thread with persistent view
-	view = HelpTicketThreadView()
-	try:
-		status_msg = await thread.send(embed=embed, view=view)
-	except Exception as e:
-		logger.error(f"Failed to send status card message for ticket {ticket_id}: {e}")
-		return False
-	
-	# Send and delete a temporary ping to add the creator and staff to the thread
-	# so that it is instantly visible in their channel sidebar.
-	mentions = []
-	if ticket.playerInfo.discordId:
-		mentions.append(f"<@{ticket.playerInfo.discordId}>")
-	for role_id in HELPER_ROLE_IDS:
-		mentions.append(f"<@&{role_id}>")
-	
-	if mentions:
+		# Check the ticket channel
+		ticket_channel_id = os.getenv("DISCORD_TICKET_CHANNEL_ID")
+		if not ticket_channel_id:
+			logger.error("DISCORD_TICKET_CHANNEL_ID environment variable is not set.")
+			return False
+		
 		try:
-			ping_msg = await thread.send(" ".join(mentions))
-			await ping_msg.delete()
+			channel_id = int(ticket_channel_id)
+		except ValueError:
+			logger.error("DISCORD_TICKET_CHANNEL_ID is not a valid integer.")
+			return False
+
+		channel = bot.get_channel(channel_id)
+		if not channel:
+			try:
+				channel = await bot.fetch_channel(channel_id)
+			except Exception as e:
+				logger.error(f"Failed to fetch ticket channel {channel_id}: {e}")
+				return False
+
+		if not channel or not isinstance(channel, discord.TextChannel):
+			logger.error(f"Ticket channel with ID {channel_id} not found or is not a text channel.")
+			return False
+
+		if ticket.threadId:
+			logger.info(f"Ticket {ticket_id} already has thread {ticket.threadId}. Skipping thread creation.")
+			return True
+
+		# Wait up to 1.5s for the initial question message to be committed to MongoDB
+		for attempt in range(5):
+			if ticket.conversation and ticket.conversation.messages:
+				break
+			logger.info(f"Ticket {ticket_id} conversation is empty. Retrying fetch in 300ms (attempt {attempt + 1}/5)...")
+			await asyncio.sleep(0.3)
+			ticket = await asyncio.to_thread(mongo.getTicket, ticket_id)
+
+		# Create a new public thread on the ticket channel
+		try:
+			thread = await channel.create_thread(
+				name=f"🎫-ticket-{ticket_id}",
+				type=discord.ChannelType.private_thread,
+				auto_archive_duration=10080  # 7 days
+			)
 		except Exception as e:
-			logger.error(f"Failed to send/delete transient thread pings: {e}")
-	
-	logger.info(f"Created Discord thread {thread.id} for ticket {ticket_id}.")
-	
-	# Save thread ID and status message ID to the backend
-	await MCL_OutboundRelay().update_ticket_thread(ticket_id, thread.id, status_msg.id)
-	return True
+			logger.error(f"Failed to create Discord thread for ticket {ticket_id}: {e}")
+			return False
+		
+		# Generate initial embed
+		embed = generate_ticket_embed(ticket)
+		
+		# Send status card in thread with persistent view
+		view = HelpTicketThreadView()
+		try:
+			status_msg = await thread.send(embed=embed, view=view)
+		except Exception as e:
+			logger.error(f"Failed to send status card message for ticket {ticket_id}: {e}")
+			return False
+		
+		# Send and delete a temporary ping to add the creator and staff to the thread
+		# so that it is instantly visible in their channel sidebar.
+		mentions = []
+		if ticket.playerInfo.discordId:
+			mentions.append(f"<@{ticket.playerInfo.discordId}>")
+		for role_id in HELPER_ROLE_IDS:
+			mentions.append(f"<@&{role_id}>")
+		
+		if mentions:
+			try:
+				ping_msg = await thread.send(" ".join(mentions))
+				await ping_msg.delete()
+			except Exception as e:
+				logger.error(f"Failed to send/delete transient thread pings: {e}")
+		
+		logger.info(f"Created Discord thread {thread.id} for ticket {ticket_id}.")
+		
+		# Save thread ID and status message ID to the backend
+		await MCL_OutboundRelay().update_ticket_thread(ticket_id, thread.id, status_msg.id)
+		return True
+	finally:
+		# Unregister this thread creation attempt and wake up waiting tasks
+		_creating_threads.pop(ticket_id, None)
+		event.set()
 
 
 async def handle_discord_claim(bot, ticket_id: int, ticket: Optional[HelpTicket] = None) -> bool:
