@@ -465,7 +465,7 @@ async def handle_discord_create(bot, ticket_id: int, ticket: Optional[HelpTicket
 
 async def handle_discord_claim(bot, ticket_id: int, ticket: Optional[HelpTicket] = None) -> bool:
 	'''
-	Updates status card embed and posts a claim notification message in the thread.
+	Updates status card embed in the thread.
 	'''
 	ticket, thread, status_msg = await _get_ticket_thread_and_message(bot, ticket_id, ticket)
 	if not ticket or not thread:
@@ -480,31 +480,12 @@ async def handle_discord_claim(bot, ticket_id: int, ticket: Optional[HelpTicket]
 		except Exception as e:
 			logger.error(f"Failed to edit status card for ticket {ticket_id}: {e}")
 
-	# Check for duplicate claim notification in the last 10 messages
-	already_notified = False
-	try:
-		async for msg in thread.history(limit=10):
-			if msg.author.id == bot.user.id and "Ticket has been claimed by" in msg.content:
-				already_notified = True
-				break
-	except Exception as e:
-		logger.warning(f"Error checking thread history for duplicates for ticket {ticket_id}: {e}")
-
-	if not already_notified:
-		# Notify the thread
-		claimed_by = ticket.claimedBy or "Unknown Staff"
-		try:
-			await thread.send(f"🙋‍♂️ Ticket has been claimed by <@{claimed_by}>.")
-		except Exception as e:
-			logger.error(f"Failed to send claim notification message to thread {thread.id}: {e}")
-	else:
-		logger.info(f"Claim notification already sent for ticket {ticket_id}. Skipping duplicate message.")
 	return True
 
 
 async def handle_discord_unclaim(bot, ticket_id: int, ticket: Optional[HelpTicket] = None) -> bool:
 	'''
-	Updates status card embed and posts an unclaim notification message in the thread.
+	Updates status card embed in the thread.
 	'''
 	ticket, thread, status_msg = await _get_ticket_thread_and_message(bot, ticket_id, ticket)
 	if not ticket or not thread:
@@ -519,24 +500,6 @@ async def handle_discord_unclaim(bot, ticket_id: int, ticket: Optional[HelpTicke
 		except Exception as e:
 			logger.error(f"Failed to edit status card for ticket {ticket_id}: {e}")
 
-	# Check for duplicate unclaim notification in the last 10 messages
-	already_notified = False
-	try:
-		async for msg in thread.history(limit=10):
-			if msg.author.id == bot.user.id and "Ticket has been unclaimed" in msg.content:
-				already_notified = True
-				break
-	except Exception as e:
-		logger.warning(f"Error checking thread history for duplicates for ticket {ticket_id}: {e}")
-
-	if not already_notified:
-		# Notify the thread
-		try:
-			await thread.send("🚫 Ticket has been unclaimed.")
-		except Exception as e:
-			logger.error(f"Failed to send unclaim notification message to thread {thread.id}: {e}")
-	else:
-		logger.info(f"Unclaim notification already sent for ticket {ticket_id}. Skipping duplicate message.")
 	return True
 
 
