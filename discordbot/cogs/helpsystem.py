@@ -9,6 +9,7 @@ MODULE IMPORTS
 '''
 
 import os
+import time
 import logging
 import asyncio
 import aiohttp
@@ -19,6 +20,7 @@ from typing import cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
 	from discordbot.bot import MclBot
+	from discordbot.network.relay import MCL_OutboundRelay
 	from discordbot.components.ticket_view import handle_discord_create
 
 '''
@@ -78,6 +80,18 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 			"User-Agent": user_agent
 		}
 
+		# Ensure backend API is awake if last successful communication was > 5 minutes ago
+		relay = MCL_OutboundRelay()
+		current_time = time.time()
+		if current_time - relay._last_success_time > 300.0:
+			self.logger.info("API last active check failed or timed out. Ensuring backend is awake before creating ticket...")
+			is_awake = await bot.ensureApiAwake(numberTries=5, sleepInterval=3)
+			if is_awake:
+				relay._last_success_time = time.time()
+			else:
+				self.logger.warning("Failed to verify backend is awake, proceeding with request anyway.")
+
+		ticket_id = None
 		try:
 			# 1. Create ticket on backend
 			async with bot.session.post(
@@ -90,16 +104,27 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 						"discordUsername": username
 					}
 				},
-				timeout=aiohttp.ClientTimeout(total=10)
+				timeout=aiohttp.ClientTimeout(total=30)
 			) as resp:
 				if resp.status != 200:
 					raise RuntimeError(f"Backend API create_ticket returned status {resp.status}")
+				relay._last_success_time = time.time()
 				resp_json = await resp.json()
 				ticket_id = resp_json.get("ticketId")
 
 			if not ticket_id:
 				raise RuntimeError("No ticketId returned by backend API.")
 
+		except Exception as e:
+			self.logger.exception(f"Error handling /ask modal submission (ticket creation failed): {e}")
+			await interaction.followup.send(
+				"An error occurred while creating your help ticket. Please try again later.",
+				ephemeral=True
+			)
+			return
+
+		# If ticket was created successfully, attempt to append the question and trigger thread creation
+		try:
 			# 2. Append the user's question to the ticket conversation
 			async with bot.session.post(
 				f"https://{domain_backend}/append_ticket_message",
@@ -112,25 +137,26 @@ class HelpSystemModal(discord.ui.Modal, title="Ask a Question"):
 						"discordUsername": username
 					}
 				},
-				timeout=aiohttp.ClientTimeout(total=10)
+				timeout=aiohttp.ClientTimeout(total=30)
 			) as resp:
 				if resp.status != 200:
 					self.logger.error(f"Failed to append message to ticket {ticket_id}. Status: {resp.status}")
 				else:
-					asyncio.create_task(handle_discord_create(bot, ticket_id))
+					relay._last_success_time = time.time()
 
-			# 3. Inform the user of successful creation
-			await interaction.followup.send(
-				f"Thank you! Your help ticket #{ticket_id} has been created successfully. A dedicated thread will be opened for you shortly.",
-				ephemeral=True
-			)
+			# Trigger thread creation in the background
+			asyncio.create_task(handle_discord_create(bot, ticket_id))
 
 		except Exception as e:
-			self.logger.exception(f"Error handling /ask modal submission: {e}")
-			await interaction.followup.send(
-				"An error occurred while creating your help ticket. Please try again later.",
-				ephemeral=True
-			)
+			self.logger.exception(f"Error appending question/creating thread for ticket {ticket_id}: {e}")
+			# Still attempt thread creation as the ticket exists
+			asyncio.create_task(handle_discord_create(bot, ticket_id))
+
+		# 3. Inform the user of successful creation
+		await interaction.followup.send(
+			f"Thank you! Your help ticket #{ticket_id} has been created successfully. A dedicated thread will be opened for you shortly.",
+			ephemeral=True
+		)
 
 	async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
 		self.logger.exception(f"Error in HelpSystemModal: {error}")
