@@ -16,10 +16,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from typing import cast, TYPE_CHECKING
+from discordbot.components.ticket_view import handle_discord_create
 
 if TYPE_CHECKING:
 	from discordbot.bot import MclBot
-	from discordbot.components.ticket_view import handle_discord_create
 
 '''
 MODAL DEFINITION
