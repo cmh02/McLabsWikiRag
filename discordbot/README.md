@@ -45,10 +45,12 @@ The bottom of the status card embed contains interactive buttons:
 *   **🙋‍♂️ Claim**: Restricted to Staff (`Helper+`). Claims the ticket, and updates the status card embed to gold.
 *   **🚫 Unclaim**: Restricted to Staff (`Helper+`). Reverts the ticket status to `🟢 Open` so other staff members can assist.
 *   **⭐ Feedback**: Restricted to the ticket creator. Prompts the user with a rating view (`Helpful 👍` or `Unhelpful 👎`). Selecting an option updates the status card's feedback field.
+*   **📥 Receive Archive**: Available to any user with thread access. Toggles whether the user will receive a transcript DM once the ticket is closed (enabled for the ticket creator by default).
 *   **🔒 Close**: Can be triggered by the ticket creator or a staff member. It opens a confirmation prompt (`Confirm Close` / `Cancel`). When confirmed:
     *   The ticket status updates to `🔴 Closed`.
     *   The Discord thread is archived and locked.
     *   The backend database is notified to mark the ticket closed.
+    *   A transcript archive is generated and sent via DM to all users in the ticket's archive recipients list.
 
 ---
 

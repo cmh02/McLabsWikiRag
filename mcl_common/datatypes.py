@@ -139,6 +139,9 @@ class HelpTicket:
 		self.time_close: Optional[float] = None
 		self.threadId: Optional[int] = threadId
 		self.statusMessageId: Optional[int] = statusMessageId
+		self.archiveRecipients: list[str] = []
+		if playerInfo.discordId:
+			self.archiveRecipients.append(playerInfo.discordId)
 
 	def toDict(self) -> dict:
 		"""
@@ -164,7 +167,8 @@ class HelpTicket:
 			"time_claim": self.time_claim,
 			"time_close": self.time_close,
 			"threadId": self.threadId,
-			"statusMessageId": self.statusMessageId
+			"statusMessageId": self.statusMessageId,
+			"archiveRecipients": self.archiveRecipients
 		}
 	
 	def appendMessage(self, message: Message):

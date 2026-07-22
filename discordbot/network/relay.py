@@ -153,18 +153,21 @@ class MCL_OutboundRelay:
 			}
 		)
 
-	async def update_ticket_thread(self, ticket_id: int, thread_id: int, status_message_id: Optional[int] = None) -> bool:
+	async def update_ticket_thread(self, ticket_id: int, thread_id: Optional[int] = None, status_message_id: Optional[int] = None, archive_recipients: Optional[list[str]] = None) -> bool:
 		'''
 		# Update Ticket Thread
 
-		Sends a request to the backend RAG API to set/update a ticket's thread ID and status message ID.
+		Sends a request to the backend RAG API to set/update a ticket's thread ID, status message ID, and/or archive recipients.
 		'''
 		json_data = {
-			"ticketId": ticket_id,
-			"threadId": thread_id
+			"ticketId": ticket_id
 		}
+		if thread_id is not None:
+			json_data["threadId"] = thread_id
 		if status_message_id is not None:
 			json_data["statusMessageId"] = status_message_id
+		if archive_recipients is not None:
+			json_data["archiveRecipients"] = archive_recipients
 
 		return await self._post_with_retry(
 			endpoint="/update_ticket_thread",

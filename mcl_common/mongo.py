@@ -489,6 +489,7 @@ class MCL_MongoManager():
 		ticket.time_create = ticket_data.get("time_create")
 		ticket.time_claim = ticket_data.get("time_claim")
 		ticket.time_close = ticket_data.get("time_close")
+		ticket.archiveRecipients = ticket_data.get("archiveRecipients", [])
 		return ticket
 
 	def getAllTicketIds(self, type: Optional[TicketType] = None, status: Optional[TicketStatus] = None) -> list[int]:

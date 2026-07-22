@@ -8,7 +8,7 @@ Author: Chris Hinkson @cmh02
 MODULE IMPORTS
 '''
 import uuid
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
@@ -239,8 +239,9 @@ class UpdateTicketThreadSchema(BaseModel):
 	Model for updating a ticket with its Discord thread ID.
 	'''
 	ticketId: int = Field(description="The ID of the ticket to update.")
-	threadId: int = Field(description="The Discord thread ID to link to the ticket.")
+	threadId: Optional[int] = Field(default=None, description="The Discord thread ID to link to the ticket.")
 	statusMessageId: Optional[int] = Field(default=None, description="The Discord message ID of the status card embed.")
+	archiveRecipients: Optional[List[str]] = Field(default=None, description="The list of Discord IDs to receive the archive.")
 
 @router.post("/update_ticket_thread")
 @limiter.limit("100/minute")
@@ -251,24 +252,21 @@ def update_ticket_thread(request: Request, body: UpdateTicketThreadSchema):
 	ticketId: int | None = data.get("ticketId")
 	threadId: int | None = data.get("threadId")
 	statusMessageId: int | None = data.get("statusMessageId")
+	archiveRecipients: List[str] | None = data.get("archiveRecipients")
 
-	# Validate that we got a ticketId and threadId
+	# Validate that we got a ticketId
 	if not ticketId:
 		raise HTTPException(
 			status_code=400,
 			detail="Missing 'ticketId'"
-		)
-	if not threadId:
-		raise HTTPException(
-			status_code=400,
-			detail="Missing 'threadId'"
 		)
 
 	# Update ticket thread
 	MCL_HelpManager().updateTicketThread(
 		ticketId=ticketId,
 		threadId=threadId,
-		statusMessageId=statusMessageId
+		statusMessageId=statusMessageId,
+		archiveRecipients=archiveRecipients
 	)
 
 	return JSONResponse(

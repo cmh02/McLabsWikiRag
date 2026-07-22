@@ -120,11 +120,11 @@ class MCL_HelpManager():
 		)
 		return ticketId
 
-	def updateTicketThread(self, ticketId: int, threadId: int, statusMessageId: Optional[int] = None):
+	def updateTicketThread(self, ticketId: int, threadId: Optional[int] = None, statusMessageId: Optional[int] = None, archiveRecipients: Optional[list[str]] = None):
 		'''
 		# Update Ticket Thread ID
 
-		Updates the Discord thread ID and status message ID for an existing help ticket.
+		Updates the Discord thread ID, status message ID, and/or archive recipients for an existing help ticket.
 		'''
 		ticket = self._getOrLoadTicket(ticketId)
 		if not ticket:
@@ -132,9 +132,12 @@ class MCL_HelpManager():
 			return
 
 		# Update the thread ID
-		ticket.threadId = threadId
+		if threadId is not None:
+			ticket.threadId = threadId
 		if statusMessageId is not None:
 			ticket.statusMessageId = statusMessageId
+		if archiveRecipients is not None:
+			ticket.archiveRecipients = archiveRecipients
 
 		# Save to mongo
 		self.mongoManager.saveTicket(

@@ -238,6 +238,57 @@ class HelpTicketThreadView(discord.ui.View):
 		view = FeedbackSelectionView(ticket.ticketId)
 		await interaction.response.send_message("Please rate the assistance you received:", view=view, ephemeral=True)
 
+	@discord.ui.button(label="Receive Archive", style=discord.ButtonStyle.secondary, emoji="📥", custom_id="btn_toggle_archive_recipient")
+	async def toggle_archive_recipient(self, interaction: discord.Interaction, button: discord.ui.Button):
+		logger.info(f"Button Toggle Archive Recipient clicked by {interaction.user}")
+
+		# Ensure interaction user is a Member
+		if not isinstance(interaction.user, discord.Member):
+			await interaction.response.send_message("Command must be run in a server.", ephemeral=True)
+			return
+
+		# Get ticket by thread ID
+		if interaction.channel_id is None:
+			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
+			return
+
+		mongo = MCL_MongoManager()
+		ticket = await asyncio.to_thread(mongo.getTicketByThreadId, interaction.channel_id)
+		if not ticket:
+			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
+			return
+
+		# Initialize archiveRecipients if not exists (for older tickets)
+		if not hasattr(ticket, 'archiveRecipients') or ticket.archiveRecipients is None:
+			ticket.archiveRecipients = []
+			if ticket.playerInfo.discordId:
+				ticket.archiveRecipients.append(str(ticket.playerInfo.discordId))
+
+		user_id = str(interaction.user.id)
+		if user_id in ticket.archiveRecipients:
+			ticket.archiveRecipients.remove(user_id)
+			enabled = False
+		else:
+			ticket.archiveRecipients.append(user_id)
+			enabled = True
+
+		# Acknowledge the interaction immediately
+		await interaction.response.defer(ephemeral=True)
+
+		# Save to backend
+		success = await MCL_OutboundRelay().update_ticket_thread(
+			ticket_id=ticket.ticketId,
+			archive_recipients=ticket.archiveRecipients
+		)
+
+		if not success:
+			await interaction.followup.send("Failed to update archive preferences via API.", ephemeral=True)
+		else:
+			if enabled:
+				await interaction.followup.send("✅ You will now receive a transcript archive when this ticket is closed.", ephemeral=True)
+			else:
+				await interaction.followup.send("❌ You will no longer receive a transcript archive when this ticket is closed.", ephemeral=True)
+
 
 class CloseConfirmationView(discord.ui.View):
 	'''
@@ -593,12 +644,18 @@ async def handle_discord_close(bot, ticket_id: int, ticket: Optional[HelpTicket]
 		from discordbot.utils.transcript import generate_html_transcript
 		html_content = generate_html_transcript(ticket, resolved_names)
 
-		# Determine recipients: player and claimed helper
+		# Determine recipients: players in the archiveRecipients list
 		recipients = set()
-		if ticket.playerInfo.discordId and ticket.playerInfo.discordId.isdigit():
-			recipients.add(ticket.playerInfo.discordId)
-		if ticket.claimedBy and ticket.claimedBy.isdigit():
-			recipients.add(ticket.claimedBy)
+		if hasattr(ticket, 'archiveRecipients') and ticket.archiveRecipients is not None:
+			for r_id in ticket.archiveRecipients:
+				if r_id and r_id.isdigit():
+					recipients.add(r_id)
+		else:
+			# Fallback for legacy tickets
+			if ticket.playerInfo.discordId and ticket.playerInfo.discordId.isdigit():
+				recipients.add(ticket.playerInfo.discordId)
+			if ticket.claimedBy and ticket.claimedBy.isdigit():
+				recipients.add(ticket.claimedBy)
 
 		# Upload the transcript to the administration/moderation channel first
 		admin_channel_id = os.getenv("DISCORD_ADMIN_CHANNEL_ID")
