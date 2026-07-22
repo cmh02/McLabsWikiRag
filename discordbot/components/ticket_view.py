@@ -503,6 +503,26 @@ async def handle_discord_unclaim(bot, ticket_id: int, ticket: Optional[HelpTicke
 	return True
 
 
+async def handle_discord_playerinfo_update(bot, ticket_id: int, ticket: Optional[HelpTicket] = None) -> bool:
+	'''
+	Updates status card embed in the thread when player info is resolved or updated.
+	'''
+	ticket, thread, status_msg = await _get_ticket_thread_and_message(bot, ticket_id, ticket)
+	if not ticket or not thread:
+		return False
+
+	# Edit status card embed with the latest info
+	if status_msg:
+		try:
+			embed = generate_ticket_embed(ticket)
+			await status_msg.edit(embed=embed)
+			logger.info(f"Updated status card embed for ticket {ticket_id} due to player info update.")
+		except Exception as e:
+			logger.error(f"Failed to edit status card for ticket {ticket_id} player info update: {e}")
+			return False
+	return True
+
+
 async def handle_discord_close(bot, ticket_id: int, ticket: Optional[HelpTicket] = None) -> bool:
 	'''
 	Updates status card embed, posts closed notification message,

@@ -204,15 +204,37 @@ class MCL_MongoManager():
 
 		New refactored lookup process:
 		1. Take in a request from an endpoint.
-		2. Check if any of the data is missing (i.e. any of the 4 fields is None or empty/whitespace).
-		3. If NOT missing, skip any queries, and simply launch an async mongo update with this latest given information.
-		4. If data is missing, we launch a background task to get data from MongoDB, lookup authoritative names externally, update Mongo, and relay the update.
+		2. Check if we already have this player registered in MongoDB synchronously.
+		3. If found, merge the existing Minecraft and Discord details immediately.
+		4. Check if any of the data is missing (i.e. any of the 4 fields is None or empty/whitespace).
+		5. If NOT missing, skip any external queries, and simply launch an async mongo update with this latest given information.
+		6. If data is missing, we launch a background task to get data from MongoDB, lookup authoritative names externally, update Mongo, and relay the update.
 		"""
 		# Clean fields and handle empty strings as None
 		playerInfo.minecraftUsername = playerInfo.minecraftUsername.strip() if playerInfo.minecraftUsername else None
 		playerInfo.minecraftUUID = playerInfo.minecraftUUID.strip() if playerInfo.minecraftUUID else None
 		playerInfo.discordUsername = playerInfo.discordUsername.strip() if playerInfo.discordUsername else None
 		playerInfo.discordId = playerInfo.discordId.strip() if playerInfo.discordId else None
+
+		# Query MongoDB synchronously first to resolve any already linked player information
+		try:
+			existingPlayer = self.getPlayerInfo(
+				playerInfo.minecraftUsername,
+				playerInfo.minecraftUUID,
+				playerInfo.discordUsername,
+				playerInfo.discordId
+			)
+			if existingPlayer:
+				if not playerInfo.minecraftUsername:
+					playerInfo.minecraftUsername = existingPlayer.minecraftUsername
+				if not playerInfo.minecraftUUID:
+					playerInfo.minecraftUUID = existingPlayer.minecraftUUID
+				if not playerInfo.discordUsername:
+					playerInfo.discordUsername = existingPlayer.discordUsername
+				if not playerInfo.discordId:
+					playerInfo.discordId = existingPlayer.discordId
+		except Exception as e:
+			self.logger.error(f"Error checking existing player info synchronously: {e}")
 
 		# Check if any of the data is missing
 		is_missing = not (
@@ -429,10 +451,32 @@ class MCL_MongoManager():
 		return self._deserializeTicket(ticket_data)
 
 	def _deserializeTicket(self, ticket_data: dict) -> HelpTicket:
+		player_info = PlayerInfo.fromDict(ticket_data["playerInfo"])
+
+		# Dynamically resolve authoritative player info from players database
+		try:
+			authoritative = self.getPlayerInfo(
+				player_info.minecraftUsername,
+				player_info.minecraftUUID,
+				player_info.discordUsername,
+				player_info.discordId
+			)
+			if authoritative:
+				if authoritative.minecraftUsername:
+					player_info.minecraftUsername = authoritative.minecraftUsername
+				if authoritative.minecraftUUID:
+					player_info.minecraftUUID = authoritative.minecraftUUID
+				if authoritative.discordUsername:
+					player_info.discordUsername = authoritative.discordUsername
+				if authoritative.discordId:
+					player_info.discordId = authoritative.discordId
+		except Exception as e:
+			self.logger.error(f"Error fetching authoritative player info on deserialize: {e}")
+
 		# If ticket does exist, then repop fields
 		ticket = HelpTicket(
 			ticketId=ticket_data["ticketId"],
-			playerInfo=PlayerInfo.fromDict(ticket_data["playerInfo"]),
+			playerInfo=player_info,
 			type=TicketType(ticket_data["type"]),
 			conversation=Conversation.fromDict(ticket_data["conversation"]) if "conversation" in ticket_data else None,
 			threadId=ticket_data.get("threadId"),

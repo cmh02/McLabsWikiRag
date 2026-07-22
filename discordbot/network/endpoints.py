@@ -27,7 +27,8 @@ from discordbot.components.ticket_view import (
 	handle_discord_unclaim,
 	handle_discord_close,
 	handle_discord_feedback,
-	handle_discord_newmessage
+	handle_discord_newmessage,
+	handle_discord_playerinfo_update
 )
 
 '''
@@ -102,6 +103,8 @@ async def update(request: Request, updateRequest: UpdateRequest):
 			await handle_discord_feedback(bot, ticketId)
 		elif ticketAction == TicketAction.NEWMESSAGE.value:
 			await handle_discord_newmessage(bot, ticketId)
+		elif ticketAction == TicketAction.PLAYERINFOUPDATE.value:
+			await handle_discord_playerinfo_update(bot, ticketId)
 		else:
 			bot.logger.warning(f"Unhandled relay action {ticketAction} for ticket {ticketId}.")
 
