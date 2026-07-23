@@ -212,3 +212,6 @@ skript/mclwikirag_env.sk
 
 # Help Q&A
 helpqa/
+
+# AI Development
+.agents/
