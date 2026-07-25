@@ -215,3 +215,4 @@ helpqa/
 
 # AI Development
 .agents/
+.tools/
