@@ -79,7 +79,8 @@ class MCL_HelpManager():
 
 		ticket = self.mongoManager.getTicket(ticketId)
 		if ticket and ticket.playerInfo.minecraftUUID != "Unknown":
-			self.tickets[ticketId] = ticket
+			if ticket.status != TicketStatus.CLOSED:
+				self.tickets[ticketId] = ticket
 			return ticket
 		return None
 
