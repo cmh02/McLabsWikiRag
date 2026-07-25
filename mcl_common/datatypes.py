@@ -53,6 +53,40 @@ class PlayerInfo:
 			discordId=data.get("discordId")
 		)
 
+class DiscordInfo:
+	'''
+	# DiscordInfo
+
+	Represents Discord-specific metadata linked to a help ticket.
+	'''
+
+	def __init__(self,
+				 threadId: Optional[int] = None,
+				 statusMessageId: Optional[int] = None,
+				 archiveRecipients: Optional[list[str]] = None,
+				 archiveLink: Optional[str] = None):
+		self.threadId: Optional[int] = threadId
+		self.statusMessageId: Optional[int] = statusMessageId
+		self.archiveRecipients: list[str] = archiveRecipients if archiveRecipients is not None else []
+		self.archiveLink: Optional[str] = archiveLink
+
+	def toDict(self) -> dict:
+		return {
+			"threadId": self.threadId,
+			"statusMessageId": self.statusMessageId,
+			"archiveRecipients": self.archiveRecipients,
+			"archiveLink": self.archiveLink
+		}
+
+	@staticmethod
+	def fromDict(data: dict) -> 'DiscordInfo':
+		return DiscordInfo(
+			threadId=data.get("threadId"),
+			statusMessageId=data.get("statusMessageId"),
+			archiveRecipients=data.get("archiveRecipients", []),
+			archiveLink=data.get("archiveLink")
+		)
+
 class Message:
 	'''
 	# Message
@@ -123,8 +157,7 @@ class HelpTicket:
 				 playerInfo: PlayerInfo,
 				 type: TicketType,
 				 conversation: Optional[Conversation] = None,
-				 threadId: Optional[int] = None,
-				 statusMessageId: Optional[int] = None
+				 discordInfo: Optional[DiscordInfo] = None
 				):
 		self.ticketId: int = ticketId
 		self.playerInfo: PlayerInfo = playerInfo
@@ -132,16 +165,14 @@ class HelpTicket:
 		self.conversation: Conversation = conversation if conversation else Conversation()
 		self.status: TicketStatus = TicketStatus.OPEN
 		self.feedback: TicketFeedback = TicketFeedback.NONE
-		self.claimedBy: Optional[str] = None
-		self.closedBy: Optional[str] = None
+		self.claimedBy: Optional[PlayerInfo] = None
+		self.closedBy: Optional[PlayerInfo] = None
 		self.time_create: Optional[float] = datetime.now().timestamp()
 		self.time_claim: Optional[float] = None
 		self.time_close: Optional[float] = None
-		self.threadId: Optional[int] = threadId
-		self.statusMessageId: Optional[int] = statusMessageId
-		self.archiveRecipients: list[str] = []
-		if playerInfo.discordId:
-			self.archiveRecipients.append(playerInfo.discordId)
+		self.discordInfo: DiscordInfo = discordInfo if discordInfo else DiscordInfo()
+		if discordInfo is None and not self.discordInfo.archiveRecipients and playerInfo.discordId:
+			self.discordInfo.archiveRecipients.append(playerInfo.discordId)
 
 	def toDict(self) -> dict:
 		"""
@@ -161,14 +192,12 @@ class HelpTicket:
 			"conversation": self.conversation.toDict(),
 			"status": self.status.value,
 			"feedback": self.feedback.value,
-			"claimedBy": self.claimedBy,
-			"closedBy": self.closedBy,
+			"claimedBy": self.claimedBy.toDict() if self.claimedBy else None,
+			"closedBy": self.closedBy.toDict() if self.closedBy else None,
 			"time_create": self.time_create,
 			"time_claim": self.time_claim,
 			"time_close": self.time_close,
-			"threadId": self.threadId,
-			"statusMessageId": self.statusMessageId,
-			"archiveRecipients": self.archiveRecipients
+			"discordInfo": self.discordInfo.toDict()
 		}
 	
 	def appendMessage(self, message: Message):
@@ -212,13 +241,13 @@ class HelpTicket:
 		self.closedBy = None
 		self.time_close = None
 
-	def claim(self, claimedBy: str):
+	def claim(self, claimedBy: PlayerInfo):
 		"""
 		## Claim Ticket
 		Claim the help ticket for a staff member.
 
 		### Parameters
-			claimedBy (str): The UUID of the staff member claiming the ticket.
+			claimedBy (PlayerInfo): The identification details of the staff member claiming the ticket.
 
 		### Returns
 			None
@@ -242,13 +271,13 @@ class HelpTicket:
 		self.claimedBy = None
 		self.time_claim = None
 
-	def close(self, closedBy: str):
+	def close(self, closedBy: PlayerInfo):
 		"""
 		## Close Ticket
 		Close the help ticket for a staff member.
 
 		### Parameters
-			closedBy (str): The UUID of the staff member closing the ticket.
+			closedBy (PlayerInfo): The identification details of the staff member closing the ticket.
 
 		### Returns
 			None

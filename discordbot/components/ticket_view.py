@@ -49,10 +49,10 @@ def generate_ticket_embed(ticket: HelpTicket, creator: Optional[discord.Member] 
 		status_str = "🟢 Open"
 	elif ticket.status == TicketStatus.CLAIMED:
 		color = discord.Color.gold()
-		status_str = f"🟡 Claimed by <@{ticket.claimedBy}>" if ticket.claimedBy else "🟡 Claimed"
+		status_str = f"🟡 Claimed by <@{ticket.claimedBy.discordId}>" if (ticket.claimedBy and ticket.claimedBy.discordId) else "🟡 Claimed"
 	elif ticket.status == TicketStatus.CLOSED:
 		color = discord.Color.red()
-		status_str = f"🔴 Closed by <@{ticket.closedBy}>" if ticket.closedBy else "🔴 Closed"
+		status_str = f"🔴 Closed by <@{ticket.closedBy.discordId}>" if (ticket.closedBy and ticket.closedBy.discordId) else "🔴 Closed"
 	else:
 		color = discord.Color.light_grey()
 		status_str = f"Status: {ticket.status.value}"
@@ -261,27 +261,21 @@ class HelpTicketThreadView(discord.ui.View):
 			await interaction.response.send_message("Could not find ticket for this thread in database.", ephemeral=True)
 			return
 
-		# Initialize archiveRecipients if not exists (for older tickets)
-		if not hasattr(ticket, 'archiveRecipients') or ticket.archiveRecipients is None:
-			ticket.archiveRecipients = []
-			if ticket.playerInfo.discordId:
-				ticket.archiveRecipients.append(ticket.playerInfo.discordId)
-
 		user_id = str(interaction.user.id)
-		if user_id in ticket.archiveRecipients:
-			ticket.archiveRecipients.remove(user_id)
+		if user_id in ticket.discordInfo.archiveRecipients:
+			ticket.discordInfo.archiveRecipients.remove(user_id)
 			enabled = False
 		else:
-			ticket.archiveRecipients.append(user_id)
+			ticket.discordInfo.archiveRecipients.append(user_id)
 			enabled = True
 
 		# Acknowledge the interaction immediately
 		await interaction.response.defer(ephemeral=True)
 
 		# Save to backend
-		success = await MCL_OutboundRelay().update_ticket_thread(
+		success = await MCL_OutboundRelay().update_discord_info(
 			ticket_id=ticket.ticketId,
-			archive_recipients=ticket.archiveRecipients
+			archive_recipients=ticket.discordInfo.archiveRecipients
 		)
 
 		if not success:
@@ -393,7 +387,7 @@ async def _get_ticket_thread_and_message(bot, ticket_id: int, ticket: Optional[H
 		logger.error(f"Ticket with ID {ticket_id} not found in database.")
 		return None, None, None
 
-	thread_id = ticket.threadId
+	thread_id = ticket.discordInfo.threadId
 	if not thread_id:
 		logger.warning(f"No threadId associated with ticket {ticket_id}. Cannot process.")
 		return ticket, None, None
@@ -412,15 +406,15 @@ async def _get_ticket_thread_and_message(bot, ticket_id: int, ticket: Optional[H
 
 	# Find status message in the thread directly by ID
 	status_msg = None
-	if ticket.statusMessageId:
+	if ticket.discordInfo.statusMessageId:
 		try:
-			status_msg = discord.utils.get(bot.cached_messages, id=ticket.statusMessageId)
+			status_msg = discord.utils.get(bot.cached_messages, id=ticket.discordInfo.statusMessageId)
 			if not status_msg:
-				status_msg = await thread.fetch_message(ticket.statusMessageId)
+				status_msg = await thread.fetch_message(ticket.discordInfo.statusMessageId)
 		except discord.NotFound:
-			logger.error(f"Status message with ID {ticket.statusMessageId} not found in thread {thread.id}.")
+			logger.error(f"Status message with ID {ticket.discordInfo.statusMessageId} not found in thread {thread.id}.")
 		except Exception as e:
-			logger.error(f"Error fetching status message {ticket.statusMessageId}: {e}")
+			logger.error(f"Error fetching status message {ticket.discordInfo.statusMessageId}: {e}")
 
 	return ticket, thread, status_msg
 
@@ -437,7 +431,7 @@ async def handle_discord_create(bot, ticket_id: int, ticket: Optional[HelpTicket
 		# Re-fetch ticket to see if the thread was successfully created by the other task
 		mongo = MCL_MongoManager()
 		ticket = await asyncio.to_thread(mongo.getTicket, ticket_id)
-		if ticket and ticket.threadId:
+		if ticket and ticket.discordInfo.threadId:
 			logger.info(f"Thread for ticket {ticket_id} was successfully created by the other task. Skipping.")
 			return True
 
@@ -477,8 +471,8 @@ async def handle_discord_create(bot, ticket_id: int, ticket: Optional[HelpTicket
 			logger.error(f"Ticket channel with ID {channel_id} not found or is not a text channel.")
 			return False
 
-		if ticket.threadId:
-			logger.info(f"Ticket {ticket_id} already has thread {ticket.threadId}. Skipping thread creation.")
+		if ticket.discordInfo.threadId:
+			logger.info(f"Ticket {ticket_id} already has thread {ticket.discordInfo.threadId}. Skipping thread creation.")
 			return True
 
 		# Wait up to 1.5s for the initial question message to be committed to MongoDB
@@ -529,7 +523,7 @@ async def handle_discord_create(bot, ticket_id: int, ticket: Optional[HelpTicket
 		logger.info(f"Created Discord thread {thread.id} for ticket {ticket_id}.")
 		
 		# Save thread ID and status message ID to the backend
-		await MCL_OutboundRelay().update_ticket_thread(ticket_id, thread.id, status_msg.id)
+		await MCL_OutboundRelay().update_discord_info(ticket_id, thread_id=thread.id, status_message_id=status_msg.id)
 		return True
 	finally:
 		# Unregister this thread creation attempt and wake up waiting tasks
@@ -631,9 +625,10 @@ async def handle_discord_close(bot, ticket_id: int, ticket: Optional[HelpTicket]
 
 	if not already_notified:
 		# Notify the thread
-		closed_by = ticket.closedBy or "Unknown"
+		closed_by_id = ticket.closedBy.discordId if ticket.closedBy else None
+		closed_by_mention = f"<@{closed_by_id}>" if closed_by_id else "Unknown"
 		try:
-			await thread.send(f"🔒 Ticket has been closed by <@{closed_by}>.")
+			await thread.send(f"🔒 Ticket has been closed by {closed_by_mention}.")
 		except Exception as e:
 			logger.error(f"Failed to send close notification message to thread {thread.id}: {e}")
 
@@ -643,10 +638,10 @@ async def handle_discord_close(bot, ticket_id: int, ticket: Optional[HelpTicket]
 		user_ids_to_resolve = set()
 		if ticket.playerInfo.discordId and ticket.playerInfo.discordId.isdigit():
 			user_ids_to_resolve.add(ticket.playerInfo.discordId)
-		if ticket.claimedBy and ticket.claimedBy.isdigit():
-			user_ids_to_resolve.add(ticket.claimedBy)
-		if ticket.closedBy and ticket.closedBy.isdigit():
-			user_ids_to_resolve.add(ticket.closedBy)
+		if ticket.claimedBy and ticket.claimedBy.discordId and ticket.claimedBy.discordId.isdigit():
+			user_ids_to_resolve.add(ticket.claimedBy.discordId)
+		if ticket.closedBy and ticket.closedBy.discordId and ticket.closedBy.discordId.isdigit():
+			user_ids_to_resolve.add(ticket.closedBy.discordId)
 		
 		if ticket.conversation and ticket.conversation.messages:
 			for msg in ticket.conversation.messages:
@@ -669,16 +664,10 @@ async def handle_discord_close(bot, ticket_id: int, ticket: Optional[HelpTicket]
 
 		# Determine recipients: players in the archiveRecipients list
 		recipients = set()
-		if hasattr(ticket, 'archiveRecipients') and ticket.archiveRecipients is not None:
-			for r_id in ticket.archiveRecipients:
+		if ticket.discordInfo.archiveRecipients:
+			for r_id in ticket.discordInfo.archiveRecipients:
 				if r_id and r_id.isdigit():
 					recipients.add(r_id)
-		else:
-			# Fallback for legacy tickets
-			if ticket.playerInfo.discordId and ticket.playerInfo.discordId.isdigit():
-				recipients.add(ticket.playerInfo.discordId)
-			if ticket.claimedBy and ticket.claimedBy.isdigit():
-				recipients.add(ticket.claimedBy)
 
 		# Upload the transcript to the administration/moderation channel first
 		admin_channel_id = os.getenv("DISCORD_ADMIN_CHANNEL_ID")
@@ -698,6 +687,9 @@ async def handle_discord_close(bot, ticket_id: int, ticket: Optional[HelpTicket]
 					if admin_msg.attachments:
 						transcript_url = admin_msg.attachments[0].url
 						logger.info(f"Uploaded ticket {ticket_id} transcript to admin channel: {transcript_url}")
+						
+						# Persist the transcript archive link in MongoDB
+						await MCL_OutboundRelay().update_discord_info(ticket_id, archive_link=transcript_url)
 			except Exception as upload_err:
 				logger.error(f"Failed to upload ticket {ticket_id} transcript to admin channel: {upload_err}")
 
@@ -708,8 +700,8 @@ async def handle_discord_close(bot, ticket_id: int, ticket: Optional[HelpTicket]
 					user = await bot.fetch_user(int(r_id))
 				if user:
 					creator_mention = f"<@{ticket.playerInfo.discordId}>" if ticket.playerInfo.discordId else "Unknown"
-					claimed_mention = f"<@{ticket.claimedBy}>" if ticket.claimedBy else "Not Claimed"
-					closed_mention = f"<@{ticket.closedBy}>" if ticket.closedBy else "Unknown"
+					claimed_mention = f"<@{ticket.claimedBy.discordId}>" if (ticket.claimedBy and ticket.claimedBy.discordId) else "Not Claimed"
+					closed_mention = f"<@{ticket.closedBy.discordId}>" if (ticket.closedBy and ticket.closedBy.discordId) else "Unknown"
 
 					if transcript_url:
 						# Send premium embed with a link button to the hosted transcript

@@ -11,7 +11,7 @@ from typing import Any, Optional
 from pymongo import MongoClient
 
 from src.network.relay import MCL_OutboundRelay
-from mcl_common.datatypes import HelpTicket, Conversation, Message, PlayerInfo, ServerStatus
+from mcl_common.datatypes import HelpTicket, Conversation, Message, PlayerInfo, ServerStatus, DiscordInfo
 from mcl_common.enum import TicketType, TicketStatus, TicketFeedback, MongoDatabase, MongoCollection, TicketAction
 
 
@@ -445,7 +445,7 @@ class MCL_MongoManager():
 
 		Retrieves a help ticket by its linked Discord thread ID.
 		"""
-		ticket_data = self.collections[MongoDatabase.HELP][MongoCollection.TICKETS].find_one({"threadId": threadId})
+		ticket_data = self.collections[MongoDatabase.HELP][MongoCollection.TICKETS].find_one({"discordInfo.threadId": threadId})
 		if not ticket_data:
 			return None
 		return self._deserializeTicket(ticket_data)
@@ -479,17 +479,15 @@ class MCL_MongoManager():
 			playerInfo=player_info,
 			type=TicketType(ticket_data["type"]),
 			conversation=Conversation.fromDict(ticket_data["conversation"]) if "conversation" in ticket_data else None,
-			threadId=ticket_data.get("threadId"),
-			statusMessageId=ticket_data.get("statusMessageId")
+			discordInfo=DiscordInfo.fromDict(ticket_data["discordInfo"]) if "discordInfo" in ticket_data else None
 		)
 		ticket.status = TicketStatus(ticket_data["status"])
 		ticket.feedback = TicketFeedback(ticket_data["feedback"])
-		ticket.claimedBy = ticket_data.get("claimedBy")
-		ticket.closedBy = ticket_data.get("closedBy")
+		ticket.claimedBy = PlayerInfo.fromDict(ticket_data["claimedBy"]) if ticket_data.get("claimedBy") else None
+		ticket.closedBy = PlayerInfo.fromDict(ticket_data["closedBy"]) if ticket_data.get("closedBy") else None
 		ticket.time_create = ticket_data.get("time_create")
 		ticket.time_claim = ticket_data.get("time_claim")
 		ticket.time_close = ticket_data.get("time_close")
-		ticket.archiveRecipients = ticket_data.get("archiveRecipients", [])
 		return ticket
 
 	def getAllTicketIds(self, type: Optional[TicketType] = None, status: Optional[TicketStatus] = None) -> list[int]:
@@ -566,12 +564,12 @@ class MCL_MongoManager():
 		pipeline = [
 			{
 				"$match": {
-					"claimedBy": {"$exists": True, "$ne": None, "$nin": ["", "Unknown"]}
+					"claimedBy": {"$exists": True, "$ne": None}
 				}
 			},
 			{
 				"$group": {
-					"_id": "$claimedBy",
+					"_id": "$claimedBy.discordId",
 					"total_claimed": {"$sum": 1},
 					"positive": {
 						"$sum": {

@@ -232,20 +232,21 @@ This endpoint updates a ticket with its linked Discord thread ID.
 - "ticketId": The ID of the ticket to update.
 - "threadId": The Discord thread ID to link to the ticket.
 '''
-class UpdateTicketThreadSchema(BaseModel):
+class UpdateDiscordInfoSchema(BaseModel):
 	'''
-	# UpdateTicketThreadSchema
+	# UpdateDiscordInfoSchema
 
-	Model for updating a ticket with its Discord thread ID.
+	Model for updating a ticket with its Discord metadata.
 	'''
 	ticketId: int = Field(description="The ID of the ticket to update.")
 	threadId: Optional[int] = Field(default=None, description="The Discord thread ID to link to the ticket.")
 	statusMessageId: Optional[int] = Field(default=None, description="The Discord message ID of the status card embed.")
 	archiveRecipients: Optional[List[str]] = Field(default=None, description="The list of Discord IDs to receive the archive.")
+	archiveLink: Optional[str] = Field(default=None, description="The ticket archive download link.")
 
-@router.post("/update_ticket_thread")
+@router.post("/update_discord_info")
 @limiter.limit("100/minute")
-def update_ticket_thread(request: Request, body: UpdateTicketThreadSchema):
+def update_discord_info(request: Request, body: UpdateDiscordInfoSchema):
 
 	# Extract data from request body
 	data: Dict = body.model_dump()
@@ -253,6 +254,7 @@ def update_ticket_thread(request: Request, body: UpdateTicketThreadSchema):
 	threadId: int | None = data.get("threadId")
 	statusMessageId: int | None = data.get("statusMessageId")
 	archiveRecipients: List[str] | None = data.get("archiveRecipients")
+	archiveLink: str | None = data.get("archiveLink")
 
 	# Validate that we got a ticketId
 	if not ticketId:
@@ -261,12 +263,13 @@ def update_ticket_thread(request: Request, body: UpdateTicketThreadSchema):
 			detail="Missing 'ticketId'"
 		)
 
-	# Update ticket thread
-	MCL_HelpManager().updateTicketThread(
+	# Update Discord info
+	MCL_HelpManager().updateDiscordInfo(
 		ticketId=ticketId,
 		threadId=threadId,
 		statusMessageId=statusMessageId,
-		archiveRecipients=archiveRecipients
+		archiveRecipients=archiveRecipients,
+		archiveLink=archiveLink
 	)
 
 	return JSONResponse(

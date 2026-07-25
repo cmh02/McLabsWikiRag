@@ -120,24 +120,26 @@ class MCL_HelpManager():
 		)
 		return ticketId
 
-	def updateTicketThread(self, ticketId: int, threadId: Optional[int] = None, statusMessageId: Optional[int] = None, archiveRecipients: Optional[list[str]] = None):
+	def updateDiscordInfo(self, ticketId: int, threadId: Optional[int] = None, statusMessageId: Optional[int] = None, archiveRecipients: Optional[list[str]] = None, archiveLink: Optional[str] = None):
 		'''
-		# Update Ticket Thread ID
+		# Update Discord Info
 
-		Updates the Discord thread ID, status message ID, and/or archive recipients for an existing help ticket.
+		Updates the Discord thread ID, status message ID, archive recipients, and/or archive link for an existing help ticket.
 		'''
 		ticket = self._getOrLoadTicket(ticketId)
 		if not ticket:
-			self.logger.error(f"Attempted to update thread for non-existent ticket with ID {ticketId}.")
+			self.logger.error(f"Attempted to update Discord info for non-existent ticket with ID {ticketId}.")
 			return
 
-		# Update the thread ID
+		# Update the Discord Info fields
 		if threadId is not None:
-			ticket.threadId = threadId
+			ticket.discordInfo.threadId = threadId
 		if statusMessageId is not None:
-			ticket.statusMessageId = statusMessageId
+			ticket.discordInfo.statusMessageId = statusMessageId
 		if archiveRecipients is not None:
-			ticket.archiveRecipients = archiveRecipients
+			ticket.discordInfo.archiveRecipients = archiveRecipients
+		if archiveLink is not None:
+			ticket.discordInfo.archiveLink = archiveLink
 
 		# Save to mongo
 		self.mongoManager.saveTicket(
@@ -155,9 +157,14 @@ class MCL_HelpManager():
 			self.logger.error(f"Attempted to close non-existent ticket with ID {ticketId}.")
 			return
 		
+		# Resolve PlayerInfo from closedBy string
+		player = self.mongoManager.getPlayerInfo(minecraftUUID=closedBy, discordId=closedBy)
+		if not player:
+			player = PlayerInfo(discordId=closedBy) if closedBy.isdigit() else PlayerInfo(minecraftUUID=closedBy)
+
 		# Close the ticket
 		ticket.close(
-			closedBy=closedBy
+			closedBy=player
 		)
 
 		# Save to mongo, remove, and relay update
@@ -181,9 +188,14 @@ class MCL_HelpManager():
 			self.logger.error(f"Attempted to claim non-existent ticket with ID {ticketId}.")
 			return
 		
+		# Resolve PlayerInfo from claimedBy string
+		player = self.mongoManager.getPlayerInfo(minecraftUUID=claimedBy, discordId=claimedBy)
+		if not player:
+			player = PlayerInfo(discordId=claimedBy) if claimedBy.isdigit() else PlayerInfo(minecraftUUID=claimedBy)
+
 		# Claim the ticket
 		ticket.claim(
-			claimedBy=claimedBy
+			claimedBy=player
 		)
 
 		# Save to mongo

@@ -407,11 +407,15 @@ def generate_html_transcript(
 		creator_name = ticket.playerInfo.discordUsername or "Unknown"
 
 	# Closed by and claimed by names
-	closed_by_name = resolved_names.get(ticket.closedBy) if ticket.closedBy else None
+	closed_by_id = ticket.closedBy.discordId or ticket.closedBy.minecraftUUID if ticket.closedBy else None
+	closed_by_name = resolved_names.get(closed_by_id) if closed_by_id else None
 	if not closed_by_name and ticket.closedBy:
-		closed_by_name = ticket.closedBy
+		closed_by_name = ticket.closedBy.discordUsername or ticket.closedBy.minecraftUsername or closed_by_id
 	
-	claimed_by_name = resolved_names.get(ticket.claimedBy) if ticket.claimedBy else None
+	claimed_by_id = ticket.claimedBy.discordId or ticket.claimedBy.minecraftUUID if ticket.claimedBy else None
+	claimed_by_name = resolved_names.get(claimed_by_id) if claimed_by_id else None
+	if not claimed_by_name and ticket.claimedBy:
+		claimed_by_name = ticket.claimedBy.discordUsername or ticket.claimedBy.minecraftUsername or claimed_by_id
 
 	# Process message logs
 	processed_messages: List[Dict[str, Any]] = []
@@ -442,7 +446,7 @@ def generate_html_transcript(
 				badges.append({"class": "badge-creator", "label": "Creator"})
 			
 			# Check if claimed helper/staff
-			if sender_id and ticket.claimedBy and sender_id == ticket.claimedBy:
+			if sender_id and ticket.claimedBy and (sender_id == ticket.claimedBy.discordId or sender_id == ticket.claimedBy.minecraftUUID):
 				badges.append({"class": "badge-staff", "label": "Staff"})
 
 		# Process content and date
